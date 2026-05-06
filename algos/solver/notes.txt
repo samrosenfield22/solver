@@ -1,0 +1,9 @@
+todo
+-----
+
+* why did hashtable performance drop when there's slack bytes in
+nim_pos_t? changing the order/int size shouldn't have any impact
+on the performance, hash misses, etc, since we're comparing keys
+by individual struct fields (not blind memcmp())
+* alphabeta is ruining my variations :(
+* mate-in-n (wrote a stub idea for it in minimax())

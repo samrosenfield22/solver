@@ -1,0 +1,7 @@
+ds:
+list - swap, ring buffer?
+
+other:
+fsm
+memory (chunk allocator)
+windows timing
