@@ -25,7 +25,7 @@ void transposition_create(void);
 void transposition_add(void *pos, float score, int depth);
 
 float eval(tree_t *gt, tnode_t *n, int depth, float alpha, float beta);
-void add_all_new_moves(tree_t *gt, tnode_t *n);
+void add_all_new_moves(tree_t *gt, tnode_t *n, int depth);
 float analyze_all_children(tree_t *gt, tnode_t *n, int depth, float alpha, float beta);
 
 bool transposition_check(tnode_t *n);
@@ -206,7 +206,7 @@ float eval(tree_t *gt, tnode_t *n, int depth, float alpha, float beta)
 	}*/
 
 
-	add_all_new_moves(gt, n);
+	add_all_new_moves(gt, n, depth);
 	float score = analyze_all_children(gt, n, depth, alpha, beta);
 
 	/*
@@ -281,7 +281,7 @@ float eval(tree_t *gt, tnode_t *n, int depth, float alpha, float beta)
 	return score;
 }
 
-void add_all_new_moves(tree_t *gt, tnode_t *n)
+void add_all_new_moves(tree_t *gt, tnode_t *n, int depth)
 {
 	void *pos = n->data;
 
@@ -335,14 +335,18 @@ void add_all_new_moves(tree_t *gt, tnode_t *n)
 		if(val)
 			n->score = val->score;
 	}
-	tree_attach_compare_fn(gt, compare_by_score_ascending);
+	tree_get(gt, n);
+	bool order = max_or_min(depth);
+	tree_attach_compare_fn(gt, (order==MAX_LAYER)?
+		compare_by_score_ascending : compare_by_score_descending);
 	tree_sort_children(gt);
-	/*if(1)
+	if(1)
 	{
+		printf("depth = %d\n", depth);
 		for(int i=0; i<n->child_ct; i++)
 			printf("score = %f\n", n->children[i]->score);
 		printf("\n");
-	}*/
+	}
 }
 
 float analyze_all_children(tree_t *gt, tnode_t *n, int depth, float alpha, float beta)

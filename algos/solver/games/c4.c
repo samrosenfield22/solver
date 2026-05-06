@@ -776,8 +776,8 @@ bool c4_replace_transpose(void *k_old, void *v_old,
 	assert(val_old->iddfs == val_new->iddfs);
 
 	if(val_old->depth - val_new->depth > 2)
-		return true;
-	return false;
+		return false;
+	return true;
 
 	c4_pos_t *n1 = k_old, *n2 = k_old;
 	int turns_ish_1=0, turns_ish_2=0;
