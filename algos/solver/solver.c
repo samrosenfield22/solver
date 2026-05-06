@@ -21,11 +21,16 @@ enum
 };
 
 //statics
+void transposition_create(void);
+void transposition_add(void *pos, float score, int depth);
+
 float eval(tree_t *gt, tnode_t *n, int depth, float alpha, float beta);
 void add_all_new_moves(tree_t *gt, tnode_t *n);
 float analyze_all_children(tree_t *gt, tnode_t *n, int depth, float alpha, float beta);
 
 bool transposition_check(tnode_t *n);
+trans_value_t *transposition_get(tnode_t *n);
+
 bool alphabeta_cutoff(float cscore, float prune,
 	float *best_so_far, int depth);
 //void evaluate(tree_t *gt, solver_t *solver);
@@ -43,12 +48,8 @@ solver_t *solver;
 hashmap_t *trans_tbl;
 bool who_goes_first = true;
 uint32_t position_ct = 0, max_node_ct = 0;
+int iddfs;
 
-typedef struct
-{
-	uint8_t move_index;
-	void *pos;
-} pos_meta;
 
 float solve(solver_t *game_solver, void *pos)
 {
@@ -73,22 +74,7 @@ float solve(solver_t *game_solver, void *pos)
 	//exit(0);
 
 	#ifdef USE_TRANSPOSITION_TABLE
-	trans_tbl = hashmap_create(solver->pos_size, sizeof(float),
-		solver->transtbl_buckets_ct);
-	if(!trans_tbl)
-	{
-		printf("failed to allocate transposition table\n");
-		return 0;
-	}
-	if(solver->hash)
-		hashmap_attach_hash(trans_tbl, solver->hash);
-	if(solver->keys_match)
-		hashmap_attach_keycompare(trans_tbl,
-			solver->keys_match);
-	if(solver->normalize_position)
-		hashmap_attach_normalize(trans_tbl, solver->normalize_position);
-	if(solver->replace_transpose)
-		hashmap_attach_replace(trans_tbl, solver->replace_transpose);
+	transposition_create();
 	#endif	//USE_TRANSPOSITION_TABLE
 
 	if(solver->print_pos)
@@ -112,7 +98,7 @@ float solve(solver_t *game_solver, void *pos)
 		evaluate(gt, solver);
 	}*/
 
-	int limit = 16;
+	int limit = 14;
 	if(solver->estimate)
 		tree_set_search_depth(gt, limit);
 
@@ -120,20 +106,20 @@ float solve(solver_t *game_solver, void *pos)
 	//eval(gt, gt->head, 0, -INF, INF);
 
 	//iddfs
-	for(int i=0; i<=limit; i++)
+	for(iddfs=0; iddfs<=limit; iddfs++)
 	{
-		tree_set_search_depth(gt, i);
+		tree_set_search_depth(gt, iddfs);
 		eval(gt, gt->head, 0, -INF, INF);
 		//eval(gt, gt->head, 0, -5, 5);
 
-		printf("iddfs depth=%d\n", i);
+		printf("iddfs depth=%d\n", iddfs);
 		//tree_draw(gt, 2);
 		//printf("continue:  ");
 		//getchar();
 		//printf("\n\n");
 
-		if(i < limit-1)
-			hashmap_clear(trans_tbl);
+		//if(i < limit-1)
+		//	hashmap_clear(trans_tbl);
 	}
 
 	//count time
@@ -143,7 +129,7 @@ float solve(solver_t *game_solver, void *pos)
 	uint32_t sec = sec_total - (60*min);
 
 	//output
-	tree_draw(gt, 2);
+	tree_draw(gt, 6);
 
 	int best_move = gt->head->children[0]->move_index;
 	printf("\nbest move: %d\n", best_move);
@@ -177,7 +163,10 @@ float eval(tree_t *gt, tnode_t *n, int depth, float alpha, float beta)
 
 	#ifdef USE_TRANSPOSITION_TABLE
 	//check if position was already analyzed
-	if(transposition_check(n))
+	//if(transposition_check(n))
+	//	return n->score;
+	trans_value_t *val = transposition_get(n);
+	if(val && (val->iddfs == iddfs))
 		return n->score;
 	#endif
 
@@ -284,7 +273,8 @@ float eval(tree_t *gt, tnode_t *n, int depth, float alpha, float beta)
 	#endif
 
 	#ifdef USE_TRANSPOSITION_TABLE
-		hashmap_add_kvpair(trans_tbl, n->data, &n->score);
+		//hashmap_add_kvpair(trans_tbl, n->data, &n->score);
+		transposition_add(n->data, n->score, depth);
 	#endif
 
 	//return n->score;
@@ -338,12 +328,16 @@ void add_all_new_moves(tree_t *gt, tnode_t *n)
 		}
 	}
 
-	//or... sort by estimate
-	/*for(int i=0; i<n->child_ct; i++)
-		n->score = solver->estimate(n->children[i]);
-	tree_attach_compare_fn(gt, compare_by_score_descending);
+	//sort by scores obtained at lower iddfs depth
+	for(int i=0; i<n->child_ct; i++)
+	{
+		trans_value_t *val = transposition_get(n->children[i]);
+		if(val)
+			n->score = val->score;
+	}
+	tree_attach_compare_fn(gt, compare_by_score_ascending);
 	tree_sort_children(gt);
-	if(n->children[0]->score)
+	/*if(1)
 	{
 		for(int i=0; i<n->child_ct; i++)
 			printf("score = %f\n", n->children[i]->score);
@@ -448,9 +442,45 @@ float analyze_all_children(tree_t *gt, tnode_t *n, int depth, float alpha, float
 	}
 }
 
-bool transposition_check(tnode_t *n)
+void transposition_create(void)
 {
-	//printf("checking trans tbl\n");
+	trans_tbl = hashmap_create(solver->pos_size, sizeof(trans_value_t),
+		solver->transtbl_buckets_ct);
+	if(!trans_tbl)
+	{
+		printf("failed to allocate transposition table\n");
+		exit(0);
+	}
+	if(solver->hash)
+		hashmap_attach_hash(trans_tbl, solver->hash);
+	if(solver->keys_match)
+		hashmap_attach_keycompare(trans_tbl,
+			solver->keys_match);
+	if(solver->normalize_position)
+		hashmap_attach_normalize(trans_tbl, solver->normalize_position);
+	if(solver->replace_transpose)
+		hashmap_attach_replace(trans_tbl, solver->replace_transpose);
+}
+
+void transposition_add(void *pos, float score, int depth)
+{
+	trans_value_t value =
+	{
+		.score = score,
+		.iddfs = iddfs,
+		.depth = depth,
+	};
+	hashmap_add_kvpair(trans_tbl, pos, &value);
+}
+
+/*trans_value_t *transposition_key_get_value(void *pos)
+{
+	//float *ttval = hashmap_key_get_value(trans_tbl, pos);
+	trans_value_t *val = hashmap_key_get_value(trans_tbl, pos);
+}*/
+
+/*bool transposition_check(tnode_t *n)
+{
 	void *pos = n->data;
 	float *ttval = hashmap_key_get_value(trans_tbl, pos);
 	if(ttval)
@@ -459,6 +489,15 @@ bool transposition_check(tnode_t *n)
 		n->score = prev_score;
 	}
 	return ttval;
+}*/
+
+trans_value_t *transposition_get(tnode_t *n)
+{
+	void *pos = n->data;
+	trans_value_t *value = hashmap_key_get_value(trans_tbl, pos);
+	if(value)
+		n->score = value->score;
+	return value;
 }
 
 /*bool alphabeta_cutoff(float cscore, float prune,

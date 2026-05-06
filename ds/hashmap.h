@@ -19,7 +19,7 @@ typedef struct
 	uint32_t (*hash)(void *key, size_t size);
 	bool (*compare_keys_fp)(void *k1, void *k2);
 	void (*normalize_key)(void *k);
-	bool (*replace_fp)(void *k1, void *k2);
+	bool (*replace_fp)(void *k1, void *v1, void *k2, void *v2);
 
 	void *map[];
 } hashmap_t;
@@ -39,5 +39,6 @@ void hashmap_attach_keycompare(hashmap_t *h,
 void hashmap_attach_normalize(hashmap_t *h,
 	void (*normalize_key)(void *k));
 void hashmap_attach_replace(hashmap_t *h,
-	bool (*replace_fp)(void *k1, void *k2));
+	bool (*replace_transpose)(void *k1, void *v1,
+	void *k2, void *d1));
 void hashmap_demo(void);

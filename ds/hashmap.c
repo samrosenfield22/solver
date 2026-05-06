@@ -109,7 +109,7 @@ void hashmap_add_kvpair(hashmap_t *h, void *key, void *value)
 		//in the first place?!?!
 		if(keys_match(h, kv->key, norm_key))
 		{
-			assert(0);
+			//assert(0);
 			//printf("\treplacing matching key\n");
 			memcpy(kv->value, value, h->vsize);
 		}
@@ -117,9 +117,9 @@ void hashmap_add_kvpair(hashmap_t *h, void *key, void *value)
 		{
 			if(h->replace_fp)
 			{
-				if(h->replace_fp(kv->key, norm_key))
+				if(h->replace_fp(kv->key, kv->value, norm_key, value))
 				{
-					memcpy(kv->key, key, h->ksize);
+					memcpy(kv->key, norm_key, h->ksize);
 					memcpy(kv->value, value, h->vsize);
 				}
 			}
@@ -293,7 +293,8 @@ void hashmap_attach_normalize(hashmap_t *h,
 }
 
 void hashmap_attach_replace(hashmap_t *h,
-	bool (*replace_fp)(void *k1, void *k2))
+	bool (*replace_fp)(void *k1, void *v1,
+	void *k2, void *d1))
 {
 	if(!h)
 		return;

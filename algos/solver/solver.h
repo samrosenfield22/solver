@@ -9,18 +9,13 @@
 
 #define USE_ALPHABETA_PRUNING
 #define USE_TRANSPOSITION_TABLE
-//#define CLEAR_SUB_NODES
+#define CLEAR_SUB_NODES
 
-#define VARIATION_LENGTH	(4)
-#define PRINCIPAL_VAR_CT	(20)
-#define INNER_VAR_CT		(7)
+#define VARIATION_LENGTH	(6)
+#define PRINCIPAL_VAR_CT	(3)
+#define INNER_VAR_CT		(1)
 
-/*typedef struct
-{
-	bool whosemove;
 
-	void *pos;
-} gamestate_t;*/
 
 typedef enum
 {
@@ -33,6 +28,15 @@ typedef enum
 #define WIN_SCORE	(100.0)
 //#define INF			(10000.0)
 #define INF		(100.0)
+
+typedef struct
+{
+	float score;
+	uint8_t iddfs;
+	uint8_t depth;
+	//ab bounds
+	//uint8_t move_index;
+} trans_value_t;
 
 typedef struct
 {
@@ -54,7 +58,9 @@ typedef struct
 	uint32_t (*hash)(void *key, size_t size);
 	bool (*keys_match)(void *k1, void *k2);
 	void (*normalize_position)(void *k);
-	bool (*replace_transpose)(void *k1, void *k2);
+	//bool (*replace_transpose)(void *k1, void *k2);
+	bool (*replace_transpose)(void *k1, void *v1,
+		void *k2, void *d1);
 
 	int (*print_pos)(void *pos);
 

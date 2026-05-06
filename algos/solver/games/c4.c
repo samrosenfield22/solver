@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <assert.h>
 
 float estimate_color(uint8_t *c, uint8_t *opp, bool verbose);
 bool four_in_a_row(uint8_t *cols);
@@ -763,11 +764,22 @@ void get_yellows(uint8_t *yellows, c4_pos_t *p)
 		yellows[i] = (~(p->columns_color[i])) & p->columns_filled[i];
 }
 
-bool c4_replace_transpose(void *k1, void *k2)
+//1 (old val) gets replaced with 2 (new val)
+bool c4_replace_transpose(void *k_old, void *v_old,
+	void *k_new, void *v_new)
 {
-	return true;
+	trans_value_t *val_old = v_old;
+	trans_value_t *val_new = v_new;
 
-	c4_pos_t *n1 = k1, *n2 = k2;
+	if(val_new->iddfs > val_old->iddfs)
+		return true;
+	assert(val_old->iddfs == val_new->iddfs);
+
+	if(val_old->depth - val_new->depth > 2)
+		return true;
+	return false;
+
+	c4_pos_t *n1 = k_old, *n2 = k_old;
 	int turns_ish_1=0, turns_ish_2=0;
 	for(int i=0; i<7; i++)
 	{
@@ -801,7 +813,7 @@ solver_t C4_SOLVER =
 	.initial_pos = &C4_INIT_POS,
 	.pos_size = sizeof(c4_pos_t),
 	.possible_moves = 7,
-	.transtbl_buckets_ct = 4000003,
+	.transtbl_buckets_ct = 40000003,
 	.default_order = (uint8_t[]){3, 2, 4, 1, 5, 0, 6},
 
 	.gameover = c4_gameover,
