@@ -82,6 +82,7 @@ void tree_clear_search_depth(tree_t *t);
 void tree_set_score(tree_t *t, float score);
 float tree_get_score(tree_t *t);
 void tree_sort_children(tree_t *t);
+void tree_swap_children(tree_t *t, int a, int b);
 
 void tree_attach_print_fn(tree_t *t, int (*print_fp)(void *d));
 void tree_attach_destroy_fn(

@@ -28,6 +28,7 @@ hashmap_t *hashmap_create(size_t ksize, size_t vsize, uint32_t len)
 	h->ksize = ksize;
 	h->vsize = vsize;
 	h->len = len;
+	h->collisions = 0;
 	h->filled = 0;
 	h->hash = default_hash;
 	h->compare_keys_fp = NULL;
@@ -77,6 +78,7 @@ void hashmap_clear(hashmap_t *h)
 	}
 
 	//h->filled = 0;
+	h->collisions = 0;
 }
 
 void hashmap_add_kvpair(hashmap_t *h, void *key, void *value)
@@ -96,6 +98,7 @@ void hashmap_add_kvpair(hashmap_t *h, void *key, void *value)
 
 	//printf("\tgetting bucket\n");
 	kvpair_t **bucket = hashmap_key_get_bucket(h, norm_key);
+	assert(bucket);
 	//printf("\tbucket p val = %p\n", *bucket);
 	if(*bucket)
 	{
@@ -105,16 +108,14 @@ void hashmap_add_kvpair(hashmap_t *h, void *key, void *value)
 
 		//replace value
 		kvpair_t *kv = *bucket;
-		//if keys match, shouldn't i have found it on lookup
-		//in the first place?!?!
 		if(keys_match(h, kv->key, norm_key))
 		{
-			//assert(0);
 			//printf("\treplacing matching key\n");
 			memcpy(kv->value, value, h->vsize);
 		}
 		else	//collision
 		{
+			h->collisions++;
 			if(h->replace_fp)
 			{
 				if(h->replace_fp(kv->key, kv->value, norm_key, value))
@@ -206,6 +207,7 @@ void *hashmap_key_get_value(hashmap_t *h, void *key)
 
 	//printf("getting bucket\n");
 	kvpair_t **bucket = hashmap_key_get_bucket(h, norm_key);
+	assert(bucket);
 	//printf("\tgot bucket\n");
 	if(!bucket)
 	{
@@ -261,6 +263,11 @@ int hashmap_load(hashmap_t *h)
 {
 	printf("%d out of %d buckets filled\n", h->filled, h->len);
 	return (h->filled * 100) / h->len;
+}
+
+uint32_t hashmap_collisions(hashmap_t *h)
+{
+	return h->collisions;
 }
 
 

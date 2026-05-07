@@ -109,6 +109,7 @@ void nim_normalize(void *k)
 {
 	nim_pos_t *n = k;
 	uint8_t temp;
+	//printf("was: %d,%d,%d\n", n->piles[0], n->piles[1], n->piles[2]);
 	if(n->piles[1] < n->piles[0])
 	{
 		temp = n->piles[0];
@@ -121,6 +122,13 @@ void nim_normalize(void *k)
 		n->piles[0] = n->piles[2];
 		n->piles[2] = temp;
 	}
+	if(n->piles[2] < n->piles[1])
+	{
+		temp = n->piles[1];
+		n->piles[1] = n->piles[2];
+		n->piles[2] = temp;
+	}
+	//printf("is: %d,%d,%d\n", n->piles[0], n->piles[1], n->piles[2]);
 
 }
 

@@ -15,6 +15,7 @@ typedef struct
 {
 	size_t ksize, vsize;
 	int len, filled;
+	uint32_t collisions;
 
 	uint32_t (*hash)(void *key, size_t size);
 	bool (*compare_keys_fp)(void *k1, void *k2);
@@ -32,6 +33,7 @@ void hashmap_clear(hashmap_t *h);
 void hashmap_add_kvpair(hashmap_t *h, void *key, void *value);
 void *hashmap_key_get_value(hashmap_t *h, void *key);
 int hashmap_load(hashmap_t *h);
+uint32_t hashmap_collisions(hashmap_t *h);
 void hashmap_attach_hash(
 	hashmap_t *h, uint32_t (*hash)(void *key, size_t size));
 void hashmap_attach_keycompare(hashmap_t *h,

@@ -129,7 +129,7 @@ float solve(solver_t *game_solver, void *pos)
 	uint32_t sec = sec_total - (60*min);
 
 	//output
-	tree_draw(gt, 6);
+	tree_draw(gt, 4);
 
 	int best_move = gt->head->children[0]->move_index;
 	printf("\nbest move: %d\n", best_move);
@@ -139,6 +139,7 @@ float solve(solver_t *game_solver, void *pos)
 	printf("evaluated %u unique positions\n", position_ct);
 	printf("greatest number of nodes stored in tree: %u\n", max_node_ct);
 	printf("hashmap load factor = %d%%\n", hashmap_load(trans_tbl));
+	printf("number of collisions: %u\n", hashmap_collisions(trans_tbl));
 
 
 	//tree_clear(gt);
@@ -275,6 +276,8 @@ float eval(tree_t *gt, tnode_t *n, int depth, float alpha, float beta)
 	#ifdef USE_TRANSPOSITION_TABLE
 		//hashmap_add_kvpair(trans_tbl, n->data, &n->score);
 		transposition_add(n->data, n->score, depth);
+		//printf("\nadding pos: ");
+		//solver->print_pos(n->data);
 	#endif
 
 	//return n->score;
@@ -283,17 +286,6 @@ float eval(tree_t *gt, tnode_t *n, int depth, float alpha, float beta)
 
 void add_all_new_moves(tree_t *gt, tnode_t *n, int depth)
 {
-	void *pos = n->data;
-
-	//if(solver->default_order)
-	//else
-	//	int order[solver->possible_moves];
-
-	//tree_get(gt, n);
-	//tree_attach_compare_fn(gt, compare_by_score_descending);
-	//tree_sort_children(gt);
-
-	//int order[] = {3, 2, 4, 1, 5, 0, 6};
 	for(int a=0; a<solver->possible_moves; a++)
 	{
 		int i;
@@ -319,7 +311,7 @@ void add_all_new_moves(tree_t *gt, tnode_t *n, int depth)
 		if(already_made)
 			continue;
 
-		if(solver->is_legal(pos, i))
+		if(solver->is_legal(n->data, i))
 		{
 			tree_add_copies(gt, 1);
 			tnode_t *child = n->children[n->child_ct-1];
@@ -328,23 +320,37 @@ void add_all_new_moves(tree_t *gt, tnode_t *n, int depth)
 		}
 	}
 
+
 	//sort by scores obtained at lower iddfs depth
+	tree_get(gt, n);
+	int stored = 0;
 	for(int i=0; i<n->child_ct; i++)
 	{
 		trans_value_t *val = transposition_get(n->children[i]);
 		if(val)
-			n->score = val->score;
+		{
+			//n->children[i]->score = val->score;
+			tree_swap_children(gt, stored, i);
+			stored++;
+		}
+
 	}
-	tree_get(gt, n);
+
 	bool order = max_or_min(depth);
 	tree_attach_compare_fn(gt, (order==MAX_LAYER)?
 		compare_by_score_ascending : compare_by_score_descending);
-	tree_sort_children(gt);
-	if(1)
+	//tree_sort_children(gt);
+	//sort the first n children (those with transtab values)
+	qsort(n->children, stored, sizeof(void*), gt->compare_fp);
+
+	if(iddfs == 10 && depth < 3)
 	{
 		printf("depth = %d\n", depth);
+		printf("found %d of %d nodes w transtab\n", stored, n->child_ct);
+
 		for(int i=0; i<n->child_ct; i++)
-			printf("score = %f\n", n->children[i]->score);
+			printf("score = %f, move = %d\n",
+			n->children[i]->score, n->children[i]->move_index);
 		printf("\n");
 	}
 }

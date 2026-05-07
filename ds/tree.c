@@ -380,6 +380,22 @@ void tree_sort_children(tree_t *t)
 	qsort(t->p->children, t->p->child_ct, sizeof(void*), t->compare_fp);
 }
 
+void tree_swap_children(tree_t *t, int a, int b)
+{
+	if(!t)
+		return;
+
+	if(a >= t->p->child_ct || b >= t->p->child_ct)
+	{
+		assert(0);
+		return;
+	}
+
+	tnode_t *temp = t->p->children[a];
+	t->p->children[a] = t->p->children[b];
+	t->p->children[b] = temp;
+}
+
 void tree_attach_print_fn(tree_t *t, int (*print_fp)(void *d))
 {
 	if(!t)

@@ -244,11 +244,54 @@ void c4_make_move(void *pos, int index)
 	p->whosemove = !p->whosemove;
 }
 
+bool zobrist_computed = false;
+uint32_t zobrist_strings[85];
 
 uint32_t c4_hash(void *key, size_t size)
 {
 	c4_pos_t *p = key;
 	uint32_t h = 0;
+
+	//generate bitstrings
+	if(!zobrist_computed)
+	{
+		zobrist_computed = true;
+
+		for(int i=0; i<85; i++)
+		{
+			zobrist_strings[i] = rand()<<16 | rand();
+		}
+	}
+
+	//compute hash
+	for(int c=0; c<7; c++)
+	{
+		for(int r=0; r<6; r++)
+		{
+			uint8_t b = (1<<r);
+			if(p->columns_filled[c] & b)
+			{
+				int index = c * 6 + r;
+				if(p->columns_color[c] & b)
+					index += 42;
+
+				h ^= zobrist_strings[index];
+			}
+		}
+	}
+
+	if(p->whosemove)
+		h ^= zobrist_strings[84];
+
+	//printf("hash = %u\n", h);
+	return h;
+}
+
+/*uint32_t c4_hash(void *key, size_t size)
+{
+
+	c4_pos_t *p = key;
+	uint64_t h = 0;
 	uint8_t copy[7];
 	uint32_t mult = 1;
 
@@ -262,32 +305,24 @@ uint32_t c4_hash(void *key, size_t size)
 		//printf("high = 0x%0x\n", high);
 		col |= high;
 		copy[i] = col;
+		//printf("%x, ", copy[i]);
 
 	}
-	/*
-	//eliminate horiz symmtery
-	if(copy[0] > copy[6])
-	{
-		for(int i=0; i<3; i++)
-		{
-			//swap copy[i] and copy[6-i]
-			uint8_t temp = copy[i];
-			copy[i] = copy[6-i];
-			copy[6-i] = temp;
-		}
-	}
-*/
+
 	//calculate hash
 	for(int i=0; i<7; i++)
 	{
-		h += copy[i] * mult;
-		mult *= 7;
+		h ^= copy[i];
+		if(i != 6)
+			h <<= 5;
+		//mult *= 3;
 	}
 	if(p->whosemove)
-		h += mult;
-
+		h++;
+	h ^= h>>32;
+	//printf("hash = %u\n", (uint32_t)h);
 	return h;
-}
+}*/
 
 bool c4_keys_match(void *k1, void *k2)
 {
@@ -768,6 +803,8 @@ void get_yellows(uint8_t *yellows, c4_pos_t *p)
 bool c4_replace_transpose(void *k_old, void *v_old,
 	void *k_new, void *v_new)
 {
+	return true;
+
 	trans_value_t *val_old = v_old;
 	trans_value_t *val_new = v_new;
 
@@ -775,7 +812,7 @@ bool c4_replace_transpose(void *k_old, void *v_old,
 		return true;
 	assert(val_old->iddfs == val_new->iddfs);
 
-	if(val_old->depth - val_new->depth > 2)
+	if(val_old->depth + 4 > val_new->depth)
 		return false;
 	return true;
 
@@ -826,8 +863,8 @@ solver_t C4_SOLVER =
 	.hash = c4_hash,
 	//.hash = NULL,
 	.keys_match = c4_keys_match,
-	//.normalize_position = c4_normalize,
-	.normalize_position = NULL,
+	.normalize_position = c4_normalize,
+	//.normalize_position = NULL,
 	.replace_transpose = c4_replace_transpose,
 
 	.draw_full = c4_draw_full,
