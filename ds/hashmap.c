@@ -81,39 +81,27 @@ void hashmap_clear(hashmap_t *h)
 	h->collisions = 0;
 }
 
-void hashmap_add_kvpair(hashmap_t *h, void *key, void *value)
+int hashmap_add_kvpair(hashmap_t *h, void *key, void *value)
 {
 	if(!h)
-		return;
+		return HM_NO_ADD;
 
-	//printf("adding pos w key %d,%d,%d\nvalue %d\n",
-	//	*(int*)key, *(int*)key+1, *(int*)key+2,
-	//	*(int16_t*)value);
+	int add_result = -1;
 
 	void *norm_key = copy_key_normalize(h, key);
-	//if(!norm_key)
-	//	norm_key = key;
-
-
-
-	//printf("\tgetting bucket\n");
 	kvpair_t **bucket = hashmap_key_get_bucket(h, norm_key);
 	assert(bucket);
-	//printf("\tbucket p val = %p\n", *bucket);
-	if(*bucket)
+
+	if(*bucket)	//bucket already filled
 	{
-
-		//printf("slot already filled\n");
-		//apply replacement strategy
-
-		//replace value
 		kvpair_t *kv = *bucket;
 		if(keys_match(h, kv->key, norm_key))
 		{
-			//printf("\treplacing matching key\n");
+			//replace value
 			memcpy(kv->value, value, h->vsize);
+			add_result = HM_KEYS_MATCHED_REPLACED_VALUE;
 		}
-		else	//collision
+		else	//collision, apply replacement policy
 		{
 			h->collisions++;
 			if(h->replace_fp)
@@ -122,15 +110,15 @@ void hashmap_add_kvpair(hashmap_t *h, void *key, void *value)
 				{
 					memcpy(kv->key, norm_key, h->ksize);
 					memcpy(kv->value, value, h->vsize);
+					add_result = HM_POLICY_OVERWRITE_KV;
 				}
+				else
+					add_result = HM_POLICY_DENIED_KV;
 			}
 		}
-		//else
-		//	printf("\tcollision\n");
-		//else collision
 
 	}
-	else
+	else	//bucket empty, add the kv pair
 	{
 		kvpair_t *kv = mem_malloc(sizeof(*kv));
 		assert(kv);
@@ -144,15 +132,12 @@ void hashmap_add_kvpair(hashmap_t *h, void *key, void *value)
 		*bucket = kv;
 		//printf("kvpair added!\n");
 		h->filled++;
+		add_result = HM_ADDED_KV_NEW;
 	}
 
-	//if(h->normalize_key)
-		mem_free(norm_key);
-	return;
 
-	/*if(normalized)
-		mem_free(norm_key);
-	return;*/
+	mem_free(norm_key);
+	return add_result;
 
 	////////////////////////////////////////////////////////
 

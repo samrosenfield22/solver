@@ -863,8 +863,8 @@ solver_t C4_SOLVER =
 	.hash = c4_hash,
 	//.hash = NULL,
 	.keys_match = c4_keys_match,
-	.normalize_position = c4_normalize,
-	//.normalize_position = NULL,
+	//.normalize_position = c4_normalize,
+	.normalize_position = NULL,
 	.replace_transpose = c4_replace_transpose,
 
 	.draw_full = c4_draw_full,

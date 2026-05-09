@@ -25,12 +25,21 @@ typedef struct
 	void *map[];
 } hashmap_t;
 
+enum
+{
+	HM_NO_ADD,
+	HM_ADDED_KV_NEW,
+	HM_KEYS_MATCHED_REPLACED_VALUE,
+	HM_POLICY_OVERWRITE_KV,
+	HM_POLICY_DENIED_KV,
+} hm_blahlbah;
+
 
 /////////////////////// protos ///////////////////////
 hashmap_t *hashmap_create(size_t ksize, size_t vsize, uint32_t len);
 void hashmap_destroy(hashmap_t *h);
 void hashmap_clear(hashmap_t *h);
-void hashmap_add_kvpair(hashmap_t *h, void *key, void *value);
+int hashmap_add_kvpair(hashmap_t *h, void *key, void *value);
 void *hashmap_key_get_value(hashmap_t *h, void *key);
 int hashmap_load(hashmap_t *h);
 uint32_t hashmap_collisions(hashmap_t *h);
