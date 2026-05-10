@@ -25,9 +25,10 @@ typedef enum
 	END_DRAW = 3,
 } endstate_t;
 
-#define WIN_SCORE	(100.0)
+#define WIN_SCORE	(10000.0)
+#define MATE_LIMIT	(WIN_SCORE - 100)
 //#define INF			(10000.0)
-#define INF		(100.0)
+//#define INF		(100.0)
 
 typedef struct
 {

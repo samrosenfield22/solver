@@ -42,6 +42,7 @@ bool alphabeta_cutoff(float cscore, float prune,
 //void evaluate(tree_t *gt, solver_t *solver);
 float max(float x, float y);
 float min(float x, float y);
+void print_score(float score);
 void minimax(tree_t *gt, int depth);
 void clear_suboptimal_nodes(tree_t *gt, tnode_t *n, int depth, int var_length);
 
@@ -67,11 +68,13 @@ void print_eval_bar(float score)
 	printf(indent);
 	for(int i=0; i<len/2-1; i++)
 		printf(" ");
-	printf("%.1f\n", score);
+	//printf("%.1f\n", score);
+	print_score(score);
+	printf("\n");
 
 	printf(indent);
 	printf("[");
-	float dist = (score+100)/200*len;
+	float dist = (score+MATE_LIMIT)/(2*MATE_LIMIT)*len;
 	for(int i=0; i<len; i++)
 	{
 		if(i < (int)dist)
@@ -165,7 +168,7 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms)
 
 		printf("\niddfs depth=%d\n", iddfs);
 		tree_set_search_depth(gt, iddfs);
-		eval(gt, gt->head, 0, -INF, INF, -1);
+		eval(gt, gt->head, 0, -WIN_SCORE, WIN_SCORE, -1);
 		//eval(gt, gt->head, 0, -2, 2, -1);
 
 		if((toc_ms() >= time_lim_ms) && !(iddfs & 0b1))
@@ -481,6 +484,7 @@ float analyze_all_children(tree_t *gt, tnode_t *n, int *order,
 	}
 
 	float best = worst_score(depth);
+	bool cutoff = false;
 
 	int killer = -1;
 
@@ -502,6 +506,19 @@ float analyze_all_children(tree_t *gt, tnode_t *n, int *order,
 
 		float c_score = eval(gt, child, depth+1,
 			alpha, beta, killer);
+
+		if(c_score > MATE_LIMIT)
+			c_score--;
+		else if(c_score < -MATE_LIMIT)
+			c_score++;
+
+		/*if((max_or_min(depth)==MAX_LAYER && c_score > MATE_LIMIT)
+			|| (max_or_min(depth)!=MAX_LAYER && c_score < -MATE_LIMIT))
+		{
+			best = c_score;
+			break;
+		}*/
+
 
 		//if(is_better(cscore, best_so_far, depth))
 		//	best_so_far = cscore;
@@ -529,10 +546,11 @@ float analyze_all_children(tree_t *gt, tnode_t *n, int *order,
 			//	printf("cutoff!\n");
 
 			if(max_or_min(depth) == MAX_LAYER)
-				alpha++;
+				//&& (-MATE_LIMIT <= c_score && c_score <= MATE_LIMIT))
+				{alpha++; best++;}
 			else
-				beta--;
-
+				{beta--; best--;}
+			cutoff = true;
 			//if(depth == 1)
 			//	printf("\t");
 			//if(depth <= 1)
@@ -570,16 +588,37 @@ float analyze_all_children(tree_t *gt, tnode_t *n, int *order,
 
 	if(max_or_min(depth)==MAX_LAYER)
 	{
-		//n->score = best;
-		n->score = alpha;
-		return alpha;
+		n->score = best;
+		//n->score = alpha;
+		//if(cutoff)
+		//	n->score--;
+		//return alpha;
 	}
 	else	//min
 	{
-		//n->score = best;
-		n->score = beta;
-		return beta;
+		n->score = best;
+		//n->score = beta;
+		//if(cutoff)
+		//	n->score++;
+		//return beta;
 	}
+
+	/*if(n->score > MATE_LIMIT)
+	{
+		n->score--;
+		if(cutoff)
+			n->score--;
+	}
+	else if(n->score < -MATE_LIMIT)
+	{
+		n->score++;
+		if(cutoff)
+			n->score++;
+	}*/
+
+
+
+	return n->score;
 }
 
 void build_order(int *order, tree_t *gt, tnode_t *n)
@@ -821,7 +860,7 @@ bool is_worse(float s0, float s1, int depth)
 
 float worst_score(int depth)
 {
-	float worst = (max_or_min(depth)==MAX_LAYER)? -INF : INF;
+	float worst = (max_or_min(depth)==MAX_LAYER)? -WIN_SCORE : WIN_SCORE;
 	//float worst = max_or_min(depth)? -1 : 1;
 	assert(is_worse(worst, 0, depth));
 	return worst;
@@ -835,6 +874,23 @@ float max(float x, float y)
 float min(float x, float y)
 {
 	return (x<y)? x : y;
+}
+
+float abs_f(float a)
+{
+	return (a>=0)? a : -a;
+}
+
+void print_score(float score)
+{
+	if(abs_f(score) < MATE_LIMIT)
+		printf("%.1f", score);
+	else
+	{
+		int dif = WIN_SCORE - abs_f(score);
+		int m = dif/2;
+		printf("M%d", m);
+	}
 }
 
 void minimax(tree_t *gt, int depth)
