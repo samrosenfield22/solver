@@ -71,7 +71,7 @@ void play_menu(void)
 			play(game, NULL, COMPUTER_PLAYER, HUMAN_PLAYER);
 	}
 	else
-		solve(game, NULL);
+		solve(game, NULL, 0);
 }
 
 void play(solver_t *solver, void *pos, bool p1, bool p2)
@@ -122,7 +122,7 @@ void play(solver_t *solver, void *pos, bool p1, bool p2)
 			print which move was played
 			*/
 
-			int move = solve(solver, pos);
+			int move = solve(solver, pos, 1000);
 			solver->make_move(pos, move);
 			//printf("i played: %s\n", solver->iter_to_human(move));
 			//

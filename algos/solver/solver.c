@@ -9,9 +9,11 @@
 #include "../../ds/tree.h"
 #include "../../ds/hashmap.h"
 #include "../../misc/timing.h"
+#include "../../memory/alloc.h"
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <assert.h>
 
 enum
@@ -24,9 +26,10 @@ enum
 void tt_create(void);
 int tt_add(tnode_t *n, float score, int depth, int best_move);
 
-float eval(tree_t *gt, tnode_t *n, int depth, float alpha, float beta);
+float eval(tree_t *gt, tnode_t *n, int depth,
+	float alpha, float beta, int killer);
 void add_all_new_moves(tree_t *gt, tnode_t *n, int depth);
-void order_children(tree_t *gt, tnode_t *n, int depth);
+void order_children(tree_t *gt, tnode_t *n, int depth, int killer);
 float analyze_all_children(tree_t *gt, tnode_t *n, int depth, float alpha, float beta);
 
 bool tt_check(tnode_t *n);
@@ -48,17 +51,70 @@ bool max_or_min(int depth);
 solver_t *solver;
 hashmap_t *trans_tbl;
 bool who_goes_first = true;
+bool full_solve;
 uint32_t position_ct = 0, max_node_ct = 0;
 int iddfs;
 
 uint32_t passed=0, checked=0;
 
-float solve(solver_t *game_solver, void *pos)
+void print_eval_bar(float score)
+{
+	int len = 40;
+	char *indent = "\t\t\t\t\t\t";
+
+	printf(indent);
+	for(int i=0; i<len/2-1; i++)
+		printf(" ");
+	printf("%.1f\n", score);
+
+	printf(indent);
+	printf("[");
+	float dist = (score+100)/200*len;
+	for(int i=0; i<len; i++)
+	{
+		if(i < (int)dist)
+			printf("%c", 219);
+		else
+			printf(" ");
+	}
+	printf("]\n");
+
+	printf(indent);
+	for(int i=0; i<len/2; i++)
+		printf(" ");
+	printf("^\n");
+}
+
+float test_pos(solver_t *game_solver, int *seq, int len)
+{
+	solver = game_solver;
+
+	void *pos = mem_malloc(solver->pos_size);
+	memcpy(pos, solver->initial_pos, solver->pos_size);
+
+	for(int i=0; i<len; i++)
+	{
+		if(solver->is_legal(pos, seq[i]))
+			solver->make_move(pos, seq[i]);
+		else
+		{
+			printf("illegal move %d\n", i);
+			return 0;
+		}
+	}
+
+	float score = solve(game_solver, pos, 10000);
+	solver->draw_full(pos);
+	return score;
+}
+
+float solve(solver_t *game_solver, void *pos, int time_lim_ms)
 {
 	solver = game_solver;
 
 	position_ct = 0;
 	max_node_ct = 0;
+	full_solve = true;
 
 
 	//make the tree
@@ -102,7 +158,8 @@ float solve(solver_t *game_solver, void *pos)
 		evaluate(gt, solver);
 	}*/
 
-	int limit = 14;
+	//int limit = 14;
+	int limit = 50;
 	if(solver->estimate)
 		tree_set_search_depth(gt, limit);
 
@@ -112,18 +169,35 @@ float solve(solver_t *game_solver, void *pos)
 	//iddfs
 	for(iddfs=0; iddfs<=limit; iddfs++)
 	{
+		full_solve = true;
+
 		tree_set_search_depth(gt, iddfs);
-		eval(gt, gt->head, 0, -INF, INF);
-		//eval(gt, gt->head, 0, -5, 5);
+		eval(gt, gt->head, 0, -INF, INF, -1);
+		//eval(gt, gt->head, 0, -2, 2, -1);
 
-		printf("iddfs depth=%d\n", iddfs);
-		//tree_draw(gt, 2);
-		//printf("continue:  ");
-		//getchar();
-		//printf("\n\n");
+		printf("\niddfs depth=%d\n", iddfs);
 
-		//if(iddfs < limit-1)
-		//	hashmap_clear(trans_tbl);
+		if((toc_ms() >= time_lim_ms) && !(iddfs & 0b1))
+			break;
+
+		if(full_solve)
+			break;
+
+		/*if(iddfs >= 1)
+		{
+			printf("\tpv: ");
+			tnode_t *n = gt->head->children[0];
+			for(int i=0; i<6; i++)
+			{
+				if(i >= iddfs)
+					break;
+				if(!n)
+					break;
+				printf("%d, ", n->move_index);
+				n = n->children[0];
+			}
+		}*/
+
 	}
 
 	//count time
@@ -133,13 +207,17 @@ float solve(solver_t *game_solver, void *pos)
 	uint32_t sec = sec_total - (60*min);
 
 	//output
+	printf("\n\n");
 	tree_draw(gt, 4);
 
-	printf("%d out of %d passed\n", passed, checked);
+	//printf("%d out of %d passed\n", passed, checked);
 
 	int best_move = gt->head->children[0]->move_index;
-	printf("\nbest move: %d\n", best_move);
-	printf("eval: %+.1f\n", gt->head->children[0]->score);
+	printf("\n--- search ran to depth = %d%s ---\n", iddfs,
+		full_solve? " (full solve)":"");
+	printf("best move: %d\n\n\n", best_move);
+	print_eval_bar(gt->head->children[0]->score);
+	//printf("eval: %+.1f\n", gt->head->children[0]->score);
 	printf("\nposition solved in %d m, %d sec\n", min, sec);
 	printf("time per position: %.1f us\n", ((float)us)/position_ct);
 	printf("evaluated %u unique positions\n", position_ct);
@@ -156,7 +234,8 @@ float solve(solver_t *game_solver, void *pos)
 }
 
 //recursive
-float eval(tree_t *gt, tnode_t *n, int depth, float alpha, float beta)
+float eval(tree_t *gt, tnode_t *n, int depth,
+	float alpha, float beta, int killer)
 {
 	if(depth == 0)
 		assert(max_or_min(depth) == MAX_LAYER);
@@ -197,6 +276,7 @@ float eval(tree_t *gt, tnode_t *n, int depth, float alpha, float beta)
 	}
 	else if(depth >= gt->search_depth)
 	{
+		full_solve = false;
 		if(solver->estimate)
 			n->score = solver->estimate(pos);
 		else
@@ -206,7 +286,7 @@ float eval(tree_t *gt, tnode_t *n, int depth, float alpha, float beta)
 
 	//main analysis -- recursive tree search
 	add_all_new_moves(gt, n, depth);
-	order_children(gt, n, depth);
+	order_children(gt, n, depth, killer);
 	float score = analyze_all_children(gt, n, depth, alpha, beta);
 
 	int best_move = n->children[0]->move_index;
@@ -292,7 +372,7 @@ void add_all_new_moves(tree_t *gt, tnode_t *n, int depth)
 
 }
 
-void order_children(tree_t *gt, tnode_t *n, int depth)
+void order_children(tree_t *gt, tnode_t *n, int depth, int killer)
 {
 	/*printf("before sorting @ d=%d:\n", depth);
 	for(int i=0; i<n->child_ct; i++)
@@ -310,11 +390,13 @@ void order_children(tree_t *gt, tnode_t *n, int depth)
 	float s_default = 0;
 	for(int i=0; i<n->child_ct; i++)
 	{
-		trans_value_t *val = tt_get(n->children[i]);
+		//tt_get(n->children[i]);
 		if(n->children[i]->move_index == best)
 			n->children[i]->score = 1000 * (max_or_min(depth)? 1 : -1);
 		//else if(val)
 		//	n->children[i]->score = val->score;
+		//else if(n->children[i]->move_index == n->move_index)
+		//		n->children[i]->score = 999 * (max_or_min(depth)? 1 : -1);
 		else
 			n->children[i]->score = s_default;
 		s_default -= max_or_min(depth)? 0.01 : -0.01;
@@ -375,6 +457,12 @@ void order_children(tree_t *gt, tnode_t *n, int depth)
 
 float analyze_all_children(tree_t *gt, tnode_t *n, int depth, float alpha, float beta)
 {
+	/*
+	!!!
+	int order[solver->possible_moves];
+	get_move_order(n, &order);
+	*/
+
 	/*if(depth == 0)
 	{
 		printf("-----------------------\n");
@@ -384,12 +472,19 @@ float analyze_all_children(tree_t *gt, tnode_t *n, int depth, float alpha, float
 
 	float best = worst_score(depth);
 
-
+	int killer = -1;
 
 	for(int i=0; i<n->child_ct; i++)
 	{
 
+
+
+
+
 		tree_get(gt, n);
+
+
+		//tnode_t *child = create_next_order_child(gt, n, i);
 
 		//recurse
 		/*if(depth == 0)
@@ -398,7 +493,8 @@ float analyze_all_children(tree_t *gt, tnode_t *n, int depth, float alpha, float
 		}*/
 
 		tnode_t *child = n->children[i];
-		float c_score = eval(gt, child, depth+1, alpha, beta);
+
+		float c_score = eval(gt, child, depth+1, alpha, beta, killer);
 		//if(is_better(cscore, best_so_far, depth))
 		//	best_so_far = cscore;
 		//(void)c_score;
@@ -443,6 +539,10 @@ float analyze_all_children(tree_t *gt, tnode_t *n, int depth, float alpha, float
 			//return;
 		}
 		#endif
+
+		//if(i==0 && child->children[0])
+		//	killer = child->children[0]->move_index;
+		//printf("%d\n", killer);
 	}
 
 	tree_get(gt, n);
@@ -469,6 +569,70 @@ float analyze_all_children(tree_t *gt, tnode_t *n, int depth, float alpha, float
 		return beta;
 	}
 }
+
+/*tnode_t *create_next_order_child(tree_t *gt, tnode_t *n, int index)
+{
+	int m = get_next_order_move(n, index);
+
+
+	tree_get(gt, n);	//do i need?
+
+	//check if move already has a node
+	tnode_t *already_made = NULL;
+	for(int j=0; j<n->child_ct; j++)
+	{
+		if(n->children[j]->move_index == i)
+		{
+			already_made = n->children[j];
+			break;
+		}
+	}
+	//if(already_made)
+	//	continue;
+
+		if(solver->is_legal(n->data, i))
+		{
+			tree_add_copies(gt, 1);
+			tnode_t *child = n->children[n->child_ct-1];
+			solver->make_move(child->data, i);
+			child->move_index = i;
+		}
+	}
+}
+
+int get_next_order_move(tnode_t *n, int index)
+{
+	int i = -1;
+	int best_move = -1;
+	trans_value_t *val = tt_get(n);
+	if(val)
+	{
+		best_move = val->best_move;
+	}
+
+	if(index == 0 && best_move != -1)
+		return best_move;
+	else
+		if(solver->default_order)
+		{
+			for(int i=0; i<solver->possible_moves; i++)
+			{
+				//if(solver->default_order[i] == best_move)
+			}
+			if(solver->default_order[index] == best_move)
+				return solver->default_order[index+1];
+			else
+				return solver->default_order[index];
+		}
+		else
+		{
+			if(index == best_move)
+				return index+1;
+			else
+				return index;
+		}
+
+}*/
 
 void tt_create(void)
 {
@@ -690,13 +854,3 @@ minimax(node, depth)
 	set node score to child 0's score
 	delete all other children (try this later)
 */
-
-void solver_demo(void)
-{
-	solver_t thegame_solver =
-	{
-
-	};
-
-	solve(&thegame_solver, NULL);	//from initial position
-}

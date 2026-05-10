@@ -15,9 +15,14 @@
 
 #include "algos/solver/games/nim.h"
 #include "algos/solver/games/ttt.h"
+#include "algos/solver/games/c4.h"
 
 int main(void)
 {
+	/*int seq[] = {3, 0, 3, 3, 3, 4, 4, 5, 5, 2, 4, 2, 0, 4};
+	float score = test_pos(&C4_SOLVER, seq, sizeof(seq)/sizeof(seq[0]));
+	printf("pos has score of %.1f\n", score);
+	return 0;*/
 
 	play_menu();
 	if(mem_check())
@@ -26,18 +31,8 @@ int main(void)
 		printf("\nmemory error! still have %u memory units not freed!\n", (uint32_t)mem_count());
 	return 0;
 
-	solve(&TTT_SOLVER, NULL);
-	return 0;
 
-	ttt_pos_t ttt_test_pos =
-	{
-		.spaces = {	X_PIECE,	O_PIECE,	EMPTY,
-					X_PIECE,	EMPTY,		EMPTY,
-					O_PIECE,	EMPTY,		EMPTY},
-		.whosemove = true
-	};
-	solve(&TTT_SOLVER, &ttt_test_pos);
-	return 0;
+
 
 
 

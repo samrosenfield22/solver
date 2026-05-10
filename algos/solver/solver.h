@@ -12,7 +12,7 @@
 #define CLEAR_SUB_NODES
 
 #define VARIATION_LENGTH	(6)
-#define PRINCIPAL_VAR_CT	(3)
+#define PRINCIPAL_VAR_CT	(7)
 #define INNER_VAR_CT		(1)
 
 
@@ -71,7 +71,8 @@ typedef struct
 
 } solver_t;
 
-float solve(solver_t *solver, void *pos);
+float test_pos(solver_t *game_solver, int *seq, int len);
+float solve(solver_t *solver, void *pos, int time_lim_ms);
 
 
 #endif	//SOLVER_H_

@@ -414,6 +414,7 @@ void c4_draw_full(void *pos)
 	//for(int i=0; i<7; i++)
 	//	printf("%0x ", p->columns_filled[i]);
 
+	/*
 	//print individual colors for testing
 	uint8_t yellows[7];
 	get_yellows(yellows, p);
@@ -424,6 +425,7 @@ void c4_draw_full(void *pos)
 	draw_color(yellows, p->columns_color);
 
 	printf("\nestimate = %f", c4_estimate(p));
+	*/
 }
 
 /*int c4_human_to_iter(char *human)
@@ -745,7 +747,7 @@ int bkdiag_run_open(uint8_t *cols, uint8_t *opp)
 
 bool four_horiz(uint8_t *cols)
 {
-	for(int i=0; i<3; i++)
+	for(int i=0; i<4; i++)
 	{
 		if(cols[i] & cols[i+1] & cols[i+2] & cols[i+3])
 			return true;
@@ -773,7 +775,7 @@ bool four_horiz(uint8_t *cols)
 
 bool four_fddiag(uint8_t *cols)
 {
-	for(int i=0; i<3; i++)
+	for(int i=0; i<4; i++)
 	{
 		if(cols[i] & cols[i+1]>>1
 			& cols[i+2]>>2 & cols[i+3]>>3)
@@ -784,7 +786,7 @@ bool four_fddiag(uint8_t *cols)
 
 bool four_bkdiag(uint8_t *cols)
 {
-	for(int i=0; i<3; i++)
+	for(int i=0; i<4; i++)
 	{
 		if(cols[i]>>3 & cols[i+1]>>2
 			& cols[i+2]>>1 & cols[i+3]>>0)
@@ -812,7 +814,7 @@ bool c4_replace_transpose(void *k_old, void *v_old,
 		return true;
 	assert(val_old->iddfs == val_new->iddfs);
 
-	if(val_old->depth + 4 > val_new->depth)
+	if(val_old->depth > val_new->depth)
 		return false;
 	return true;
 
