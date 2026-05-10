@@ -29,8 +29,8 @@ int tt_add(tnode_t *n, float score, int depth, int best_move);
 float eval(tree_t *gt, tnode_t *n, int depth,
 	float alpha, float beta, int killer);
 void build_order(int *order, tree_t *gt, tnode_t *n);
-//void add_all_new_moves(tree_t *gt, tnode_t *n, int depth);
-//void order_children(tree_t *gt, tnode_t *n, int depth, int killer);
+void add_all_new_moves(tree_t *gt, tnode_t *n, int depth);
+void order_children(tree_t *gt, tnode_t *n, int depth, int killer);
 float analyze_all_children(tree_t *gt, tnode_t *n, int *order,
 	int depth, float alpha, float beta);
 
@@ -169,7 +169,7 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms)
 		printf("\niddfs depth=%d\n", iddfs);
 		tree_set_search_depth(gt, iddfs);
 		eval(gt, gt->head, 0, -WIN_SCORE, WIN_SCORE, -1);
-		//eval(gt, gt->head, 0, -2, 2, -1);
+		//eval(gt, gt->head, 0, -5, 5, -1);
 
 		if((toc_ms() >= time_lim_ms) && !(iddfs & 0b1))
 			break;
@@ -296,6 +296,7 @@ float eval(tree_t *gt, tnode_t *n, int depth,
 
 	//add_all_new_moves(gt, n, depth);
 	//order_children(gt, n, depth, killer);
+	//int *order;
 	float score = analyze_all_children(gt, n, order, depth, alpha, beta);
 
 	assert(n->child_ct);
@@ -475,19 +476,35 @@ float analyze_all_children(tree_t *gt, tnode_t *n, int *order,
 		printf("initial: ab=[%.1f,%.1f]\n", alpha, beta);
 	}*/
 
-	if(n->child_ct)
+	/*if(n->child_ct)
 	{
 		printf("\nnode supposed to have no children yet!\n");
 		printf("at depth %d with %d children\n", depth, n->child_ct);
 		printf("iddfs = %d\n", iddfs);
 		assert(0);
-	}
+	}*/
 
 	float best = worst_score(depth);
 	bool cutoff = false;
 
 	int killer = -1;
 
+	//quick check to see if moves win
+	/*for(int i=0; i<n->child_ct; i++)
+	{
+		tnode_t *child = n->children[i];
+		int i_won = max_or_min(depth)? END_P1_WON : END_P2_WON;
+		if(solver->gameover(child->data) == i_won)
+		{
+			child->score = max_or_min(depth)? WIN_SCORE : -WIN_SCORE;
+			tree_get(gt, n);
+			minimax(gt, depth);
+			return child->score;
+		}
+
+	}*/
+
+	bool bound_changed = false;
 	//for(int i=0; i<n->child_ct; i++)
 	for(int i=0; i<solver->possible_moves; i++)
 	{
@@ -504,13 +521,49 @@ float analyze_all_children(tree_t *gt, tnode_t *n, int *order,
 
 		//tnode_t *child = n->children[i];
 
+		/*float c_score;
+		if(bound_changed)
+		{
+			if(max_or_min(depth)==MAX_LAYER)
+				c_score = eval(gt, child, depth+1,
+					alpha, alpha+2, killer);
+			else
+				c_score = eval(gt, child, depth+1,
+					beta-2, beta, killer);
+		}
+		else
+			c_score = eval(gt, child, depth+1,
+			alpha, beta, killer);
+		*/
 		float c_score = eval(gt, child, depth+1,
 			alpha, beta, killer);
 
 		if(c_score > MATE_LIMIT)
+		{
 			c_score--;
+			if(max_or_min(depth)==MAX_LAYER)
+			{
+				n->score = c_score;
+				tree_get(gt, n);
+				//minimax(gt, depth);
+				if(n->child_ct-1)
+					tree_swap_children(gt, 0, n->child_ct-1);
+				return n->score;
+			}
+		}
 		else if(c_score < -MATE_LIMIT)
+		{
 			c_score++;
+			if(max_or_min(depth)!=MAX_LAYER)
+			{
+				n->score = c_score;
+				tree_get(gt, n);
+				//minimax(gt, depth);
+				if(n->child_ct-1)
+					tree_swap_children(gt, 0, n->child_ct-1);
+				return n->score;
+			}
+		}
 
 		/*if((max_or_min(depth)==MAX_LAYER && c_score > MATE_LIMIT)
 			|| (max_or_min(depth)!=MAX_LAYER && c_score < -MATE_LIMIT))
@@ -531,9 +584,25 @@ float analyze_all_children(tree_t *gt, tnode_t *n, int *order,
 
 		#ifdef USE_ALPHABETA_PRUNING
 		if(max_or_min(depth)==MAX_LAYER)
-			alpha = max(alpha, c_score);
+		{
+			if(c_score > alpha)
+			{
+				alpha = c_score;
+				bound_changed = true;
+			}
+		}
+		else	//min
+		{
+			if(c_score < beta)
+			{
+				beta = c_score;
+				bound_changed = true;
+			}
+		}
+		/*	alpha = max(alpha, c_score);
 		else	//min
 			beta = min(beta, c_score);
+		*/
 		//if(depth == 1)
 		//	printf("\t");
 		//if(depth <= 1)

@@ -10,6 +10,8 @@
 #include <stdlib.h>
 #include <time.h>
 
+#define COMP_TIME	(1000)
+
 void play_menu(void)
 {
 	srand(time(NULL));
@@ -122,7 +124,7 @@ void play(solver_t *solver, void *pos, bool p1, bool p2)
 			print which move was played
 			*/
 
-			int move = solve(solver, pos, 1000);
+			int move = solve(solver, pos, COMP_TIME);
 			solver->make_move(pos, move);
 			//printf("i played: %s\n", solver->iter_to_human(move));
 			//
