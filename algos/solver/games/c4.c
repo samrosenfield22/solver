@@ -26,8 +26,24 @@ c4_pos_t C4_INIT_POS =
 	.columns_color = {0, 0, 0, 0, 0, 0, 0},
 };
 
+//#define c4_ok(pos)	true
+bool c4_ok(c4_pos_t *p)
+{
+	if(!(p->whosemove==true || p->whosemove==false))
+		return false;
+	for(int i=0; i<7; i++)
+	{
+		if(p->columns_filled[i] & 0b11000000)
+			return false;
+		if(p->columns_color[i] & 0b11000000)
+			return false;
+	}
+	return true;
+}
+
 endstate_t c4_gameover(void *pos)
 {
+	assert(c4_ok(pos));
 	c4_pos_t *p = pos;
 
 	/*
@@ -79,6 +95,7 @@ endstate_t c4_gameover(void *pos)
 
 float c4_estimate(void *pos)
 {
+	assert(c4_ok(pos));
 	c4_pos_t *p = pos;
 
 	float est = 0;
@@ -205,6 +222,7 @@ float estimate_color(uint8_t *c, uint8_t *opp, bool verbose)
 
 bool c4_is_legal(void *pos, int index)
 {
+	assert(c4_ok(pos));
 	c4_pos_t *p = pos;
 
 	return (p->columns_filled[index] != 0b111111);
@@ -216,12 +234,14 @@ bool c4_is_legal(void *pos, int index)
 
 bool c4_whosemove(void *pos)
 {
+	assert(c4_ok(pos));
 	c4_pos_t *p = pos;
 	return p->whosemove;
 }
 
 void c4_make_move(void *pos, int index)
 {
+	assert(c4_ok(pos));
 	c4_pos_t *p = pos;
 
 	uint8_t *col = &p->columns_filled[index];

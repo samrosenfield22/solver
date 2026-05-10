@@ -28,9 +28,11 @@ int tt_add(tnode_t *n, float score, int depth, int best_move);
 
 float eval(tree_t *gt, tnode_t *n, int depth,
 	float alpha, float beta, int killer);
-void add_all_new_moves(tree_t *gt, tnode_t *n, int depth);
-void order_children(tree_t *gt, tnode_t *n, int depth, int killer);
-float analyze_all_children(tree_t *gt, tnode_t *n, int depth, float alpha, float beta);
+void build_order(int *order, tree_t *gt, tnode_t *n);
+//void add_all_new_moves(tree_t *gt, tnode_t *n, int depth);
+//void order_children(tree_t *gt, tnode_t *n, int depth, int killer);
+float analyze_all_children(tree_t *gt, tnode_t *n, int *order,
+	int depth, float alpha, float beta);
 
 bool tt_check(tnode_t *n);
 trans_value_t *tt_get(tnode_t *n);
@@ -148,16 +150,6 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms)
 
 	tic();
 
-	//evaluate all nodes
-	//tree_set_traverse_mode(gt, TRAVERSE_DFS_EULERTOUR);
-	/*tree_iterate(gt, item, depth)
-	{
-		printf("------------------------------\nchecking item\n");
-		(void)item;
-
-		evaluate(gt, solver);
-	}*/
-
 	//int limit = 14;
 	int limit = 50;
 	if(solver->estimate)
@@ -171,11 +163,10 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms)
 	{
 		full_solve = true;
 
+		printf("\niddfs depth=%d\n", iddfs);
 		tree_set_search_depth(gt, iddfs);
 		eval(gt, gt->head, 0, -INF, INF, -1);
 		//eval(gt, gt->head, 0, -2, 2, -1);
-
-		printf("\niddfs depth=%d\n", iddfs);
 
 		if((toc_ms() >= time_lim_ms) && !(iddfs & 0b1))
 			break;
@@ -187,17 +178,24 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms)
 		{
 			printf("\tpv: ");
 			tnode_t *n = gt->head->children[0];
-			for(int i=0; i<6; i++)
+			for(int i=0; i<VARIATION_LENGTH; i++)
 			{
 				if(i >= iddfs)
 					break;
 				if(!n)
 					break;
 				printf("%d, ", n->move_index);
+				//if(!n->child_ct)
+				//	break;
+				//assert(n->child_ct);
 				n = n->children[0];
 			}
 		}*/
 
+		//clear the tree
+		tnode_t *h = tree_get(gt, gt->head);
+		while(h->child_ct)
+			tree_delete_child(gt, 0);
 	}
 
 	//count time
@@ -208,14 +206,14 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms)
 
 	//output
 	printf("\n\n");
-	tree_draw(gt, 4);
+	tree_draw(gt, VARIATION_LENGTH*2);
 
 	//printf("%d out of %d passed\n", passed, checked);
 
 	int best_move = gt->head->children[0]->move_index;
 	printf("\n--- search ran to depth = %d%s ---\n", iddfs,
 		full_solve? " (full solve)":"");
-	printf("best move: %d\n\n\n", best_move);
+	printf("best move: \t\t%d\n\n\n", best_move);
 	print_eval_bar(gt->head->children[0]->score);
 	//printf("eval: %+.1f\n", gt->head->children[0]->score);
 	printf("\nposition solved in %d m, %d sec\n", min, sec);
@@ -285,10 +283,19 @@ float eval(tree_t *gt, tnode_t *n, int depth,
 	}
 
 	//main analysis -- recursive tree search
-	add_all_new_moves(gt, n, depth);
-	order_children(gt, n, depth, killer);
-	float score = analyze_all_children(gt, n, depth, alpha, beta);
+	int order[solver->possible_moves];
+	build_order(order, gt, n);
 
+	/*tree_get(gt, n);
+	while(n->child_ct)
+		tree_delete_child(gt, 0);*/
+
+
+	//add_all_new_moves(gt, n, depth);
+	//order_children(gt, n, depth, killer);
+	float score = analyze_all_children(gt, n, order, depth, alpha, beta);
+
+	assert(n->child_ct);
 	int best_move = n->children[0]->move_index;
 
 	#ifdef CLEAR_SUB_NODES
@@ -455,14 +462,9 @@ void order_children(tree_t *gt, tnode_t *n, int depth, int killer)
 		n->children[i]->score = 0;
 }
 
-float analyze_all_children(tree_t *gt, tnode_t *n, int depth, float alpha, float beta)
+float analyze_all_children(tree_t *gt, tnode_t *n, int *order,
+	int depth, float alpha, float beta)
 {
-	/*
-	!!!
-	int order[solver->possible_moves];
-	get_move_order(n, &order);
-	*/
-
 	/*if(depth == 0)
 	{
 		printf("-----------------------\n");
@@ -470,31 +472,37 @@ float analyze_all_children(tree_t *gt, tnode_t *n, int depth, float alpha, float
 		printf("initial: ab=[%.1f,%.1f]\n", alpha, beta);
 	}*/
 
+	if(n->child_ct)
+	{
+		printf("\nnode supposed to have no children yet!\n");
+		printf("at depth %d with %d children\n", depth, n->child_ct);
+		printf("iddfs = %d\n", iddfs);
+		assert(0);
+	}
+
 	float best = worst_score(depth);
 
 	int killer = -1;
 
-	for(int i=0; i<n->child_ct; i++)
+	//for(int i=0; i<n->child_ct; i++)
+	for(int i=0; i<solver->possible_moves; i++)
 	{
 
-
-
-
-
 		tree_get(gt, n);
+		int move = order[i];
+		assert(0 <= move && move < solver->possible_moves);
+		if(!solver->is_legal(n->data, move))
+			continue;
+		tree_add_copies(gt, 1);
+		tnode_t *child = n->children[n->child_ct-1];
+		solver->make_move(child->data, move);
+		child->move_index = move;
 
+		//tnode_t *child = n->children[i];
 
-		//tnode_t *child = create_next_order_child(gt, n, i);
+		float c_score = eval(gt, child, depth+1,
+			alpha, beta, killer);
 
-		//recurse
-		/*if(depth == 0)
-		{
-			printf("child %d:\n", n->children[i]->move_index);
-		}*/
-
-		tnode_t *child = n->children[i];
-
-		float c_score = eval(gt, child, depth+1, alpha, beta, killer);
 		//if(is_better(cscore, best_so_far, depth))
 		//	best_so_far = cscore;
 		//(void)c_score;
@@ -530,10 +538,12 @@ float analyze_all_children(tree_t *gt, tnode_t *n, int depth, float alpha, float
 			//if(depth <= 1)
 			//	printf("(ab updated to [%.1f,%.1f])\n", alpha, beta);
 
-			tree_get(gt, n);
+			/*tree_get(gt, n);
 			while(n->child_ct > i+1)
-				tree_delete_child(gt, i+1);
+				tree_delete_child(gt, i+1);*/
+
 			break;
+
 			//n->score = beta;
 			//return beta;
 			//return;
@@ -547,6 +557,8 @@ float analyze_all_children(tree_t *gt, tnode_t *n, int depth, float alpha, float
 
 	tree_get(gt, n);
 	minimax(gt, depth);
+	assert(n->child_ct);
+	assert(n->children[0]);
 	//n->score = n->children[0]->score;
 	if(!(n->children[0]->score == best))
 	{
@@ -568,6 +580,50 @@ float analyze_all_children(tree_t *gt, tnode_t *n, int depth, float alpha, float
 		n->score = beta;
 		return beta;
 	}
+}
+
+void build_order(int *order, tree_t *gt, tnode_t *n)
+{
+	int set = 0;
+	bool added[solver->possible_moves];
+	for(int i=0; i<solver->possible_moves; i++)
+		added[i] = false;
+
+	trans_value_t *val = tt_get(n);
+	if(val)
+	{
+		n->score = 0;
+		int move = val->best_move;
+		//printf("best move is %d\n", move);
+		if(!added[move])
+		{
+			added[move] = true;
+			order[set] = move;
+			set++;
+		}
+	}
+
+	//add default order moves
+	for(int i=0; i<solver->possible_moves; i++)
+	{
+		int move = solver->default_order[i];
+		if(added[move])
+			continue;
+
+		added[move] = true;
+		order[set] = move;
+		set++;
+	}
+
+	assert(set == solver->possible_moves);
+	for(int i=0; i<solver->possible_moves; i++)
+		assert(order[i] < solver->possible_moves);
+
+	/*printf("order: ");
+	for(int i=0; i<solver->possible_moves; i++)
+		printf("%d, ", order[i]);
+	printf("\n\n");*/
+
 }
 
 /*tnode_t *create_next_order_child(tree_t *gt, tnode_t *n, int index)
@@ -829,7 +885,7 @@ void clear_suboptimal_nodes(tree_t *gt, tnode_t *n, int depth, int var_length)
 		while(n->child_ct > INNER_VAR_CT)
 			tree_delete_child(gt, INNER_VAR_CT);
 	}
-	else
+	else	//root node
 	{
 		while(n->child_ct > PRINCIPAL_VAR_CT)
 			tree_delete_child(gt, PRINCIPAL_VAR_CT);
