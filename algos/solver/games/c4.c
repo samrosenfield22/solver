@@ -283,7 +283,6 @@ bool c4_whosemove(void *pos)
 void c4_make_move(void *pos, int index, uint32_t *hash)
 {
 	assert(c4_ok(pos));
-	assert(zobrist_computed);
 	c4_pos_t *p = pos;
 
 	uint8_t *col = &p->columns_filled[index];
@@ -308,12 +307,13 @@ void c4_make_move(void *pos, int index, uint32_t *hash)
 	//update hash
 	if(!hash)
 		return;
+	assert(zobrist_computed);
 	int r = -1;
 	for(uint8_t b=new_bit; b; b>>=1)	//count bits
 		r++;
 	//printf("new bit is 0x%0x, r=%d\n", new_bit, r);
 	c4_zobrist_update(hash, index, r, !p->whosemove);
-	c4_zobrist_update(hash, -1, 0, 0);	//update whosemove
+	//c4_zobrist_update(hash, -1, 0, 0);	//update whosemove
 
 	//test
 	//uint32_t check_hash = c4_hash(pos, 0);
@@ -351,9 +351,8 @@ uint32_t c4_hash(void *key, size_t size)
 		}
 	}
 
-	if(p->whosemove)
-		zobrist_update(&h, ZOBRIST_LEN-1);
-		//h ^= zobrist_strings[84];
+	//if(p->whosemove)
+	//	zobrist_update(&h, ZOBRIST_LEN-1);
 
 	//printf("hash = %u\n", h);
 	return h;
@@ -924,7 +923,7 @@ solver_t C4_SOLVER =
 	.initial_pos = &C4_INIT_POS,
 	.pos_size = sizeof(c4_pos_t),
 	.possible_moves = 7,
-	.transtbl_buckets_ct = 40000003,
+	.transtbl_buckets_ct = 130000003,
 	.default_order = (uint8_t[]){3, 2, 4, 1, 5, 0, 6},
 
 	.gameover = c4_gameover,

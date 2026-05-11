@@ -146,7 +146,7 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms)
 	if(!pos)
 		pos = solver->initial_pos;
 	//tree_add(gt, pos);
-	gdata_t *th = malloc(gdata_size);
+	gdata_t *th = mem_malloc(gdata_size);
 	th->hash = solver->hash(pos, solver->pos_size);
 	memcpy(&th->pos, pos, solver->pos_size);
 	tree_add(gt, th);
@@ -194,23 +194,23 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms)
 		if(full_solve)
 			break;
 
-		/*if(iddfs >= 1)
+		if(iddfs >= 1)
 		{
 			printf("\tpv: ");
 			tnode_t *n = gt->head->children[0];
-			for(int i=0; i<VARIATION_LENGTH; i++)
+			for(int i=0; i<2*VARIATION_LENGTH; i++)
 			{
 				if(i >= iddfs)
 					break;
 				if(!n)
 					break;
 				printf("%d, ", n->move_index);
-				//if(!n->child_ct)
-				//	break;
+				if(!n->child_ct)
+					break;
 				//assert(n->child_ct);
 				n = n->children[0];
 			}
-		}*/
+		}
 
 		//clear the tree
 		tnode_t *h = tree_get(gt, gt->head);
@@ -240,8 +240,10 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms)
 	printf("time per position: %.1f us\n", ((float)us)/position_ct);
 	printf("evaluated %u unique positions\n", position_ct);
 	printf("greatest number of nodes stored in tree: %u\n", max_node_ct);
+	#ifdef USE_TRANSPOSITION_TABLE
 	printf("hashmap load factor = %d%%\n", hashmap_load(trans_tbl));
 	printf("number of collisions: %u\n", hashmap_collisions(trans_tbl));
+	#endif
 
 
 	//tree_clear(gt);

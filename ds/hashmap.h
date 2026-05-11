@@ -14,7 +14,7 @@ typedef struct
 typedef struct
 {
 	size_t ksize, vsize;
-	int len, filled;
+	uint32_t len, filled;
 	uint32_t collisions;
 
 	uint32_t (*hash)(void *key, size_t size);
