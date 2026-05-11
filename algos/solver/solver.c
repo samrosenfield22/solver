@@ -387,13 +387,14 @@ void add_all_new_moves(tree_t *gt, tnode_t *n, int depth)
 		if(already_made)
 			continue;
 
-		if(solver->is_legal(node_get_pos(n), i))
+		/*if(solver->is_legal(node_get_pos(n), i))
 		{
 			tree_add_copies(gt, 1);
 			tnode_t *child = n->children[n->child_ct-1];
 			solver->make_move(node_get_pos(child), i);
 			child->move_index = i;
-		}
+		}*/
+		make_move(n, i);
 	}
 
 }
@@ -527,12 +528,15 @@ float analyze_all_children(tree_t *gt, tnode_t *n, int *order,
 		tree_get(gt, n);
 		int move = order[i];
 		assert(0 <= move && move < solver->possible_moves);
-		if(!solver->is_legal(node_get_pos(n), move))
+		/*if(!solver->is_legal(node_get_pos(n), move))
 			continue;
 		tree_add_copies(gt, 1);
 		tnode_t *child = n->children[n->child_ct-1];
 		solver->make_move(node_get_pos(child), move);
-		child->move_index = move;
+		child->move_index = move;*/
+		tnode_t *child = make_move(n, move);
+		if(!child)
+			continue;
 
 		//tnode_t *child = n->children[i];
 
@@ -1030,6 +1034,21 @@ void clear_suboptimal_nodes(tree_t *gt, tnode_t *n, int depth, int var_length)
 		while(n->child_ct > PRINCIPAL_VAR_CT)
 			tree_delete_child(gt, PRINCIPAL_VAR_CT);
 	}
+}
+
+tnode_t *node_make_move(tnode_t *n, int move)
+{
+	tnode_t *child = NULL;
+	if(solver->is_legal(node_get_pos(n), move))
+	{
+		tree_get(gt, n);
+		tree_add_copies(gt, 1);
+		child = n->children[n->child_ct-1];
+		solver->make_move(node_get_pos(child), move);
+		child->move_index = move;
+		assert(child->score == 0);
+	}
+	return child;
 }
 
 void *node_get_pos(tnode_t *n)
