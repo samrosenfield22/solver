@@ -85,7 +85,7 @@ bool ttt_whosemove(void *pos)
 	return p->whosemove;
 }
 
-void ttt_make_move(void *pos, int index)
+void ttt_make_move(void *pos, int index, uint32_t *hash)
 {
 	ttt_pos_t *p = pos;
 	p->spaces[index] = (p->whosemove)? X_PIECE : O_PIECE;
@@ -217,6 +217,7 @@ solver_t TTT_SOLVER =
 
 	.print_pos = ttt_print_pos,
 	.hash = ttt_hash,
+	.uses_zobrist = false,
 	.keys_match = ttt_keys_match,
 	//.normalize_position = ttt_normalize,
 	.normalize_position = NULL,

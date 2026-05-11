@@ -55,7 +55,7 @@ bool nim_whosemove(void *pos)
 	return np->whosemove;
 }
 
-void nim_make_move(void *pos, int index)
+void nim_make_move(void *pos, int index, uint32_t *hash)
 {
 
 	nim_pos_t *np = pos;
@@ -189,6 +189,7 @@ solver_t NIM_SOLVER =
 
 	.print_pos = nim_print_pos,
 	.hash = nim_hash,
+	.uses_zobrist = false,
 	.keys_match = nim_keys_match,
 	.normalize_position = nim_normalize,
 	//.normalize_position = NULL,

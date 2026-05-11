@@ -18,6 +18,8 @@ int fddiag_run_open(uint8_t *cols, uint8_t *opp);
 int bkdiag_run_open(uint8_t *cols, uint8_t *opp);
 void get_yellows(uint8_t *yellows, c4_pos_t *p);
 
+uint32_t c4_hash(void *key, size_t size);
+
 c4_pos_t C4_INIT_POS =
 {
 
@@ -25,6 +27,45 @@ c4_pos_t C4_INIT_POS =
 	.columns_filled = {0, 0, 0, 0, 0, 0, 0},
 	.columns_color = {0, 0, 0, 0, 0, 0, 0},
 };
+
+#define ZOBRIST_LEN	(85)
+
+bool zobrist_computed = false;
+uint32_t zobrist_strings[ZOBRIST_LEN];
+
+void zobrist_init(void)
+{
+	assert(!zobrist_computed);
+	zobrist_computed = true;
+
+	for(int i=0; i<ZOBRIST_LEN; i++)
+	{
+		zobrist_strings[i] = rand()<<16 | rand();
+	}
+}
+
+void zobrist_update(uint32_t *h, int n)
+{
+	*h ^= zobrist_strings[n];
+}
+
+void c4_zobrist_update(uint32_t *h, int c, int r, bool red_move)
+{
+	int index;
+	if(c == -1)
+		index = ZOBRIST_LEN-1;
+	else
+	{
+		index = c * 6 + r;
+		if(red_move)
+			index += 42;
+	}
+
+	zobrist_update(h, index);
+}
+
+
+
 
 //#define c4_ok(pos)	true
 bool c4_ok(c4_pos_t *p)
@@ -239,9 +280,10 @@ bool c4_whosemove(void *pos)
 	return p->whosemove;
 }
 
-void c4_make_move(void *pos, int index)
+void c4_make_move(void *pos, int index, uint32_t *hash)
 {
 	assert(c4_ok(pos));
+	assert(zobrist_computed);
 	c4_pos_t *p = pos;
 
 	uint8_t *col = &p->columns_filled[index];
@@ -262,10 +304,23 @@ void c4_make_move(void *pos, int index)
 		p->columns_color[c] |= (0b1 << r);*/
 
 	p->whosemove = !p->whosemove;
+
+	//update hash
+	if(!hash)
+		return;
+	int r = -1;
+	for(uint8_t b=new_bit; b; b>>=1)	//count bits
+		r++;
+	//printf("new bit is 0x%0x, r=%d\n", new_bit, r);
+	c4_zobrist_update(hash, index, r, !p->whosemove);
+	c4_zobrist_update(hash, -1, 0, 0);	//update whosemove
+
+	//test
+	//uint32_t check_hash = c4_hash(pos, 0);
+	//assert(*hash == check_hash);
 }
 
-bool zobrist_computed = false;
-uint32_t zobrist_strings[85];
+
 
 uint32_t c4_hash(void *key, size_t size)
 {
@@ -275,12 +330,7 @@ uint32_t c4_hash(void *key, size_t size)
 	//generate bitstrings
 	if(!zobrist_computed)
 	{
-		zobrist_computed = true;
-
-		for(int i=0; i<85; i++)
-		{
-			zobrist_strings[i] = rand()<<16 | rand();
-		}
+		zobrist_init();
 	}
 
 	//compute hash
@@ -295,13 +345,15 @@ uint32_t c4_hash(void *key, size_t size)
 				if(p->columns_color[c] & b)
 					index += 42;
 
-				h ^= zobrist_strings[index];
+				zobrist_update(&h, index);
+				//h ^= zobrist_strings[index];
 			}
 		}
 	}
 
 	if(p->whosemove)
-		h ^= zobrist_strings[84];
+		zobrist_update(&h, ZOBRIST_LEN-1);
+		//h ^= zobrist_strings[84];
 
 	//printf("hash = %u\n", h);
 	return h;
@@ -883,6 +935,7 @@ solver_t C4_SOLVER =
 
 	.print_pos = NULL,
 	.hash = c4_hash,
+	.uses_zobrist = true,
 	//.hash = NULL,
 	.keys_match = c4_keys_match,
 	//.normalize_position = c4_normalize,

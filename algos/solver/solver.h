@@ -56,8 +56,9 @@ typedef struct
 	bool (*whosemove)(void *pos);
 	//bool (*is_end)(void *pos);
 	bool (*is_legal)(void *pos, int index);
-	void (*make_move)(void *pos, int index);
+	void (*make_move)(void *pos, int index, uint32_t *hash);
 	uint32_t (*hash)(void *key, size_t size);
+	bool uses_zobrist;
 	bool (*keys_match)(void *k1, void *k2);
 	void (*normalize_position)(void *k);
 	//bool (*replace_transpose)(void *k1, void *k2);

@@ -10,7 +10,7 @@
 
 //statics
 void *copy_key_normalize(hashmap_t *h, void *key);
-void *hashmap_key_get_bucket(hashmap_t *h, void *key);
+void *hashmap_key_get_bucket(hashmap_t *h, void *key, uint32_t *hash);
 uint32_t hashmap_key_get_index(hashmap_t *h, void *key);
 void *pairlist_find_matching_key(hashmap_t *h,
 	list_t *pairlist, void *key);
@@ -90,7 +90,7 @@ int hashmap_add_kvpair(hashmap_t *h, void *key, void *value,
 	int add_result = -1;
 
 	void *norm_key = copy_key_normalize(h, key);
-	kvpair_t **bucket = hashmap_key_get_bucket(h, norm_key);
+	kvpair_t **bucket = hashmap_key_get_bucket(h, norm_key, hash);
 	assert(bucket);
 
 	if(*bucket)	//bucket already filled
@@ -192,7 +192,7 @@ void *hashmap_key_get_value(hashmap_t *h, void *key, uint32_t *hash)
 	//	norm_key = key;
 
 	//printf("getting bucket\n");
-	kvpair_t **bucket = hashmap_key_get_bucket(h, norm_key);
+	kvpair_t **bucket = hashmap_key_get_bucket(h, norm_key, hash);
 	assert(bucket);
 	//printf("\tgot bucket\n");
 	if(!bucket)
@@ -357,13 +357,17 @@ void *copy_key_normalize(hashmap_t *h, void *key)
 		return NULL;*/
 }
 
-void *hashmap_key_get_bucket(hashmap_t *h, void *key)
+void *hashmap_key_get_bucket(hashmap_t *h, void *key, uint32_t *hash)
 {
 	if(!h)
 		return NULL;
 
-	uint32_t index = hashmap_key_get_index(h, key);
-	//printf("\tgot index %d\n", index);
+	//uint32_t index = hashmap_key_get_index(h, key);
+	uint32_t index;
+	if(hash)
+		index = (*hash) % h->len;
+	else
+		index = hashmap_key_get_index(h, key);
 	return &h->map[index];
 	//list_t **pairlist = (list_t**)&h->map[index];
 	//return pairlist;

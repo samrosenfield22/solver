@@ -53,6 +53,7 @@ bool max_or_min(int depth);
 
 tnode_t *node_make_move(tree_t *gt, tnode_t *n, int move);
 void *node_get_pos(tnode_t *n);
+uint32_t *node_get_hash(tnode_t *n);
 
 solver_t *solver;
 hashmap_t *trans_tbl;
@@ -110,7 +111,7 @@ float test_pos(solver_t *game_solver, int *seq, int len)
 	for(int i=0; i<len; i++)
 	{
 		if(solver->is_legal(pos, seq[i]))
-			solver->make_move(pos, seq[i]);
+			solver->make_move(pos, seq[i], NULL);
 		else
 		{
 			printf("illegal move %d\n", i);
@@ -146,7 +147,7 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms)
 		pos = solver->initial_pos;
 	//tree_add(gt, pos);
 	gdata_t *th = malloc(gdata_size);
-	th->hash = 0;
+	th->hash = solver->hash(pos, solver->pos_size);
 	memcpy(&th->pos, pos, solver->pos_size);
 	tree_add(gt, th);
 	free(th);
@@ -877,6 +878,7 @@ void tt_create(void)
 int tt_add(tnode_t *n, float score, int depth, int best_move)
 {
 	void *pos = node_get_pos(n);
+	uint32_t *hash = node_get_hash(n);
 
 	trans_value_t value =
 	{
@@ -885,7 +887,9 @@ int tt_add(tnode_t *n, float score, int depth, int best_move)
 		.depth = depth,
 		.best_move = best_move,
 	};
-	return hashmap_add_kvpair(trans_tbl, pos, &value, NULL);
+
+
+	return hashmap_add_kvpair(trans_tbl, pos, &value, hash);
 }
 
 /*trans_value_t *tt_key_get_value(void *pos)
@@ -909,7 +913,8 @@ int tt_add(tnode_t *n, float score, int depth, int best_move)
 trans_value_t *tt_get(tnode_t *n)
 {
 	void *pos = node_get_pos(n);
-	trans_value_t *value = hashmap_key_get_value(trans_tbl, pos, NULL);
+	uint32_t *hash = node_get_hash(n);
+	trans_value_t *value = hashmap_key_get_value(trans_tbl, pos, hash);
 	if(value)
 		n->score = value->score;
 	return value;
@@ -1045,9 +1050,15 @@ tnode_t *node_make_move(tree_t *gt, tnode_t *n, int move)
 		tree_get(gt, n);
 		tree_add_copies(gt, 1);
 		child = n->children[n->child_ct-1];
-		solver->make_move(node_get_pos(child), move);
+
+		uint32_t *hp = node_get_hash(child);
+
+
+		solver->make_move(node_get_pos(child), move, hp);
 		child->move_index = move;
 		assert(child->score == 0);
+
+
 	}
 	return child;
 }
@@ -1056,4 +1067,15 @@ void *node_get_pos(tnode_t *n)
 {
 	gdata_t *d = n->data;
 	return &(d->pos);
+}
+
+uint32_t *node_get_hash(tnode_t *n)
+{
+	if(solver->uses_zobrist)
+	{
+		gdata_t *d = n->data;
+		return &(d->hash);
+	}
+	else
+		return NULL;
 }

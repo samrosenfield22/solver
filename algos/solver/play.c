@@ -111,7 +111,7 @@ void play(solver_t *solver, void *pos, bool p1, bool p2)
 				printf("illegal move!\n");
 				continue;
 			}
-			solver->make_move(pos, hmove);
+			solver->make_move(pos, hmove, NULL);
 
 			/*solver->draw_full(pos);
 			printf("enter to continue   ");
@@ -125,7 +125,7 @@ void play(solver_t *solver, void *pos, bool p1, bool p2)
 			*/
 
 			int move = solve(solver, pos, COMP_TIME);
-			solver->make_move(pos, move);
+			solver->make_move(pos, move, NULL);
 			//printf("i played: %s\n", solver->iter_to_human(move));
 			//
 		}
