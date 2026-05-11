@@ -51,6 +51,7 @@ bool is_worse(float s0, float s1, int depth);
 float worst_score(int depth);
 bool max_or_min(int depth);
 
+tnode_t *node_make_move(tree_t *gt, tnode_t *n, int move);
 void *node_get_pos(tnode_t *n);
 
 solver_t *solver;
@@ -394,7 +395,7 @@ void add_all_new_moves(tree_t *gt, tnode_t *n, int depth)
 			solver->make_move(node_get_pos(child), i);
 			child->move_index = i;
 		}*/
-		make_move(n, i);
+		node_make_move(gt, n, i);
 	}
 
 }
@@ -534,7 +535,7 @@ float analyze_all_children(tree_t *gt, tnode_t *n, int *order,
 		tnode_t *child = n->children[n->child_ct-1];
 		solver->make_move(node_get_pos(child), move);
 		child->move_index = move;*/
-		tnode_t *child = make_move(n, move);
+		tnode_t *child = node_make_move(gt, n, move);
 		if(!child)
 			continue;
 
@@ -884,7 +885,7 @@ int tt_add(tnode_t *n, float score, int depth, int best_move)
 		.depth = depth,
 		.best_move = best_move,
 	};
-	return hashmap_add_kvpair(trans_tbl, pos, &value);
+	return hashmap_add_kvpair(trans_tbl, pos, &value, NULL);
 }
 
 /*trans_value_t *tt_key_get_value(void *pos)
@@ -908,7 +909,7 @@ int tt_add(tnode_t *n, float score, int depth, int best_move)
 trans_value_t *tt_get(tnode_t *n)
 {
 	void *pos = node_get_pos(n);
-	trans_value_t *value = hashmap_key_get_value(trans_tbl, pos);
+	trans_value_t *value = hashmap_key_get_value(trans_tbl, pos, NULL);
 	if(value)
 		n->score = value->score;
 	return value;
@@ -1036,7 +1037,7 @@ void clear_suboptimal_nodes(tree_t *gt, tnode_t *n, int depth, int var_length)
 	}
 }
 
-tnode_t *node_make_move(tnode_t *n, int move)
+tnode_t *node_make_move(tree_t *gt, tnode_t *n, int move)
 {
 	tnode_t *child = NULL;
 	if(solver->is_legal(node_get_pos(n), move))

@@ -81,7 +81,8 @@ void hashmap_clear(hashmap_t *h)
 	h->collisions = 0;
 }
 
-int hashmap_add_kvpair(hashmap_t *h, void *key, void *value)
+int hashmap_add_kvpair(hashmap_t *h, void *key, void *value,
+	uint32_t *hash)
 {
 	if(!h)
 		return HM_NO_ADD;
@@ -179,7 +180,7 @@ int hashmap_add_kvpair(hashmap_t *h, void *key, void *value)
 	*/
 }
 
-void *hashmap_key_get_value(hashmap_t *h, void *key)
+void *hashmap_key_get_value(hashmap_t *h, void *key, uint32_t *hash)
 {
 	if(!h)
 		return NULL;
@@ -300,20 +301,20 @@ void hashmap_demo(void)
 {
 	//add (7,88)
 	hashmap_t *h = hashmap(int, int, 100);
-	hashmap_add_kvpair(h, &(int){7}, &(int){88});
-	int got = *(int*)hashmap_key_get_value(h, &(int){7});
+	hashmap_add_kvpair(h, &(int){7}, &(int){88}, NULL);
+	int got = *(int*)hashmap_key_get_value(h, &(int){7}, NULL);
 	printf("got %d\n", got);
 
 	//overwrite key 7 with 6767
-	hashmap_add_kvpair(h, &(int){7}, &(int){6767});
-	got = *(int*)hashmap_key_get_value(h, &(int){7});
+	hashmap_add_kvpair(h, &(int){7}, &(int){6767}, NULL);
+	got = *(int*)hashmap_key_get_value(h, &(int){7}, NULL);
 	printf("got %d\n", got);
 
 
-	hashmap_add_kvpair(h, &(int){107}, &(int){55});
-	got = *(int*)hashmap_key_get_value(h, &(int){7});
+	hashmap_add_kvpair(h, &(int){107}, &(int){55}, NULL);
+	got = *(int*)hashmap_key_get_value(h, &(int){7}, NULL);
 	printf("got %d\n", got);
-	got = *(int*)hashmap_key_get_value(h, &(int){107});
+	got = *(int*)hashmap_key_get_value(h, &(int){107}, NULL);
 	printf("got %d\n", got);
 
 	hashmap_destroy(h);

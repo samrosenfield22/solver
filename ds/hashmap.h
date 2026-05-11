@@ -39,8 +39,8 @@ enum
 hashmap_t *hashmap_create(size_t ksize, size_t vsize, uint32_t len);
 void hashmap_destroy(hashmap_t *h);
 void hashmap_clear(hashmap_t *h);
-int hashmap_add_kvpair(hashmap_t *h, void *key, void *value);
-void *hashmap_key_get_value(hashmap_t *h, void *key);
+int hashmap_add_kvpair(hashmap_t *h, void *key, void *value, uint32_t *hash);
+void *hashmap_key_get_value(hashmap_t *h, void *key, uint32_t *hash);
 int hashmap_load(hashmap_t *h);
 uint32_t hashmap_collisions(hashmap_t *h);
 void hashmap_attach_hash(
