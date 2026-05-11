@@ -51,12 +51,21 @@ bool is_worse(float s0, float s1, int depth);
 float worst_score(int depth);
 bool max_or_min(int depth);
 
+void *node_get_pos(tnode_t *n);
+
 solver_t *solver;
 hashmap_t *trans_tbl;
 bool who_goes_first = true;
 bool full_solve;
 uint32_t position_ct = 0, max_node_ct = 0;
 int iddfs;
+
+typedef struct
+{
+	uint32_t hash;
+	uint8_t pos[];
+} gdata_t;
+size_t gdata_size;
 
 uint32_t passed=0, checked=0;
 
@@ -123,7 +132,9 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms)
 
 
 	//make the tree
-	tree_t *gt = tree_create(solver->pos_size);
+	gdata_size = sizeof(gdata_t) + solver->pos_size;
+	//tree_t *gt = tree_create(solver->pos_size);
+	tree_t *gt = tree_create(gdata_size);
 	tree_clear_search_depth(gt);
 	tree_attach_print_fn(gt, solver->print_pos);
 	#ifdef USE_TRANSPOSITION_TABLE
@@ -132,10 +143,14 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms)
 
 	if(!pos)
 		pos = solver->initial_pos;
-	//if(pos)
-		tree_add(gt, pos);
-	//else
-	//	tree_add(gt, solver->initial_pos);
+	//tree_add(gt, pos);
+	gdata_t *th = malloc(gdata_size);
+	th->hash = 0;
+	memcpy(&th->pos, pos, solver->pos_size);
+	tree_add(gt, th);
+	free(th);
+
+
 	who_goes_first = solver->whosemove(pos);
 	printf("player %d to move\n", who_goes_first? 1 : 2);
 	//exit(0);
@@ -145,7 +160,7 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms)
 	if(solver->print_pos)
 	{
 		printf("solving game position: ");
-		solver->print_pos(gt->head->data);
+		solver->print_pos(node_get_pos(gt->head));
 	}
 	else
 		printf("solving...");
@@ -246,7 +261,7 @@ float eval(tree_t *gt, tnode_t *n, int depth,
 		printf("error! depth is crazy big lol\n");
 		exit(0);
 	}
-	void *pos = n->data;
+	void *pos = node_get_pos(n);
 
 	#ifdef USE_TRANSPOSITION_TABLE
 	//check if position was already analyzed
@@ -372,11 +387,11 @@ void add_all_new_moves(tree_t *gt, tnode_t *n, int depth)
 		if(already_made)
 			continue;
 
-		if(solver->is_legal(n->data, i))
+		if(solver->is_legal(node_get_pos(n), i))
 		{
 			tree_add_copies(gt, 1);
 			tnode_t *child = n->children[n->child_ct-1];
-			solver->make_move(child->data, i);
+			solver->make_move(node_get_pos(child), i);
 			child->move_index = i;
 		}
 	}
@@ -485,7 +500,7 @@ float analyze_all_children(tree_t *gt, tnode_t *n, int *order,
 	}*/
 
 	float best = worst_score(depth);
-	bool cutoff = false;
+	//bool cutoff = false;
 
 	int killer = -1;
 
@@ -504,7 +519,7 @@ float analyze_all_children(tree_t *gt, tnode_t *n, int *order,
 
 	}*/
 
-	bool bound_changed = false;
+	//bool bound_changed = false;
 	//for(int i=0; i<n->child_ct; i++)
 	for(int i=0; i<solver->possible_moves; i++)
 	{
@@ -512,11 +527,11 @@ float analyze_all_children(tree_t *gt, tnode_t *n, int *order,
 		tree_get(gt, n);
 		int move = order[i];
 		assert(0 <= move && move < solver->possible_moves);
-		if(!solver->is_legal(n->data, move))
+		if(!solver->is_legal(node_get_pos(n), move))
 			continue;
 		tree_add_copies(gt, 1);
 		tnode_t *child = n->children[n->child_ct-1];
-		solver->make_move(child->data, move);
+		solver->make_move(node_get_pos(child), move);
 		child->move_index = move;
 
 		//tnode_t *child = n->children[i];
@@ -588,7 +603,7 @@ float analyze_all_children(tree_t *gt, tnode_t *n, int *order,
 			if(c_score > alpha)
 			{
 				alpha = c_score;
-				bound_changed = true;
+				//bound_changed = true;
 			}
 		}
 		else	//min
@@ -596,7 +611,7 @@ float analyze_all_children(tree_t *gt, tnode_t *n, int *order,
 			if(c_score < beta)
 			{
 				beta = c_score;
-				bound_changed = true;
+				//bound_changed = true;
 			}
 		}
 		/*	alpha = max(alpha, c_score);
@@ -619,7 +634,7 @@ float analyze_all_children(tree_t *gt, tnode_t *n, int *order,
 				{alpha++; best++;}
 			else
 				{beta--; best--;}
-			cutoff = true;
+			//cutoff = true;
 			//if(depth == 1)
 			//	printf("\t");
 			//if(depth <= 1)
@@ -801,7 +816,7 @@ int get_next_order_move(tnode_t *n, int index)
 void tt_create(void)
 {
 	//create the table
-	trans_tbl = hashmap_create(solver->pos_size, sizeof(trans_value_t),
+	trans_tbl = hashmap_create(gdata_size, sizeof(trans_value_t),
 		solver->transtbl_buckets_ct);
 	if(!trans_tbl)
 	{
@@ -819,13 +834,13 @@ void tt_create(void)
 		hashmap_attach_replace(trans_tbl, solver->replace_transpose);
 
 	//test the hash table functionality with the current solver
-	tree_t *test = tree_create(solver->pos_size);
+	/*tree_t *test = tree_create(solver->pos_size);
 	tree_add(test, solver->initial_pos);
 	for(int i=0; i<4; i++)
 	{
 		int move = rand() % solver->possible_moves;
-		if(solver->is_legal(test->p->data, move))
-			solver->make_move(test->p->data, move);
+		if(solver->is_legal(node_get_pos(test->p), move))
+			solver->make_move(node_get_pos(test->p), move);
 		printf("(made move %d)\n", move);
 	}
 	//solver->print_pos(test->p->data);
@@ -844,7 +859,7 @@ void tt_create(void)
 	tree_clear(test);
 	//exit(0);
 	hashmap_clear(trans_tbl);
-
+	*/
 	/*
 	create a position
 	assert that it's not found in the table
@@ -856,7 +871,7 @@ void tt_create(void)
 
 int tt_add(tnode_t *n, float score, int depth, int best_move)
 {
-	void *pos = n->data;
+	void *pos = node_get_pos(n);
 
 	trans_value_t value =
 	{
@@ -888,7 +903,7 @@ int tt_add(tnode_t *n, float score, int depth, int best_move)
 
 trans_value_t *tt_get(tnode_t *n)
 {
-	void *pos = n->data;
+	void *pos = node_get_pos(n);
 	trans_value_t *value = hashmap_key_get_value(trans_tbl, pos);
 	if(value)
 		n->score = value->score;
@@ -1017,21 +1032,8 @@ void clear_suboptimal_nodes(tree_t *gt, tnode_t *n, int depth, int var_length)
 	}
 }
 
-/*evaluate(node n, depth d):
-
-for each node (iterate euler dfs to depth d)
-	if first visit
-		build game position
-		if depth == d
-			evaluate leaf node
-		else
-			for each possible move
-				copy child (give it its move index)
-	else if second visit
-		minimax
-
-minimax(node, depth)
-	sort children by score (ascending or descending)
-	set node score to child 0's score
-	delete all other children (try this later)
-*/
+void *node_get_pos(tnode_t *n)
+{
+	gdata_t *d = n->data;
+	return &(d->pos);
+}
