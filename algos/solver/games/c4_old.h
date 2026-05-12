@@ -9,8 +9,8 @@
 
 typedef struct
 {
-	uint64_t x;
-	uint64_t filled;
+	uint8_t columns_filled[7];
+	uint8_t columns_color[7];
 	bool whosemove;
 } c4_pos_t;
 

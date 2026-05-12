@@ -153,6 +153,7 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms)
 	free(th);
 
 
+
 	who_goes_first = solver->whosemove(pos);
 	printf("player %d to move\n", who_goes_first? 1 : 2);
 	//exit(0);
