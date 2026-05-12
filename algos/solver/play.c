@@ -11,7 +11,7 @@
 #include <time.h>
 
 
-#define COMP_TIME	(1 * 1000)
+#define COMP_TIME	(20 * 1000)
 
 void play_menu(void)
 {

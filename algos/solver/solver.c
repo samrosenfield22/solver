@@ -185,8 +185,12 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms)
 
 		printf("\niddfs depth=%d\n", iddfs);
 		tree_set_search_depth(gt, iddfs);
+		uint32_t last = toc_ms();
 		eval(gt, gt->head, 0, -WIN_SCORE, WIN_SCORE, -1);
 		//eval(gt, gt->head, 0, -5, 5, -1);
+		uint32_t now = toc_ms();
+		printf("\ttook %u ms\n", now-last);
+		last = now;
 
 		if((toc_ms() >= time_lim_ms) && !(iddfs & 0b1))
 			break;
