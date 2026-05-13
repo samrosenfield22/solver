@@ -295,9 +295,9 @@ void c4_make_move(void *pos, int index, uint32_t *hash)
 	//b &= 0b011111101111110111111011111101111110111111;
 	//printf("0x%0x\n", b);
 
-	uint64_t col = get_col(p->filled, index) + 1;
+	uint64_t col = get_col(p->filled, index);
 	//col &= 0b111111;
-	uint64_t b = col<<(7*index);
+	uint64_t b = (col+1)<<(7*index);
 
 
 	p->x |= b;
