@@ -136,7 +136,7 @@ endstate_t c4_gameover(void *pos)
 	{
 		//printf("draw detected!\n");
 		//exit(0);
-		return true;
+		return END_DRAW;
 	}
 
 
@@ -386,8 +386,8 @@ bool c4_keys_match(void *k1, void *k2)
 		return false;
 	if(n1->filled != n2->filled)
 		return false;
-	if(n1->whosemove != n2->whosemove)
-		return false;
+	//if(n1->whosemove != n2->whosemove)
+	//	return false;
 
 	return true;
 }
