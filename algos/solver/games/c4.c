@@ -6,9 +6,10 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <inttypes.h>
 #include <assert.h>
 
-float estimate_color(uint8_t *c, uint8_t *opp, bool verbose);
+float estimate_color(uint64_t x, uint64_t opp, bool verbose);
 bool four_in_a_row(uint8_t *cols);
 bool four_horiz(uint8_t *cols);
 bool four_fddiag(uint8_t *cols);
@@ -31,6 +32,13 @@ c4_pos_t C4_INIT_POS =
 
 bool zobrist_computed = false;
 uint32_t zobrist_strings[ZOBRIST_LEN];
+
+char *print64(uint64_t n)
+{
+	static char buf[64];
+	snprintf(buf, 63, "0x%016" PRIx64 "", n);
+	return buf;
+}
 
 void zobrist_init(void)
 {
@@ -78,46 +86,58 @@ void zobrist_update(uint32_t *h, int n)
 	return true;
 }*/
 
+bool is_win(uint64_t x)
+{
+	//horizontal
+	uint64_t half = x & (x<<7);
+	if(half & (half<<14))
+		return true;
+
+
+	//fd diag
+	half = x & (x<<8);
+	if(half & (half<<16))
+		return true;
+
+	//bk diag
+	half = x & (x<<6);
+	if(half & (half<<12))
+		return true;
+
+	//vertical
+	half = x & (x<<1);
+	if(half & (half<<2))
+		return true;
+
+	//nope
+	return false;
+}
+
 endstate_t c4_gameover(void *pos)
 {
 	//assert(c4_ok(pos));
 	c4_pos_t *p = pos;
 
-	uint64_t x = p->x;
-
-	/*
-	get array of all reds, all yellows
-		reds is just columns_color
-		yellows is (~columns_color) & columns_filled
-	call four_in_a_row(array)
-	*/
-
-	int win = p->whosemove? END_P1_WON : END_P2_WON;
-
-	//horizontal
-	uint64_t half = x & (x>>7);
-	if(half & (half>>7))
-		return win;
+	uint64_t x = p->x ^ p->filled;
 
 
-	//fd diag
-	half = x & (x>>8);
-	if(half & (half>>8))
-		return win;
 
-	//bk diag
-	half = x & (x>>6);
-	if(half & (half>>6))
-		return win;
+	int win = !p->whosemove? END_P1_WON : END_P2_WON;
 
-	//vertical
-	half = x & (x>>1);
-	if(half & (half>>1))
+	if(is_win(x))
 		return win;
 
 	//check draw
-	if(p->filled == 0b011111101111110111111011111101111110111111)
+	//printf("filled = %s\n", print64(p->filled));
+	uint64_t full = 0b0111111011111101111110111111011111101111110111111;
+	assert(p->filled <= full);
+	//printf("good!\n");
+	if(p->filled == full)
+	{
+		//printf("draw detected!\n");
+		//exit(0);
 		return true;
+	}
 
 
 	//
@@ -127,54 +147,120 @@ endstate_t c4_gameover(void *pos)
 float c4_estimate(void *pos)
 {
 	//assert(c4_ok(pos));
-	//c4_pos_t *p = pos;
+	c4_pos_t *p = pos;
 
-	float est = 0;
+	//float est = 0;
 
-	/*uint8_t yellows[7];
-	get_yellows(yellows, p);
-	est += (float)estimate_color(p->columns_color, yellows, false);
-	est -= (float)estimate_color(yellows, p->columns_color, false);
-	*/
+	uint64_t x = p->x;
+	uint64_t opp = p->x ^ p->filled;
+
+	//float est = estimate_color(me, opp, false);
+	//est -= estimate_color(opp, me, false);
+
+	//calculate est for the player whose turn it is
+	float est = estimate_color(x, opp, false);
+	est -= estimate_color(opp, x, false);
+
+	if(!p->whosemove)
+		est *= -1;
 
 	///est /= 10;
 	return est;
 }
 
-/*float estimate_color(uint8_t *c, uint8_t *opp, bool verbose)
+float estimate_color(uint64_t x, uint64_t opp, bool verbose)
+//float estimate_color(uint64_t x, uint64_t filled, bool verbose)
 {
+	int est = 0;
 
 	//count all places where we're one move away from win
+	/*uint64_t b = 0b1;
+	for(int i=0; i<49; i++)
+	{
+		//if((i % 7) == 6)
+		//	continue;
+		if(filled & b)
+		{
+			b<<=1;
+			continue;
+		}
 
-	int two_in_row_cnt = 0;
-	int dir_patterns;
+		//place token
+		x |= b;
 
-	//horiz
-	dir_patterns = horiz_run_open(c, opp);
+		if(is_win(x))
+		{
+			est++;
+			if(verbose)
+				printf("\twin sq @ c%d, r%d\n", i/7, i%7);
+		}
+
+		//clear token
+		x &= ~b;
+
+		b<<=1;
+	}
 	if(verbose)
-		printf("\t%d horiz patterns\n", dir_patterns);
-	two_in_row_cnt += dir_patterns;
+		printf("\twin sqs = %d\n", est);
+	return (float)est;*/
+
+
+	//horizontal
+	uint64_t three = x & (x<<7) & (x<<14);
+	if(three)
+	{
+		if(three>>21 & ~opp
+			& 0b011111101111110111111011111101111110111111)
+			est++;
+		if(three<<7 & ~opp
+			& 0b011111101111110111111011111101111110111111)
+			est++;
+		if(verbose)
+			printf("found horiz (est = %d)\n", est);
+	}
 
 	//fd diag
-	dir_patterns = fddiag_run_open(c, opp);
-	if(verbose)
-		printf("\t%d fd diag patterns\n", dir_patterns);
-	two_in_row_cnt += dir_patterns;
+	three = (x>>8) & x & (x<<8);
+	if(three)
+	{
+		if(three>>16 & ~opp
+			& 0b011111101111110111111011111101111110111111)
+			est++;
+		if(three<<16 & ~opp
+			& 0b011111101111110111111011111101111110111111)
+			est++;
+		if(verbose)
+			printf("found fd diag (est = %d)\n", est);
+	}
 
 	//bk diag
-	dir_patterns = bkdiag_run_open(c, opp);
-	if(verbose)
-		printf("\t%d bk diag patterns\n", dir_patterns);
-	two_in_row_cnt += dir_patterns;
+	three = (x>>6) & x & (x<<6);
+	if(three)
+	{
+		if(three>>12 & ~opp
+			& 0b011111101111110111111011111101111110111111)
+			est++;
+		if(three<<12 & ~opp
+			& 0b011111101111110111111011111101111110111111)
+			est++;
+		if(verbose)
+			printf("found bk diag (est = %d)\n", est);
+	}
 
-	if(verbose)
-		printf("two in row score = %d\n", two_in_row_cnt);
+	//vertical
+	three = x & (x<<1) & (x<<2);
+	if(three)
+	{
+		//if(!(three & opp<<3))	est++;
+		if(three<<1 & ~opp)	est++;
+		if(verbose)
+			printf("found vert (est = %d)\n", est);
+	}
 
-	return (float)two_in_row_cnt;
-	//float score = two_in_row_cnt + almost;
-	//return score;
 
-}*/
+	return (float)est;
+
+}
 
 uint8_t get_col(uint64_t col, int index)
 {
@@ -190,7 +276,7 @@ bool c4_is_legal(void *pos, int index)
 
 	uint8_t col = get_col(p->filled, index);
 
-	return (col != 0b111111);
+	return (col & 0b111111) != 0b111111;
 }
 
 bool c4_whosemove(void *pos)
@@ -205,7 +291,14 @@ void c4_make_move(void *pos, int index, uint32_t *hash)
 	//assert(c4_ok(pos));
 	c4_pos_t *p = pos;
 
-	uint64_t b = p->filled + (1 << (7*index));
+	//uint64_t b = p->filled + (((uint64_t)1) << (7*index));
+	//b &= 0b011111101111110111111011111101111110111111;
+	//printf("0x%0x\n", b);
+
+	uint64_t col = get_col(p->filled, index) + 1;
+	//col &= 0b111111;
+	uint64_t b = col<<(7*index);
+
 
 	p->x |= b;
 	p->filled |= b;
@@ -213,22 +306,28 @@ void c4_make_move(void *pos, int index, uint32_t *hash)
 	//invert x
 	p->x ^= p->filled;
 
-
-
 	p->whosemove = !p->whosemove;
 
 	//update hash
 	if(!hash)
 		return;
-	/*assert(zobrist_computed);
-	int index = 6*index;
-	index += ???;
+	assert(zobrist_computed);
+	//*hash = check_hash;
 
-	zobrist_update(hash, index);*/
+
+	int hi = 6*index;
+	//printf("hi was %d (col = 0x%0x)\n", hi, (uint8_t)col);
+	for(uint8_t c=col>>1; c; c>>=1)
+		hi++;
+	//printf("now hi is %d\n", hi);
+	if(p->whosemove)
+		hi += 42;
+	//printf("final hi: %d\n", hi);
+
+	zobrist_update(hash, hi);
 
 	//test
-	uint32_t check_hash = c4_hash(pos, 0);
-	*hash = check_hash;
+	//uint32_t check_hash = c4_hash(pos, 0);
 	//assert(*hash == check_hash);
 }
 
@@ -239,30 +338,39 @@ uint32_t c4_hash(void *key, size_t size)
 	c4_pos_t *p = key;
 	uint32_t h = 0;
 
+	//printf("hash for pos:\nx=0x%0x\nfilled=0x%0x\n",
+	//	p->x, p->filled);
+
 	//generate bitstrings
 	if(!zobrist_computed)
-	{
 		zobrist_init();
-	}
 
 	//compute hash
-	int i = 0;
-	int index;
-	for(uint64_t b=0b1; b<((uint64_t)1<<49); b<<=1)
+	int r=0, i=0;
+	uint64_t end = 0b1;
+	end <<= 49;
+	for(uint64_t b=0b1; b<end; b<<=1)
 	{
-		if(i%7 == 0)	//skip bit btwn columns
+		if(r == 6)	//skip bit btwn columns
+		{
+			r = 0;
 			continue;
-
+		}
+		//printf("b=0x%016" PRIx64 ", i=%d, r=%d\n", b, i, r);
 		if(p->filled & b)
 		{
+			//printf("filled bit %d\n", i);
+			int index = i;
 			if(p->x & b)
-				index = i + (p->whosemove)? 42 : 0;
+				index += (p->whosemove)? 0 : 42;
 			else
-				index = i + (p->whosemove)? 0 : 42;
+				index += (p->whosemove)? 42 : 0;
+			//printf("c4hash: zobrist w index %d\n", index);
 			zobrist_update(&h, index);
 		}
 
 		i++;
+		r++;
 	}
 
 	return h;
@@ -375,6 +483,17 @@ void c4_draw_full(void *pos)
 		printf("col %d: x=0x%0x, filled=0x%0x\n",
 			c, col, filled);
 	}
+
+
+	float est = estimate_color(p->x ^ p->filled, p->x, true);
+	printf("est for current:\t%.0f\n", est);
+	est = estimate_color(p->x, p->x ^ p->filled, true);
+	printf("est for opp:\t\t%.0f\n", est);
+
+	/*printf("est for current:\n");
+	estimate_color(p->x ^ p->filled, p->x, true);
+	printf("est for opp:\n");
+	estimate_color(p->x, p->x ^ p->filled, true);*/
 }
 
 /*int c4_human_to_iter(char *human)

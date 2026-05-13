@@ -569,7 +569,7 @@ float analyze_all_children(tree_t *gt, tnode_t *n, int *order,
 		if(c_score > MATE_LIMIT)
 		{
 			c_score--;
-			if(max_or_min(depth)==MAX_LAYER)
+			/*if(max_or_min(depth)==MAX_LAYER)
 			{
 				n->score = c_score;
 				tree_get(gt, n);
@@ -577,12 +577,12 @@ float analyze_all_children(tree_t *gt, tnode_t *n, int *order,
 				if(n->child_ct-1)
 					tree_swap_children(gt, 0, n->child_ct-1);
 				return n->score;
-			}
+			}*/
 		}
 		else if(c_score < -MATE_LIMIT)
 		{
 			c_score++;
-			if(max_or_min(depth)!=MAX_LAYER)
+			/*if(max_or_min(depth)!=MAX_LAYER)
 			{
 				n->score = c_score;
 				tree_get(gt, n);
@@ -590,7 +590,7 @@ float analyze_all_children(tree_t *gt, tnode_t *n, int *order,
 				if(n->child_ct-1)
 					tree_swap_children(gt, 0, n->child_ct-1);
 				return n->score;
-			}
+			}*/
 		}
 
 		/*if((max_or_min(depth)==MAX_LAYER && c_score > MATE_LIMIT)
