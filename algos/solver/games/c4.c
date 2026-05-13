@@ -317,8 +317,9 @@ void c4_make_move(void *pos, int index, uint32_t *hash)
 
 	int hi = 6*index;
 	//printf("hi was %d (col = 0x%0x)\n", hi, (uint8_t)col);
-	for(uint8_t c=col>>1; c; c>>=1)
-		hi++;
+	//for(uint8_t c=col>>1; c; c>>=1)
+	//	hi++;
+	hi += __builtin_popcount(col);
 	//printf("now hi is %d\n", hi);
 	if(p->whosemove)
 		hi += 42;
