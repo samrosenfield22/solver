@@ -10,22 +10,15 @@
 #include <assert.h>
 
 float estimate_color(uint64_t x, uint64_t opp, bool verbose);
-bool four_in_a_row(uint8_t *cols);
-bool four_horiz(uint8_t *cols);
-bool four_fddiag(uint8_t *cols);
-bool four_bkdiag(uint8_t *cols);
-int horiz_run_open(uint8_t *cols, uint8_t *opp);
-int fddiag_run_open(uint8_t *cols, uint8_t *opp);
-int bkdiag_run_open(uint8_t *cols, uint8_t *opp);
-void get_yellows(uint8_t *yellows, c4_pos_t *p);
-
 uint32_t c4_hash(void *key, size_t size);
+
+#define MOVE_BIT	(((uint64_t)1)<<63)
 
 c4_pos_t C4_INIT_POS =
 {
 	.x = 0,
-	.filled = 0,
-	.whosemove = true,
+	.filled = MOVE_BIT,
+	//.whosemove = true,
 };
 
 #define ZOBRIST_LEN	(85)
@@ -86,6 +79,14 @@ void zobrist_update(uint32_t *h, int n)
 	return true;
 }*/
 
+bool c4_whosemove(void *pos)
+{
+	//assert(c4_ok(pos));
+	c4_pos_t *p = pos;
+	//return p->whosemove;
+	return p->filled & MOVE_BIT;
+}
+
 uint8_t get_col(uint64_t col, int index)
 {
 	uint8_t c = 0b1111111;
@@ -129,7 +130,7 @@ endstate_t c4_gameover(void *pos)
 
 
 
-	int win = !p->whosemove? END_P1_WON : END_P2_WON;
+	int win = !c4_whosemove(p)? END_P1_WON : END_P2_WON;
 
 	if(is_win(x))
 		return win;
@@ -137,9 +138,9 @@ endstate_t c4_gameover(void *pos)
 	//check draw
 	//printf("filled = %s\n", print64(p->filled));
 	uint64_t full = 0b0111111011111101111110111111011111101111110111111;
-	assert(p->filled <= full);
+	//assert(p->filled <= full);
 	//printf("good!\n");
-	if(p->filled == full)
+	if((p->filled & ~MOVE_BIT) == full)
 	{
 		//printf("draw detected!\n");
 		//exit(0);
@@ -169,7 +170,7 @@ float c4_estimate(void *pos)
 	float est = estimate_color(x, opp, false);
 	est -= estimate_color(opp, x, false);
 
-	if(!p->whosemove)
+	if(!c4_whosemove(p))
 		est *= -1;
 
 	///est /= 10;
@@ -292,13 +293,6 @@ bool c4_is_legal(void *pos, int index)
 	return (col & 0b111111) != 0b111111;
 }
 
-bool c4_whosemove(void *pos)
-{
-	//assert(c4_ok(pos));
-	c4_pos_t *p = pos;
-	return p->whosemove;
-}
-
 void c4_make_move(void *pos, int index, uint32_t *hash)
 {
 	//assert(c4_ok(pos));
@@ -319,7 +313,8 @@ void c4_make_move(void *pos, int index, uint32_t *hash)
 	//invert x
 	p->x ^= p->filled;
 
-	p->whosemove = !p->whosemove;
+	//p->whosemove = !p->whosemove;
+	p->filled ^= MOVE_BIT;
 
 	//update hash
 	if(!hash)
@@ -335,7 +330,8 @@ void c4_make_move(void *pos, int index, uint32_t *hash)
 	//hi += 32 - __builtin_clz((unsigned int)col);
 	//hi += __builtin_popcount(col);
 	//printf("now hi is %d\n", hi);
-	if(p->whosemove)
+	//if(p->whosemove)
+	if(c4_whosemove(p))
 		hi += 42;
 	//printf("final hi: %d\n", hi);
 
@@ -346,7 +342,33 @@ void c4_make_move(void *pos, int index, uint32_t *hash)
 	//assert(*hash == check_hash);
 }
 
+bool c4_move_loses(void *pos, int move)
+{
+	if(!c4_is_legal(pos, move))
+		return false;
 
+	c4_pos_t *p = pos;
+	c4_pos_t after = *p;
+	c4_make_move(&after, move, NULL);
+
+	bool losing = false;
+	c4_pos_t next;
+	for(int i=0; i<7; i++)
+	{
+		next = after;
+		if(!c4_is_legal(&next, i))
+			continue;
+
+		c4_make_move(&next, i, NULL);
+		int state = c4_gameover(&next);
+		if(state==END_P1_WON || state==END_P2_WON)
+		{
+			losing = true;
+			break;
+		}
+	}
+	return losing;
+}
 
 uint32_t c4_hash(void *key, size_t size)
 {
@@ -377,9 +399,9 @@ uint32_t c4_hash(void *key, size_t size)
 			//printf("filled bit %d\n", i);
 			int index = i;
 			if(p->x & b)
-				index += (p->whosemove)? 0 : 42;
+				index += (c4_whosemove(p))? 0 : 42;
 			else
-				index += (p->whosemove)? 42 : 0;
+				index += (c4_whosemove(p))? 42 : 0;
 			//printf("c4hash: zobrist w index %d\n", index);
 			zobrist_update(&h, index);
 		}
@@ -479,7 +501,7 @@ void c4_draw_full(void *pos)
 			if(p->filled & bit_m)
 			{
 				bool ry = (p->x & bit_m);
-				if(!p->whosemove)
+				if(!c4_whosemove(p))
 					ry = !ry;
 				c = ry? 'R':'Y';
 
@@ -527,235 +549,12 @@ char *c4_iter_to_human(int move)
 }*/
 
 
-/*
-
-int horiz_run_open(uint8_t *cols, uint8_t *opp)
-{
-	int cnt = 0;
-	for(int i=0; i<6; i++)
-	{
-		int opens = 0;
-		int len = 0;
-		uint8_t and = 0xFF;
-
-		for(int j=0; j<3; j++)
-		{
-			if(i+j >= 7)
-				break;
-			if(and & cols[i+j])
-			{
-				and &= cols[i+j];
-				len++;
-			}
-			else
-				break;
-		}
-
-		if(len < 2)
-			continue;
-
-		//check if l is open
-		if(i)
-			//if(cols[i] & (~cols[i-1]) & (~opp[i-1]))
-			//	opens++;
-			opens += __builtin_popcount(and
-				& (~opp[i-1]));
-
-		//check if r is open
-		if(i+len<7)
-			opens += __builtin_popcount(and
-				& (~opp[i+len]));
-			//if(cols[i+len-1]
-			//	& (~cols[i+len]) & (~opp[i+len]))
-			//	opens++;
-
-		//if(opens == 2)	opens++;
-		cnt += opens * ((len==2)? 1 : 5);
-		//i+=len;
-
-
-	}
-	return cnt;
-}
-
-int fddiag_run_open(uint8_t *cols, uint8_t *opp)
-{
-	int cnt = 0;
-	for(int i=0; i<6; i++)
-	{
-		int opens = 0;
-
-		uint8_t and = 0xFF;
-		int len = 0;
-		for(int j=0; j<3; j++)
-		{
-			if(i+j >= 7)
-				break;
-
-			if(and & cols[i+j]>>j)
-			{
-				and &= cols[i+j]>>j;
-				len++;
-			}
-			else
-				break;
-		}
-
-		if(len < 2)
-			continue;
-
-		//check if l is open
-		if(i)
-			opens += __builtin_popcount(and
-				& ~(opp[i-1])<<1);
-				//& (~cols[i-1])<<1 & (~opp[i-1])<<1);
-			//if(cols[i] & (~cols[i-1])<<1 & (~opp[i-1])<<1)
-			//	opens++;
-
-		//check if r is open
-		if(i+len<7)
-			opens += __builtin_popcount(and
-				& ~(opp[i+len])>>len);
-				//& (~cols[i+len])>>len & (~opp[i+len])>>len);
-			//if(cols[i+len-1]
-			//	& (~cols[i+len])>>(i+len) & (~opp[i+len])>>(i+len))
-			//	opens++;
-
-		//if(opens == 2)	opens++;
-		cnt += opens * ((len==2)? 1 : 5);
-		//i+=len;
-
-
-	}
-	return cnt;
-}
-
-int bkdiag_run_open(uint8_t *cols, uint8_t *opp)
-{
-	int cnt = 0;
-	for(int i=0; i<6; i++)
-	{
-		int opens = 0;
-
-		uint8_t and = 0xFF;
-		int len = 0;
-		for(int j=0; j<3; j++)
-		{
-			if(i+j >= 7)
-				break;
-
-			if(and & cols[i+j]<<j)
-			{
-				and &= cols[i+j]<<j;
-				len++;
-			}
-			else
-				break;
-			and &= cols[i+j]<<j;
-		}
-
-		if(len < 2)
-			continue;
-
-		//check if l is open
-		if(i)
-			opens += __builtin_popcount(and
-				& ~(opp[i-1])>>1);
-				//(~cols[i-1])>>1 & (~opp[i-1])>>1);
-			//if(cols[i] & (~cols[i-1])>>1 & (~opp[i-1])>>1)
-			//	opens++;
-
-		//check if r is open
-		if(i+len<7)
-			opens += __builtin_popcount(and
-				& (uint8_t)(~opp[i+len])<<len);
-				//& (~cols[i+len])<<len & (~opp[i+len])<<len);
-			//if(cols[i+len-1]
-			//	& (~cols[i+len])<<(i+len) & (~opp[i+len])<<(i+len))
-			//	opens++;
-
-		//if(opens == 2)	opens++;
-		cnt += opens * ((len==2)? 1 : 5);
-		//i+=len;
-
-
-	}
-	return cnt;
-}
-
-int two_bkdiag_open(uint8_t *cols, uint8_t *opp)
-{
-	int cnt = 0;
-	for(int i=0; i<6; i++)
-	{
-		int opens = 0;
-		uint8_t and = cols[i]>>1 & cols[i+1];
-		//if(~cols[i-1] & cols[i] & cols[i+1] & ~cols[i+2])
-		if(and)
-		{
-			//check if left is open
-			if(i)
-				if(and & (~cols[i-1])>>2 & (~opp[i-1])<<2)
-					opens++;
-			//check if right is open
-			if(i!=6)
-				if(and & (~cols[i+2])<<1 & (~opp[i+2])<<1)
-					opens++;
-			if(opens == 2)
-				opens++;	//3 for both sides open
-			//cnt++;
-			cnt += opens;
-		}
-	}
-	return cnt;
-}
-
-bool four_horiz(uint8_t *cols)
-{
-	for(int i=0; i<4; i++)
-	{
-		if(cols[i] & cols[i+1] & cols[i+2] & cols[i+3])
-			return true;
-	}
-	return false;
-
-
-}
-
-bool four_fddiag(uint8_t *cols)
-{
-	for(int i=0; i<4; i++)
-	{
-		if(cols[i] & cols[i+1]>>1
-			& cols[i+2]>>2 & cols[i+3]>>3)
-			return true;
-	}
-	return false;
-}
-
-bool four_bkdiag(uint8_t *cols)
-{
-	for(int i=0; i<4; i++)
-	{
-		if(cols[i]>>3 & cols[i+1]>>2
-			& cols[i+2]>>1 & cols[i+3]>>0)
-			return true;
-	}
-	return false;
-}
-
-void get_yellows(uint8_t *yellows, c4_pos_t *p)
-{
-	for(int i=0; i<7; i++)
-		yellows[i] = (~(p->columns_color[i])) & p->columns_filled[i];
-}
-*/
 
 //1 (old val) gets replaced with 2 (new val)
 bool c4_replace_transpose(void *k_old, void *v_old,
 	void *k_new, void *v_new)
 {
-	//return true;
+	return true;
 
 	trans_value_t *val_old = v_old;
 	trans_value_t *val_new = v_new;
@@ -786,6 +585,7 @@ solver_t C4_SOLVER =
 	.whosemove = c4_whosemove,
 	.is_legal = c4_is_legal,
 	.make_move = c4_make_move,
+	.move_loses = c4_move_loses,
 
 	.print_pos = NULL,
 	.hash = c4_hash,

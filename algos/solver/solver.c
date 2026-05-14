@@ -583,30 +583,30 @@ float analyze_all_children(tree_t *gt, tnode_t *n, int *order,
 		if(c_score > MATE_LIMIT)
 		{
 			c_score--;
-			/*if(max_or_min(depth)==MAX_LAYER)
+			if(max_or_min(depth)==MAX_LAYER)
 			{
 				n->score = c_score;
 				best_move = child->move_index;
 				tree_get(gt, n);
 				//minimax(gt, depth);
 				if(n->child_ct-1)
-					tree_swap_children(gt, 0, i);
+					tree_swap_children(gt, 0, n->child_ct-1);
 				return n->score;
-			}*/
+			}
 		}
 		else if(c_score < -MATE_LIMIT)
 		{
 			c_score++;
-			/*if(max_or_min(depth)!=MAX_LAYER)
+			if(max_or_min(depth)!=MAX_LAYER)
 			{
 				n->score = c_score;
 				best_move = child->move_index;
 				tree_get(gt, n);
 				//minimax(gt, depth);
 				if(n->child_ct-1)
-					tree_swap_children(gt, 0, i);
+					tree_swap_children(gt, 0, n->child_ct-1);
 				return n->score;
-			}*/
+			}
 		}
 
 		/*if((max_or_min(depth)==MAX_LAYER && c_score > MATE_LIMIT)
@@ -783,6 +783,7 @@ bool move_loses(void *pos, int move)
 void build_order(int *order, tree_t *gt, tnode_t *n)
 {
 	int set = 0;
+	int move;
 	bool added[solver->possible_moves];
 	for(int i=0; i<solver->possible_moves; i++)
 		added[i] = false;
@@ -791,7 +792,7 @@ void build_order(int *order, tree_t *gt, tnode_t *n)
 	if(val)
 	{
 		n->score = 0;
-		int move = val->best_move;
+		move = val->best_move;
 
 		//printf("best move is %d\n", move);
 		if(!added[move])
@@ -802,16 +803,24 @@ void build_order(int *order, tree_t *gt, tnode_t *n)
 		}
 	}
 
+	/*move = n->move_index;
+	if(!added[move])
+	{
+		added[move] = true;
+		order[set] = move;
+		set++;
+	}*/
+
 	//add default order moves
 	//int losing_ct = 0;
 	//int losing[7];
 	for(int i=0; i<solver->possible_moves; i++)
 	{
-		int move = solver->default_order[i];
+		move = solver->default_order[i];
 		if(added[move])
 			continue;
 
-		/*if(move_loses(((gdata_t *)n->data)->pos, move))
+		/*if(solver->move_loses(((gdata_t *)n->data)->pos, move))
 		{
 			losing[losing_ct] = move;
 			losing_ct++;
@@ -823,10 +832,10 @@ void build_order(int *order, tree_t *gt, tnode_t *n)
 		set++;
 	}
 
-	//for(int i=0; i<losing_ct; i++)
-	//{
-	//	order[i+set] = losing[i];
-	//}
+	/*for(int i=0; i<losing_ct; i++)
+	{
+		order[i+set] = losing[i];
+	}*/
 
 	assert(set == solver->possible_moves);
 	for(int i=0; i<solver->possible_moves; i++)

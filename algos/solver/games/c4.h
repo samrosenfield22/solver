@@ -11,7 +11,7 @@ typedef struct
 {
 	uint64_t x;
 	uint64_t filled;
-	bool whosemove;
+	//bool whosemove;
 } c4_pos_t;
 
 extern solver_t C4_SOLVER;

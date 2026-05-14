@@ -58,6 +58,7 @@ typedef struct
 	//bool (*is_end)(void *pos);
 	bool (*is_legal)(void *pos, int index);
 	void (*make_move)(void *pos, int index, uint32_t *hash);
+	bool (*move_loses)(void *pos, int move);
 	uint32_t (*hash)(void *key, size_t size);
 	bool uses_zobrist;
 	bool (*keys_match)(void *k1, void *k2);
