@@ -86,6 +86,13 @@ void zobrist_update(uint32_t *h, int n)
 	return true;
 }*/
 
+uint8_t get_col(uint64_t col, int index)
+{
+	uint8_t c = 0b1111111;
+	c &= col >> (7*index);
+	return c;
+}
+
 bool is_win(uint64_t x)
 {
 	//horizontal
@@ -149,6 +156,7 @@ float c4_estimate(void *pos)
 	//assert(c4_ok(pos));
 	c4_pos_t *p = pos;
 
+
 	//float est = 0;
 
 	uint64_t x = p->x;
@@ -173,37 +181,47 @@ float estimate_color(uint64_t x, uint64_t opp, bool verbose)
 {
 	int est = 0;
 
+	int scores[] = {1, 2, 3, 5, 3, 2, 1};
+	for(int i=0; i<7; i++)
+	{
+		int col_bits = __builtin_popcount(get_col(x, i));
+		est += scores[i] * col_bits;
+	}
+	return est;
+
+	/*
 	//count all places where we're one move away from win
-	/*uint64_t b = 0b1;
+	uint64_t b = 0b1;
+	int r = -1;
 	for(int i=0; i<49; i++)
 	{
-		//if((i % 7) == 6)
-		//	continue;
+		r++;
+		if(r == 6)
+		{
+			r = 0;
+			b <<= 1;
+			continue;
+		}
 		if(filled & b)
 		{
 			b<<=1;
 			continue;
 		}
 
-		//place token
-		x |= b;
 
-		if(is_win(x))
+		if(is_win(x | b))
 		{
 			est++;
 			if(verbose)
 				printf("\twin sq @ c%d, r%d\n", i/7, i%7);
 		}
 
-		//clear token
-		x &= ~b;
-
 		b<<=1;
 	}
 	if(verbose)
 		printf("\twin sqs = %d\n", est);
-	return (float)est;*/
-
+	return (float)est;
+	*/
 
 	//horizontal
 	uint64_t three = x & (x<<7) & (x<<14);
@@ -262,12 +280,7 @@ float estimate_color(uint64_t x, uint64_t opp, bool verbose)
 
 }
 
-uint8_t get_col(uint64_t col, int index)
-{
-	uint8_t c = 0b1111111;
-	c &= col >> (7*index);
-	return c;
-}
+
 
 bool c4_is_legal(void *pos, int index)
 {
@@ -295,9 +308,9 @@ void c4_make_move(void *pos, int index, uint32_t *hash)
 	//b &= 0b011111101111110111111011111101111110111111;
 	//printf("0x%0x\n", b);
 
-	uint64_t col = get_col(p->filled, index);
+	uint64_t col = get_col(p->filled, index)+1;
 	//col &= 0b111111;
-	uint64_t b = (col+1)<<(7*index);
+	uint64_t b = col<<(7*index);
 
 
 	p->x |= b;
@@ -316,10 +329,11 @@ void c4_make_move(void *pos, int index, uint32_t *hash)
 
 
 	int hi = 6*index;
-	//printf("hi was %d (col = 0x%0x)\n", hi, (uint8_t)col);
-	//for(uint8_t c=col>>1; c; c>>=1)
-	//	hi++;
-	hi += __builtin_popcount(col);
+
+	for(uint8_t c=col; c; c>>=1)
+		hi++;
+	//hi += 32 - __builtin_clz((unsigned int)col);
+	//hi += __builtin_popcount(col);
 	//printf("now hi is %d\n", hi);
 	if(p->whosemove)
 		hi += 42;
@@ -741,7 +755,7 @@ void get_yellows(uint8_t *yellows, c4_pos_t *p)
 bool c4_replace_transpose(void *k_old, void *v_old,
 	void *k_new, void *v_new)
 {
-	return true;
+	//return true;
 
 	trans_value_t *val_old = v_old;
 	trans_value_t *val_new = v_new;
@@ -778,8 +792,9 @@ solver_t C4_SOLVER =
 	.uses_zobrist = true,
 	//.hash = NULL,
 	.keys_match = c4_keys_match,
+	//.keys_match = NULL,
 	//.normalize_position = c4_normalize,
-	.normalize_position = NULL,
+	//.normalize_position = NULL,
 	.replace_transpose = c4_replace_transpose,
 
 	.draw_full = c4_draw_full,

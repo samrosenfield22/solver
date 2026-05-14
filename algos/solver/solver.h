@@ -33,6 +33,7 @@ typedef enum
 typedef struct
 {
 	float score;
+	uint8_t best;
 	uint8_t iddfs;
 	uint8_t depth;
 	//ab bounds
@@ -60,7 +61,7 @@ typedef struct
 	uint32_t (*hash)(void *key, size_t size);
 	bool uses_zobrist;
 	bool (*keys_match)(void *k1, void *k2);
-	void (*normalize_position)(void *k);
+	//void (*normalize_position)(void *k);
 	//bool (*replace_transpose)(void *k1, void *k2);
 	bool (*replace_transpose)(void *k1, void *v1,
 		void *k2, void *d1);

@@ -105,7 +105,7 @@ bool nim_keys_match(void *k1, void *k2)
 		&& (n1->whosemove == n2->whosemove));
 }
 
-void nim_normalize(void *k)
+/*void nim_normalize(void *k)
 {
 	nim_pos_t *n = k;
 	uint8_t temp;
@@ -130,7 +130,7 @@ void nim_normalize(void *k)
 	}
 	//printf("is: %d,%d,%d\n", n->piles[0], n->piles[1], n->piles[2]);
 
-}
+}*/
 
 void nim_draw_full(void *pos)
 {
@@ -191,7 +191,7 @@ solver_t NIM_SOLVER =
 	.hash = nim_hash,
 	.uses_zobrist = false,
 	.keys_match = nim_keys_match,
-	.normalize_position = nim_normalize,
+	//.normalize_position = nim_normalize,
 	//.normalize_position = NULL,
 
 	.draw_full = nim_draw_full,

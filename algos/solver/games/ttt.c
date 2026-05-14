@@ -220,7 +220,7 @@ solver_t TTT_SOLVER =
 	.uses_zobrist = false,
 	.keys_match = ttt_keys_match,
 	//.normalize_position = ttt_normalize,
-	.normalize_position = NULL,
+	//.normalize_position = NULL,
 
 	.draw_full = ttt_draw_full,
 	.human_to_iter = ttt_human_to_iter,

@@ -89,14 +89,14 @@ int hashmap_add_kvpair(hashmap_t *h, void *key, void *value,
 
 	int add_result = -1;
 
-	void *norm_key = copy_key_normalize(h, key);
-	kvpair_t **bucket = hashmap_key_get_bucket(h, norm_key, hash);
+	//void *norm_key = copy_key_normalize(h, key);
+	kvpair_t **bucket = hashmap_key_get_bucket(h, key, hash);
 	assert(bucket);
 
 	if(*bucket)	//bucket already filled
 	{
 		kvpair_t *kv = *bucket;
-		if(keys_match(h, kv->key, norm_key))
+		if(keys_match(h, kv->key, key))
 		{
 			//replace value
 			memcpy(kv->value, value, h->vsize);
@@ -107,9 +107,9 @@ int hashmap_add_kvpair(hashmap_t *h, void *key, void *value,
 			h->collisions++;
 			if(h->replace_fp)
 			{
-				if(h->replace_fp(kv->key, kv->value, norm_key, value))
+				if(h->replace_fp(kv->key, kv->value, key, value))
 				{
-					memcpy(kv->key, norm_key, h->ksize);
+					memcpy(kv->key, key, h->ksize);
 					memcpy(kv->value, value, h->vsize);
 					add_result = HM_POLICY_OVERWRITE_KV;
 				}
@@ -128,7 +128,7 @@ int hashmap_add_kvpair(hashmap_t *h, void *key, void *value,
 		assert(kv->key);
 		assert(kv->value);
 		//printf("moving %d bytes from %p to %p\n", h->ksize, key, kv->key);
-		memcpy(kv->key, norm_key, h->ksize);
+		memcpy(kv->key, key, h->ksize);
 		memcpy(kv->value, value, h->vsize);
 		*bucket = kv;
 		//printf("kvpair added!\n");
@@ -137,7 +137,7 @@ int hashmap_add_kvpair(hashmap_t *h, void *key, void *value,
 	}
 
 
-	mem_free(norm_key);
+	//mem_free(norm_key);
 	return add_result;
 
 	////////////////////////////////////////////////////////
@@ -187,25 +187,25 @@ void *hashmap_key_get_value(hashmap_t *h, void *key, uint32_t *hash)
 
 	//printf("attempting to retrieve value from key\n");
 
-	void *norm_key = copy_key_normalize(h, key);
+	//void *norm_key = copy_key_normalize(h, key);
 	//if(!norm_key)
 	//	norm_key = key;
 
 	//printf("getting bucket\n");
-	kvpair_t **bucket = hashmap_key_get_bucket(h, norm_key, hash);
+	kvpair_t **bucket = hashmap_key_get_bucket(h, key, hash);
 	assert(bucket);
 	//printf("\tgot bucket\n");
 	if(!bucket)
 	{
 		//if(h->normalize_key)
-			mem_free(norm_key);
+			//mem_free(norm_key);
 		return NULL;
 	}
 	kvpair_t *kv = *bucket;
 	if(!kv)	//slot not filled
 	{
 		//if(h->normalize_key)
-			mem_free(norm_key);
+			//mem_free(norm_key);
 		return NULL;
 	}
 	//printf("retrieved bucket w value %d\n", kv->value);
@@ -213,10 +213,10 @@ void *hashmap_key_get_value(hashmap_t *h, void *key, uint32_t *hash)
 	//return kv->value;
 	//if(memcmp(kv->key, key, h->ksize)==0)
 	//printf("abc");
-	bool match = keys_match(h, kv->key, norm_key);
+	bool match = keys_match(h, kv->key, key);
 	//printf("def");
 	//if(h->normalize_key)
-		mem_free(norm_key);
+		//mem_free(norm_key);
 
 	if(match)
 		return kv->value;

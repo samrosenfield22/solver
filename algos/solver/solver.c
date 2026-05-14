@@ -242,7 +242,7 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms)
 	print_eval_bar(gt->head->children[0]->score);
 	//printf("eval: %+.1f\n", gt->head->children[0]->score);
 	printf("\nposition solved in %d m, %d sec\n", min, sec);
-	printf("time per position: %.1f us\n", ((float)us)/position_ct);
+	printf("time per position: %.2f us\n", ((float)us)/position_ct);
 	printf("evaluated %u unique positions\n", position_ct);
 	printf("greatest number of nodes stored in tree: %u\n", max_node_ct);
 	#ifdef USE_TRANSPOSITION_TABLE
@@ -510,6 +510,7 @@ float analyze_all_children(tree_t *gt, tnode_t *n, int *order,
 	}*/
 
 	float best = worst_score(depth);
+	int best_move = -1;
 	//bool cutoff = false;
 
 	int killer = -1;
@@ -572,6 +573,7 @@ float analyze_all_children(tree_t *gt, tnode_t *n, int *order,
 			/*if(max_or_min(depth)==MAX_LAYER)
 			{
 				n->score = c_score;
+				best_move = n->child_ct-1;
 				tree_get(gt, n);
 				//minimax(gt, depth);
 				if(n->child_ct-1)
@@ -585,6 +587,7 @@ float analyze_all_children(tree_t *gt, tnode_t *n, int *order,
 			/*if(max_or_min(depth)!=MAX_LAYER)
 			{
 				n->score = c_score;
+				best_move = n->child_ct-1;
 				tree_get(gt, n);
 				//minimax(gt, depth);
 				if(n->child_ct-1)
@@ -605,10 +608,23 @@ float analyze_all_children(tree_t *gt, tnode_t *n, int *order,
 		//	best_so_far = cscore;
 		//(void)c_score;
 		if(max_or_min(depth)==MAX_LAYER)
-			best = max(best, c_score);
+		{
+			//best = max(best, c_score);
+			if(c_score > best)
+			{
+				best = c_score;
+				best_move = n->child_ct-1;
+			}
+		}
 		else	//min
-			best = min(best, c_score);
-
+		{
+			//best = min(best, c_score);
+			if(c_score < best)
+			{
+				best = c_score;
+				best_move = n->child_ct-1;
+			}
+		}
 
 		#ifdef USE_ALPHABETA_PRUNING
 		if(max_or_min(depth)==MAX_LAYER)
@@ -670,8 +686,10 @@ float analyze_all_children(tree_t *gt, tnode_t *n, int *order,
 		//printf("%d\n", killer);
 	}
 
+	assert(best_move != -1);
 	tree_get(gt, n);
-	minimax(gt, depth);
+	//minimax(gt, depth);
+	tree_swap_children(gt, 0, best_move);
 	assert(n->child_ct);
 	assert(n->children[0]);
 	//n->score = n->children[0]->score;
@@ -683,7 +701,7 @@ float analyze_all_children(tree_t *gt, tnode_t *n, int *order,
 	}
 
 
-	if(max_or_min(depth)==MAX_LAYER)
+	/*if(max_or_min(depth)==MAX_LAYER)
 	{
 		n->score = best;
 		//n->score = alpha;
@@ -698,7 +716,8 @@ float analyze_all_children(tree_t *gt, tnode_t *n, int *order,
 		//if(cutoff)
 		//	n->score++;
 		//return beta;
-	}
+	}*/
+	n->score = best;
 
 	/*if(n->score > MATE_LIMIT)
 	{
@@ -841,8 +860,8 @@ void tt_create(void)
 	if(solver->keys_match)
 		hashmap_attach_keycompare(trans_tbl,
 			solver->keys_match);
-	if(solver->normalize_position)
-		hashmap_attach_normalize(trans_tbl, solver->normalize_position);
+	//if(solver->normalize_position)
+	//	hashmap_attach_normalize(trans_tbl, solver->normalize_position);
 	if(solver->replace_transpose)
 		hashmap_attach_replace(trans_tbl, solver->replace_transpose);
 
