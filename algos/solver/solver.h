@@ -76,7 +76,8 @@ typedef struct
 } solver_t;
 
 float test_pos(solver_t *game_solver, int *seq, int len);
-float solve(solver_t *solver, void *pos, int time_lim_ms);
+float solve(solver_t *solver, void *pos, int time_lim_ms,
+	bool verbose);
 
 
 #endif	//SOLVER_H_

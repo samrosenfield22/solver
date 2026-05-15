@@ -293,6 +293,12 @@ bool c4_is_legal(void *pos, int index)
 	return (col & 0b111111) != 0b111111;
 }
 
+uint64_t move_bit(c4_pos_t *p, int index)
+{
+	uint64_t col = get_col(p->filled, index)+1;
+	return col<<(7*index);
+}
+
 void c4_make_move(void *pos, int index, uint32_t *hash)
 {
 	//assert(c4_ok(pos));
@@ -303,7 +309,6 @@ void c4_make_move(void *pos, int index, uint32_t *hash)
 	//printf("0x%0x\n", b);
 
 	uint64_t col = get_col(p->filled, index)+1;
-	//col &= 0b111111;
 	uint64_t b = col<<(7*index);
 
 
@@ -325,7 +330,7 @@ void c4_make_move(void *pos, int index, uint32_t *hash)
 
 	int hi = 6*index;
 
-	for(uint8_t c=col; c; c>>=1)
+	for(uint8_t c=col>>1; c; c>>=1)
 		hi++;
 	//hi += 32 - __builtin_clz((unsigned int)col);
 	//hi += __builtin_popcount(col);
@@ -477,8 +482,6 @@ void swap(uint8_t *a, uint8_t *b)
 
 void c4_draw_full(void *pos)
 {
-	printf("drawing...\n");
-
 	c4_pos_t *p = pos;
 
 	char indent[] = "\t\t\t\t\t\t\t";
@@ -511,6 +514,7 @@ void c4_draw_full(void *pos)
 	}
 	putchar('\n');
 
+	/*
 	//test
 	for(int c=0; c<7; c++)
 	{
@@ -526,7 +530,7 @@ void c4_draw_full(void *pos)
 	printf("est for current:\t%.0f\n", est);
 	est = estimate_color(p->x, p->x ^ p->filled, true);
 	printf("est for opp:\t\t%.0f\n", est);
-
+	*/
 	/*printf("est for current:\n");
 	estimate_color(p->x ^ p->filled, p->x, true);
 	printf("est for opp:\n");
@@ -577,7 +581,7 @@ solver_t C4_SOLVER =
 	.initial_pos = &C4_INIT_POS,
 	.pos_size = sizeof(c4_pos_t),
 	.possible_moves = 7,
-	.transtbl_buckets_ct = 130000003,
+	.transtbl_buckets_ct = 180000003,
 	.default_order = (uint8_t[]){3, 2, 4, 1, 5, 0, 6},
 
 	.gameover = c4_gameover,

@@ -12,12 +12,14 @@
 
 
 #define COMP_TIME	(1 * 1000)
+//#define DEV_MODE	(true)
+#define DEV_MODE	(false)
 
 void play_menu(void)
 {
 	srand(time(NULL));
 
-	bool mode_selected = false;
+	/*bool mode_selected = false;
 	bool playing;
 	while(1)
 	{
@@ -33,7 +35,7 @@ void play_menu(void)
 		}
 		if(mode_selected)
 			break;
-	}
+	}*/
 
 
 	solver_t gamelist[] =
@@ -66,7 +68,9 @@ void play_menu(void)
 				len-1);
 	}
 
-	if(playing)
+	play(game, NULL, COMPUTER_PLAYER, HUMAN_PLAYER);
+
+	/*if(playing)
 	{
 		//if(rand() & 0b1)
 		//	play(game, NULL, HUMAN_PLAYER, COMPUTER_PLAYER);
@@ -74,7 +78,7 @@ void play_menu(void)
 			play(game, NULL, COMPUTER_PLAYER, HUMAN_PLAYER);
 	}
 	else
-		solve(game, NULL, 0);
+		solve(game, NULL, 0);*/
 }
 
 void play(solver_t *solver, void *pos, bool p1, bool p2)
@@ -125,7 +129,7 @@ void play(solver_t *solver, void *pos, bool p1, bool p2)
 			print which move was played
 			*/
 
-			int move = solve(solver, pos, COMP_TIME);
+			int move = solve(solver, pos, COMP_TIME, DEV_MODE);
 			solver->make_move(pos, move, NULL);
 			//printf("i played: %s\n", solver->iter_to_human(move));
 			//

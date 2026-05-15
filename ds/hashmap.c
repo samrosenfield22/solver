@@ -14,7 +14,7 @@ void *hashmap_key_get_bucket(hashmap_t *h, void *key, uint32_t *hash);
 uint32_t hashmap_key_get_index(hashmap_t *h, void *key);
 void *pairlist_find_matching_key(hashmap_t *h,
 	list_t *pairlist, void *key);
-bool keys_match(hashmap_t *h,	void *k1, void *k2);
+bool keys_match(hashmap_t *h, void *k1, void *k2);
 
 uint32_t default_hash(void *key, size_t size);
 
