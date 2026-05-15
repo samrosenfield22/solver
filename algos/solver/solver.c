@@ -108,28 +108,36 @@ void print_eval_bar(float score)
 	printf("^\n");
 }
 
-float test_pos(solver_t *game_solver, int *seq, int len)
+/*void *construct_pos(solver_t *game_solver, char *seq)
 {
+	if(!seq)
+		return NULL;
+	printf("got seq: \'%s\'\n", seq);
+
 	solver = game_solver;
 
 	void *pos = mem_malloc(solver->pos_size);
 	memcpy(pos, solver->initial_pos, solver->pos_size);
 
-	for(int i=0; i<len; i++)
+	for(char *token = strtok(seq, ","); token;
+		token = strtok(NULL, ","))
 	{
-		if(solver->is_legal(pos, seq[i]))
-			solver->make_move(pos, seq[i], NULL);
+		if(*token == '\n')
+			break;
+		int move = strtol(token, NULL, 10);
+		printf("move=%d\n", move);
+
+		if(solver->is_legal(pos, move))
+			solver->make_move(pos, move, NULL);
 		else
 		{
-			printf("illegal move %d\n", i);
-			return 0;
+			printf("illegal move %d\n", move);
+			return NULL;
 		}
 	}
 
-	float score = solve(game_solver, pos, 10000, true);
-	solver->draw_full(pos);
-	return score;
-}
+	return pos;
+}*/
 
 float solve(solver_t *game_solver, void *pos, int time_lim_ms,
 	bool verbose)
@@ -197,6 +205,11 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms,
 
 		tree_set_search_depth(gt, iddfs);
 		uint32_t last = toc_ms();
+		/*
+		if eval == a mate, break
+		there's no tree after found a mate -- need a way
+		to get the best move
+		*/
 		eval(gt, gt->head, 0, -WIN_SCORE, WIN_SCORE, -1);
 		//eval(gt, gt->head, 0, -5, 5, -1);
 		uint32_t now = toc_ms();
@@ -300,8 +313,16 @@ float eval(tree_t *gt, tnode_t *n, int depth,
 	//if(tt_check(n))
 	//	return n->score;
 	trans_value_t *val = tt_get(n);
-	if(val && (val->iddfs == iddfs))
-		return n->score;
+	//if(val && (val->iddfs == iddfs))
+	//	return n->score;
+	if(val)
+	{
+		assert(val->score == n->score);
+		if(n->score > MATE_LIMIT || n->score < -MATE_LIMIT)
+			return n->score;
+		if(val->iddfs == iddfs)
+			return n->score;
+	}
 	#endif
 
 	//update metrics
@@ -361,6 +382,7 @@ float eval(tree_t *gt, tnode_t *n, int depth,
 		//solver->print_pos(n->data);
 	#endif
 
+	assert(score == n->score);
 	//return n->score;
 	return score;
 }

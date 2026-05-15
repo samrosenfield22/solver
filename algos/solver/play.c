@@ -8,12 +8,20 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 
 #define COMP_TIME	(1 * 1000)
-//#define DEV_MODE	(true)
-#define DEV_MODE	(false)
+#define DEV_MODE	(true)
+//#define DEV_MODE	(false)
+
+void print_sequence(int8_t *seq);
+bool seq_charp_to_ints(solver_t *solver, void *pos, char *seq);
+void seq_add(int move);
+
+int8_t seq[200] = {-1};
+int seq_ct = 0;
 
 void play_menu(void)
 {
@@ -68,7 +76,16 @@ void play_menu(void)
 				len-1);
 	}
 
-	play(game, NULL, COMPUTER_PLAYER, HUMAN_PLAYER);
+	printf("enter initial moves (press enter for a new game):\n");
+	char movelist[640];
+	fgets(movelist, 639, stdin);
+	void *pos = game->initial_pos;
+	bool valid = seq_charp_to_ints(game, pos, movelist);
+	if(!valid)
+		return;
+	//void *starting_pos = construct_pos(game, movelist);
+
+	play(game, pos, COMPUTER_PLAYER, HUMAN_PLAYER);
 
 	/*if(playing)
 	{
@@ -83,6 +100,8 @@ void play_menu(void)
 
 void play(solver_t *solver, void *pos, bool p1, bool p2)
 {
+	int move;
+
 	printf("starting %s! %s goes first.\n\n",
 		solver->name, (p1==HUMAN_PLAYER)? "human":"computer");
 
@@ -101,22 +120,23 @@ void play(solver_t *solver, void *pos, bool p1, bool p2)
 			make move, update pos
 			*/
 			solver->draw_full(pos);
+			print_sequence(seq);
 			printf("\n\nenter your move:   ");
 			char buf[80];
 			fgets(buf, 79, stdin);
 
-			int hmove;
+			//int hmove;
 			if(solver->human_to_iter)
-				hmove = solver->human_to_iter(buf);
+				move = solver->human_to_iter(buf);
 			else
-				hmove = strtol(buf, NULL, 10);
-			if(hmove >= solver->possible_moves
-				|| !solver->is_legal(pos, hmove))
+				move = strtol(buf, NULL, 10);
+			if(move >= solver->possible_moves
+				|| !solver->is_legal(pos, move))
 			{
 				printf("illegal move!\n");
 				continue;
 			}
-			solver->make_move(pos, hmove, NULL);
+			solver->make_move(pos, move, NULL);
 
 			/*solver->draw_full(pos);
 			printf("enter to continue   ");
@@ -129,7 +149,7 @@ void play(solver_t *solver, void *pos, bool p1, bool p2)
 			print which move was played
 			*/
 
-			int move = solve(solver, pos, COMP_TIME, DEV_MODE);
+			move = solve(solver, pos, COMP_TIME, DEV_MODE);
 			solver->make_move(pos, move, NULL);
 			//printf("i played: %s\n", solver->iter_to_human(move));
 			//
@@ -153,9 +173,54 @@ void play(solver_t *solver, void *pos, bool p1, bool p2)
 				case END_NOT_OVER:	break;
 			}
 			solver->draw_full(pos);
+			print_sequence(seq);
 			break;
 		}
 
 		turn = !turn;
+
+		seq_add(move);
 	}
+}
+
+bool seq_charp_to_ints(solver_t *solver, void *pos, char *seq)
+{
+	for(char *token = strtok(seq, ","); token;
+		token = strtok(NULL, ","))
+	{
+		if(*token == '\n')
+			return true;
+		int move = strtol(token, NULL, 10);
+		printf("move=%d\n", move);
+
+		if(solver->is_legal(pos, move))
+		{
+			solver->make_move(pos, move, NULL);
+			seq_add(move);
+		}
+		else
+		{
+			printf("illegal move %d\n", move);
+			return false;
+		}
+	}
+
+	return true;
+}
+
+void print_sequence(int8_t *seq)
+{
+	printf("\n\nmoves played: ");
+	for(int8_t *move = seq; *move!=-1; move++)
+	{
+		printf("%d, ", *move);
+	}
+	printf("\n");
+}
+
+void seq_add(int move)
+{
+	seq[seq_ct] = move;
+	seq_ct++;
+	seq[seq_ct] = -1;
 }

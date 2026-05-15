@@ -75,7 +75,8 @@ typedef struct
 
 } solver_t;
 
-float test_pos(solver_t *game_solver, int *seq, int len);
+//float test_pos(solver_t *game_solver, int *seq, int len);
+//void *construct_pos(solver_t *game_solver, char *seq);
 float solve(solver_t *solver, void *pos, int time_lim_ms,
 	bool verbose);
 
