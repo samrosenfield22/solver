@@ -51,6 +51,7 @@ typedef struct
 	size_t pos_size;
 	int possible_moves;
 	uint32_t transtbl_buckets_ct;
+	int flip_depth;
 
 	uint8_t *default_order;
 
@@ -65,6 +66,7 @@ typedef struct
 	uint32_t (*hash)(void *key, size_t size);
 	bool uses_zobrist;
 	bool (*keys_match)(void *k1, void *k2);
+	void (*flip)(void *to, void *from);
 	//void (*normalize_position)(void *k);
 	//bool (*replace_transpose)(void *k1, void *k2);
 	bool (*replace_transpose)(void *k1, void *v1,

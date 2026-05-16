@@ -89,7 +89,7 @@ bool c4_whosemove(void *pos)
 
 uint8_t get_col(uint64_t col, int index)
 {
-	uint8_t c = 0b1111111;
+	uint8_t c = 0b111111;
 	c &= col >> (7*index);
 	return c;
 }
@@ -626,17 +626,26 @@ void swap(uint8_t *a, uint8_t *b)
 	*b = temp;
 }
 
-/*void c4_normalize(void *k)
+uint64_t flip_64(uint64_t c)
 {
-	c4_pos_t *p = k;
+	uint64_t flipped = c & (((uint64_t)1)<<63);
+	for(int i=0; i<7; i++)
+	{
+		uint64_t col = get_col(c, i);
+		flipped |= col << (7*(6-i));
+	}
+	//flipped &= 0b0111111011111101111110111111011111101111110111111;
+	//flipped |= c & (((uint64_t)1)<<63);
+	return flipped;
+}
 
-	if(p->columns_filled[0] > p->columns_filled[6])
-		for(int i=0; i<7; i++)
-		{
-			swap(&p->columns_filled[i], &p->columns_filled[6-i]);
-			swap(&p->columns_color[i], &p->columns_color[6-i]);
-		}
-}*/
+void c4_flip_horiz(void *to, void *from)
+{
+	c4_pos_t *f = from, *t = to;
+
+	t->x = flip_64(f->x);
+	t->filled = flip_64(f->filled);
+}
 
 /*void draw_color(uint8_t *cols, uint8_t *opp)
 {
@@ -731,6 +740,10 @@ void c4_draw_full(void *pos)
 	estimate_color(p->x ^ p->filled, p->x, true);
 	printf("est for opp:\n");
 	estimate_color(p->x, p->x ^ p->filled, true);*/
+
+	//
+
+
 }
 
 /*int c4_human_to_iter(char *human)
@@ -779,6 +792,7 @@ solver_t C4_SOLVER =
 	.possible_moves = 7,
 	.transtbl_buckets_ct = 180000003,
 	.default_order = (uint8_t[]){3, 2, 4, 1, 5, 0, 6},
+	.flip_depth = 12,
 
 	.gameover = c4_gameover,
 	.estimate = c4_estimate,
@@ -795,6 +809,7 @@ solver_t C4_SOLVER =
 	.keys_match = c4_keys_match,
 	//.keys_match = NULL,
 	//.normalize_position = c4_normalize,
+	.flip = c4_flip_horiz,
 	//.normalize_position = NULL,
 	.replace_transpose = c4_replace_transpose,
 

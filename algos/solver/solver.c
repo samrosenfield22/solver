@@ -30,7 +30,7 @@ int tt_add(tnode_t *n, float score, int depth, int best_move);
 
 float eval(tree_t *gt, tnode_t *n, int depth,
 	float alpha, float beta, int killer);
-void build_order(sorter_t *order, tree_t *gt, tnode_t *n);
+void build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth);
 void add_all_new_moves(tree_t *gt, tnode_t *n, int depth);
 void order_children(tree_t *gt, tnode_t *n, int depth, int killer);
 float sort_score(tree_t *gt, tnode_t *parent, tnode_t *n,
@@ -39,7 +39,7 @@ float analyze_all_children(tree_t *gt, tnode_t *n,
 	sorter_t *order, int depth, float alpha, float beta);
 
 bool tt_check(tnode_t *n);
-trans_value_t *tt_get(tnode_t *n);
+trans_value_t *tt_get(tnode_t *n, int depth);
 
 bool alphabeta_cutoff(float cscore, float prune,
 	float *best_so_far, int depth);
@@ -319,7 +319,7 @@ float eval(tree_t *gt, tnode_t *n, int depth,
 
 	#ifdef USE_TRANSPOSITION_TABLE
 	//check if position was already analyzed
-	trans_value_t *val = tt_get(n);
+	trans_value_t *val = tt_get(n, depth);
 	//if(val && (val->iddfs == iddfs))
 	//	return n->score;
 	if(val)
@@ -362,7 +362,7 @@ float eval(tree_t *gt, tnode_t *n, int depth,
 
 	//main analysis -- recursive tree search
 	sorter_t order[solver->possible_moves];
-	build_order(order, gt, n);
+	build_order(order, gt, n, depth);
 	assert(n->child_ct == 0);
 
 	//add_all_new_moves(gt, n, depth);
@@ -446,7 +446,7 @@ void order_children(tree_t *gt, tnode_t *n, int depth, int killer)
 		printf("%.2f (m%d), ", n->children[i]->score, n->children[i]->move_index);
 	printf("\n");*/
 
-	trans_value_t *val = tt_get(n);
+	trans_value_t *val = tt_get(n, depth);
 	int best = val? val->best_move : -1;
 
 	//assign sort scores
@@ -777,10 +777,10 @@ int order_compare(const void *aa, const void *bb)
 	return (a->score > b->score)? -1 : 1;
 }
 
-void build_order(sorter_t *order, tree_t *gt, tnode_t *n)
+void build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth)
 {
 	void *pos = node_get_pos(n);
-	trans_value_t *v = tt_get(n);
+	trans_value_t *v = tt_get(n, depth);
 	int best = v? v->best_move : -1;
 	for(int i=0; i<solver->possible_moves; i++)
 	{
@@ -792,17 +792,17 @@ void build_order(sorter_t *order, tree_t *gt, tnode_t *n)
 		//score it
 		/*if(move == best)
 			order[i].score = 10000;
-		else */if(solver->is_legal(pos, move))
+		else *//*if(solver->is_legal(pos, move))
 			order[i].score = solver->estimate_sort(pos, move);
 		else
-			order[i].score = -10000;
+			order[i].score = -10000;*/
 		//else
 		//	order[i].score = 0;
 
-		/*if(move == best)
+		if(move == best)
 			order[i].score = 10000;
 		else
-			order[i].score = 0;*/
+			order[i].score = 0;
 
 		order[i].score -= (float)i/100;
 	}
@@ -823,7 +823,7 @@ void build_order(sorter_t *order, tree_t *gt, tnode_t *n)
 	for(int i=0; i<solver->possible_moves; i++)
 		added[i] = false;
 
-	trans_value_t *val = tt_get(n);
+	trans_value_t *val = tt_get(n, depth);
 	if(val)
 	{
 		n->score = 0;
@@ -1038,11 +1038,31 @@ int tt_add(tnode_t *n, float score, int depth, int best_move)
 	return ttval;
 }*/
 
-trans_value_t *tt_get(tnode_t *n)
+trans_value_t *tt_get(tnode_t *n, int depth)
 {
 	void *pos = node_get_pos(n);
 	uint32_t *hash = node_get_hash(n);
 	trans_value_t *value = hashmap_key_get_value(trans_tbl, pos, hash);
+
+	if(!value && solver->flip && depth<=solver->flip_depth)
+	{
+		//void *flipped = mem_malloc(solver->pos_size);
+		uint8_t flipped[solver->pos_size];
+		solver->flip(flipped, pos);
+
+		/*printf("checking flip...\n");
+		solver->draw_full(pos);
+		printf("flipped:\n");
+		solver->draw_full(flipped);
+		printf("---------------------------------------\n\n");
+		*/
+
+		value = hashmap_key_get_value(trans_tbl, flipped, NULL);
+		//if(value)
+		//	printf("found flipped!\n");
+		//mem_free(flipped);
+	}
+
 	if(value)
 		n->score = value->score;
 	return value;
