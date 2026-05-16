@@ -210,7 +210,12 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms,
 		there's no tree after found a mate -- need a way
 		to get the best move
 		*/
-		eval(gt, gt->head, 0, -WIN_SCORE, WIN_SCORE, -1);
+		float score = eval(gt, gt->head, 0, -WIN_SCORE, WIN_SCORE, -1);
+		if(score > MATE_LIMIT || score < -MATE_LIMIT)
+		{
+			full_solve = true;
+			break;
+		}
 		//eval(gt, gt->head, 0, -5, 5, -1);
 		uint32_t now = toc_ms();
 
