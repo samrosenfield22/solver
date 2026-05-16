@@ -11,6 +11,8 @@
 #define USE_TRANSPOSITION_TABLE
 #define CLEAR_SUB_NODES
 
+#define FORCE_SEARCH_DEPTH	(24)
+
 #define VARIATION_LENGTH	(3)
 #define PRINCIPAL_VAR_CT	(7)
 #define INNER_VAR_CT		(1)
@@ -54,6 +56,7 @@ typedef struct
 
 	endstate_t (*gameover)(void *pos);
 	float (*estimate)(void *pos);
+	float (*estimate_sort)(void *pos, int move);
 	bool (*whosemove)(void *pos);
 	//bool (*is_end)(void *pos);
 	bool (*is_legal)(void *pos, int index);

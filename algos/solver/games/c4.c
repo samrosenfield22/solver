@@ -94,6 +94,14 @@ uint8_t get_col(uint64_t col, int index)
 	return c;
 }
 
+//returns the bit required to make the given move (or with
+//both x and filled)
+uint64_t move_bit(c4_pos_t *p, int index)
+{
+	uint64_t col = get_col(p->filled, index)+1;
+	return col<<(7*index);
+}
+
 bool is_win(uint64_t x)
 {
 	//horizontal
@@ -176,6 +184,148 @@ float c4_estimate(void *pos)
 	///est /= 10;
 	return est;
 }
+
+
+float estimate_sort_color(uint64_t x, uint64_t opp, uint64_t filled)
+{
+	float est = 0;
+	/*
+
+	//horizontal
+	uint64_t three = x & (x<<7) & (x<<14);
+	if(three)
+	{
+		if(three>>21 & ~opp
+			& 0b011111101111110111111011111101111110111111)
+			est++;
+		if(three<<7 & ~opp
+			& 0b011111101111110111111011111101111110111111)
+			est++;
+	}
+
+	//fd diag
+	three = (x>>8) & x & (x<<8);
+	if(three)
+	{
+		if(three>>16 & ~opp
+			& 0b011111101111110111111011111101111110111111)
+			est++;
+		if(three<<16 & ~opp
+			& 0b011111101111110111111011111101111110111111)
+			est++;
+	}
+
+	//bk diag
+	three = (x>>6) & x & (x<<6);
+	if(three)
+	{
+		if(three>>12 & ~opp
+			& 0b011111101111110111111011111101111110111111)
+			est++;
+		if(three<<12 & ~opp
+			& 0b011111101111110111111011111101111110111111)
+			est++;
+	}
+
+	//vertical
+	three = x & (x<<1) & (x<<2);
+	if(three)
+	{
+		//if(!(three & opp<<3))	est++;
+		if(three<<1 & ~opp)	est++;
+	}*/
+
+	//count all places where we're one move away from win
+	uint64_t b = 0b1;
+	int r = 0;
+	for(int i=0; i<49; i++)
+	{
+
+
+		if(r == 6)
+		{
+			r = 0;
+			b <<= 1;
+			continue;
+		}
+		//printf("b=%s, r=%d\n", print64(b), r);
+
+		if(filled & b)
+		{
+			r++;
+			b<<=1;
+			continue;
+		}
+
+
+		if(is_win(x | b))
+		{
+			est++;
+			//if(verbose)
+			//	printf("\twin sq @ c%d, r%d\n", i/7, i%7);
+		}
+
+		r++;
+		b<<=1;
+	}
+	//printf("\n");
+
+
+	return (float)est;
+}
+
+float c4_estimate_sort(void *pos, int move)
+{
+	c4_pos_t *p = pos;
+
+	int est = 0;
+
+	uint64_t mb = move_bit(p, move);
+
+	uint64_t filled = p->filled | mb;
+	uint64_t x = p->x | mb;
+	uint64_t opp = p->x ^ p->filled;
+
+	//calculate est for the player whose turn it is
+	//float est = estimate_sort_color(x, opp, filled);
+	//est -= estimate_sort_color(opp, x, filled);
+
+	//count all places where we're one move away from win
+	uint64_t b = 0b1;
+	int r = 0;
+	for(int i=0; i<49; i++)
+	{
+
+
+		if(r == 6)
+		{
+			r = 0;
+			b <<= 1;
+			continue;
+		}
+		//printf("b=%s, r=%d\n", print64(b), r);
+
+		if(filled & b)
+		{
+			r++;
+			b<<=1;
+			continue;
+		}
+
+
+		if(is_win(x | b))
+			est++;
+		if(is_win(opp | b))
+			est--;
+
+		r++;
+		b<<=1;
+	}
+
+	///est /= 10;
+	return (float)est;
+}
+
 
 float estimate_color(uint64_t x, uint64_t opp, bool verbose)
 //float estimate_color(uint64_t x, uint64_t filled, bool verbose)
@@ -291,12 +441,6 @@ bool c4_is_legal(void *pos, int index)
 	uint8_t col = get_col(p->filled, index);
 
 	return (col & 0b111111) != 0b111111;
-}
-
-uint64_t move_bit(c4_pos_t *p, int index)
-{
-	uint64_t col = get_col(p->filled, index)+1;
-	return col<<(7*index);
 }
 
 void c4_make_move(void *pos, int index, uint32_t *hash)
@@ -586,6 +730,7 @@ solver_t C4_SOLVER =
 
 	.gameover = c4_gameover,
 	.estimate = c4_estimate,
+	.estimate_sort = c4_estimate_sort,
 	.whosemove = c4_whosemove,
 	.is_legal = c4_is_legal,
 	.make_move = c4_make_move,
