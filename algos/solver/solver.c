@@ -784,10 +784,12 @@ void build_order(sorter_t *order, tree_t *gt, tnode_t *n)
 	int best = v? v->best_move : -1;
 	for(int i=0; i<solver->possible_moves; i++)
 	{
+		//get move
 		int move = solver->default_order?
 		 	solver->default_order[i] : i;
 		order[i].move = move;
 
+		//score it
 		/*if(move == best)
 			order[i].score = 10000;
 		else */if(solver->is_legal(pos, move))
@@ -796,6 +798,11 @@ void build_order(sorter_t *order, tree_t *gt, tnode_t *n)
 			order[i].score = -10000;
 		//else
 		//	order[i].score = 0;
+
+		/*if(move == best)
+			order[i].score = 10000;
+		else
+			order[i].score = 0;*/
 
 		order[i].score -= (float)i/100;
 	}

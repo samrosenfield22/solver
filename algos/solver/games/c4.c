@@ -145,7 +145,7 @@ endstate_t c4_gameover(void *pos)
 
 	//check draw
 	//printf("filled = %s\n", print64(p->filled));
-	uint64_t full = 0b0111111011111101111110111111011111101111110111111;
+	uint64_t full = 0b01111110111111011111101111110111111011111101111110111111;
 	//assert(p->filled <= full);
 	//printf("good!\n");
 	if((p->filled & ~MOVE_BIT) == full)
@@ -196,10 +196,10 @@ float estimate_sort_color(uint64_t x, uint64_t opp, uint64_t filled)
 	if(three)
 	{
 		if(three>>21 & ~opp
-			& 0b011111101111110111111011111101111110111111)
+			& 0b0111111011111101111110111111011111101111110111111)
 			est++;
 		if(three<<7 & ~opp
-			& 0b011111101111110111111011111101111110111111)
+			& 0b0111111011111101111110111111011111101111110111111)
 			est++;
 	}
 
@@ -208,10 +208,10 @@ float estimate_sort_color(uint64_t x, uint64_t opp, uint64_t filled)
 	if(three)
 	{
 		if(three>>16 & ~opp
-			& 0b011111101111110111111011111101111110111111)
+			& 0b0111111011111101111110111111011111101111110111111)
 			est++;
 		if(three<<16 & ~opp
-			& 0b011111101111110111111011111101111110111111)
+			& 0b0111111011111101111110111111011111101111110111111)
 			est++;
 	}
 
@@ -220,10 +220,10 @@ float estimate_sort_color(uint64_t x, uint64_t opp, uint64_t filled)
 	if(three)
 	{
 		if(three>>12 & ~opp
-			& 0b011111101111110111111011111101111110111111)
+			& 0b0111111011111101111110111111011111101111110111111)
 			est++;
 		if(three<<12 & ~opp
-			& 0b011111101111110111111011111101111110111111)
+			& 0b0111111011111101111110111111011111101111110111111)
 			est++;
 	}
 
@@ -274,17 +274,58 @@ float estimate_sort_color(uint64_t x, uint64_t opp, uint64_t filled)
 	return (float)est;
 }
 
+uint64_t win_map(uint64_t x, uint64_t filled)
+{
+	uint64_t wb;
+
+	//vertical
+	wb = (x<<1) & (x<<2) & (x<<3);
+
+	uint8_t shifts[] = {6, 7, 8};
+	for(int i=0; i<3; i++)
+	{
+		uint8_t sh = shifts[i];
+		uint64_t p = (x<<(sh)) & (x<<(2*sh));
+		wb |= p & (x<<(3*sh));
+		wb |= p & (x>>(sh));
+		p >>= 3*sh;
+		wb |= p & (x<<(sh));
+		wb |= p & (x>>(3*sh));
+	}
+
+	/*wb |= (x<<(6) & x<<(2*6) & x<<(3*6));
+	wb |= (x>>(6) & x>>(2*6) & x>>(3*6));
+
+	wb |= (x<<(7) & x<<(2*7) & x<<(3*7));
+	wb |= (x>>(7) & x>>(2*7) & x>>(3*7));
+
+	wb |= (x<<(8) & x<<(2*8) & x<<(3*8));
+	wb |= (x>>(8) & x>>(2*8) & x>>(3*8));*/
+
+	wb &= ~filled;
+
+	//clear
+	wb &= 0b0111111011111101111110111111011111101111110111111;
+	//return __builtin_popcount(wb);
+	return wb;
+}
+
 float c4_estimate_sort(void *pos, int move)
 {
 	c4_pos_t *p = pos;
 
-	int est = 0;
+	//int est = 0;
 
 	uint64_t mb = move_bit(p, move);
 
 	uint64_t filled = p->filled | mb;
 	uint64_t x = p->x | mb;
-	uint64_t opp = p->x ^ p->filled;
+	uint64_t opp = x ^ filled;
+
+	float est = __builtin_popcount(win_map(x, filled));
+	est -= __builtin_popcount(win_map(opp, filled));
+
+	return est;
 
 	//calculate est for the player whose turn it is
 	//float est = estimate_sort_color(x, opp, filled);
@@ -379,10 +420,10 @@ float estimate_color(uint64_t x, uint64_t opp, bool verbose)
 	if(three)
 	{
 		if(three>>21 & ~opp
-			& 0b011111101111110111111011111101111110111111)
+			& 0b0111111011111101111110111111011111101111110111111)
 			est++;
 		if(three<<7 & ~opp
-			& 0b011111101111110111111011111101111110111111)
+			& 0b0111111011111101111110111111011111101111110111111)
 			est++;
 		if(verbose)
 			printf("found horiz (est = %d)\n", est);
@@ -393,10 +434,10 @@ float estimate_color(uint64_t x, uint64_t opp, bool verbose)
 	if(three)
 	{
 		if(three>>16 & ~opp
-			& 0b011111101111110111111011111101111110111111)
+			& 0b0111111011111101111110111111011111101111110111111)
 			est++;
 		if(three<<16 & ~opp
-			& 0b011111101111110111111011111101111110111111)
+			& 0b0111111011111101111110111111011111101111110111111)
 			est++;
 		if(verbose)
 			printf("found fd diag (est = %d)\n", est);
@@ -407,10 +448,10 @@ float estimate_color(uint64_t x, uint64_t opp, bool verbose)
 	if(three)
 	{
 		if(three>>12 & ~opp
-			& 0b011111101111110111111011111101111110111111)
+			& 0b0111111011111101111110111111011111101111110111111)
 			est++;
 		if(three<<12 & ~opp
-			& 0b011111101111110111111011111101111110111111)
+			& 0b0111111011111101111110111111011111101111110111111)
 			est++;
 		if(verbose)
 			printf("found bk diag (est = %d)\n", est);
@@ -449,7 +490,7 @@ void c4_make_move(void *pos, int index, uint32_t *hash)
 	c4_pos_t *p = pos;
 
 	//uint64_t b = p->filled + (((uint64_t)1) << (7*index));
-	//b &= 0b011111101111110111111011111101111110111111;
+	//b &= 0b0111111011111101111110111111011111101111110111111;
 	//printf("0x%0x\n", b);
 
 	uint64_t col = get_col(p->filled, index)+1;
@@ -630,6 +671,13 @@ void c4_draw_full(void *pos)
 
 	char indent[] = "\t\t\t\t\t\t\t";
 
+	//test
+	uint64_t r = p->x ^ p->filled;
+	uint64_t filled = p->filled;
+	//uint64_t = ;
+	uint64_t wm = win_map(r, filled);
+
+
 	//header
 	printf(indent);
 	for(int c=0; c<7; c++)
@@ -652,7 +700,11 @@ void c4_draw_full(void *pos)
 					ry = !ry;
 				c = ry? 'R':'Y';
 
+				if(wm & bit_m)
+					assert(0);
 			}
+			else if(wm & bit_m)
+				c = '!';
 			printf("%c   ", c);
 		}
 	}
