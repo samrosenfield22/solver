@@ -331,6 +331,7 @@ float c4_estimate_sort(void *pos, int move)
 	//float est = estimate_sort_color(x, opp, filled);
 	//est -= estimate_sort_color(opp, x, filled);
 
+	/*
 	//count all places where we're one move away from win
 	uint64_t b = 0b1;
 	int r = 0;
@@ -365,55 +366,30 @@ float c4_estimate_sort(void *pos, int move)
 
 	///est /= 10;
 	return (float)est;
+	*/
 }
 
-
-float estimate_color(uint64_t x, uint64_t opp, bool verbose)
-//float estimate_color(uint64_t x, uint64_t filled, bool verbose)
+float estimate_color_count_middles(uint64_t x)
 {
 	int est = 0;
 
-	int scores[] = {1, 2, 3, 5, 3, 2, 1};
-	for(int i=0; i<7; i++)
+	int scores[] = {0, 1, 2, 3, 2, 1, 0};
+	for(int i=1; i<6; i++)
 	{
 		int col_bits = __builtin_popcount(get_col(x, i));
 		est += scores[i] * col_bits;
 	}
 	return est;
+}
 
-	/*
-	//count all places where we're one move away from win
-	uint64_t b = 0b1;
-	int r = -1;
-	for(int i=0; i<49; i++)
-	{
-		r++;
-		if(r == 6)
-		{
-			r = 0;
-			b <<= 1;
-			continue;
-		}
-		if(filled & b)
-		{
-			b<<=1;
-			continue;
-		}
+float estimate_color_count_wins(uint64_t x, uint64_t filled, bool verbose)
+{
+	return __builtin_popcount(win_map(x, filled));
+}
 
-
-		if(is_win(x | b))
-		{
-			est++;
-			if(verbose)
-				printf("\twin sq @ c%d, r%d\n", i/7, i%7);
-		}
-
-		b<<=1;
-	}
-	if(verbose)
-		printf("\twin sqs = %d\n", est);
-	return (float)est;
-	*/
+float estimate_color_count_open_threes(uint64_t x, uint64_t opp, bool verbose)
+{
+	int est = 0;
 
 	//horizontal
 	uint64_t three = x & (x<<7) & (x<<14);
@@ -469,7 +445,15 @@ float estimate_color(uint64_t x, uint64_t opp, bool verbose)
 
 
 	return (float)est;
+}
 
+
+float estimate_color(uint64_t x, uint64_t opp, bool verbose)
+//float estimate_color(uint64_t x, uint64_t filled, bool verbose)
+{
+	return estimate_color_count_middles(x);
+	//return estimate_color_count_wins(x, opp, verbose);
+	//return estimate_color_count_open_threes(x, opp, verbose);
 }
 
 
@@ -798,11 +782,20 @@ bool c4_replace_transpose(void *k_old, void *v_old,
 	trans_value_t *val_old = v_old;
 	trans_value_t *val_new = v_new;
 
-	if(val_new->iddfs > val_old->iddfs)
+	if((val_old->score >= MATE_LIMIT
+		|| val_old->score <= MATE_LIMIT)
+		&&
+		!(val_new->score >= MATE_LIMIT
+			|| val_new->score <= MATE_LIMIT))
+		return false;
+	int age = val_new->iddfs - val_old->iddfs;
+	if(age >= 4)
 		return true;
-	assert(val_old->iddfs == val_new->iddfs);
+	//if(val_new->iddfs > val_old->iddfs)
+	//	return true;
+	//assert(val_old->iddfs == val_new->iddfs);
 
-	if(val_old->depth > val_new->depth)
+	if(val_old->depth+4 < val_new->depth)
 		return false;
 	return true;
 
@@ -816,9 +809,10 @@ solver_t C4_SOLVER =
 	.initial_pos = &C4_INIT_POS,
 	.pos_size = sizeof(c4_pos_t),
 	.possible_moves = 7,
-	.transtbl_buckets_ct = 180000003,
+	.transtbl_buckets_ct = 180000001,
+	//.transtbl_buckets_ct = 2147483648,
 	.default_order = (uint8_t[]){3, 2, 4, 1, 5, 0, 6},
-	.flip_depth = 18,
+	.flip_depth = 16,
 
 	.gameover = c4_gameover,
 	.estimate = c4_estimate,

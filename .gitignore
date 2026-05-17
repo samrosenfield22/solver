@@ -1,1 +1,4 @@
 *.exe
+
+hashmap_alt.c
+hashmap_alt.h
