@@ -17,6 +17,8 @@
 //#define DEV_MODE	(false)
 
 void print_sequence(int8_t *seq);
+bool load_pgn(solver_t *solver, void *pos, char *in);
+bool read_pgn_file(solver_t *solver, void *pos, char *name);
 bool seq_charp_to_ints(solver_t *solver, void *pos, char *seq);
 void seq_add(int move);
 
@@ -76,11 +78,11 @@ void play_menu(void)
 				len-1);
 	}
 
-	printf("enter initial moves (press enter for a new game):\n");
-	char movelist[640];
-	fgets(movelist, 639, stdin);
+	printf("enter pgn, or press enter for a new game:\n");
+	char pgn[640];
+	fgets(pgn, 639, stdin);
 	void *pos = game->initial_pos;
-	bool valid = seq_charp_to_ints(game, pos, movelist);
+	bool valid = load_pgn(game, pos, pgn);
 	if(!valid)
 		return;
 	//void *starting_pos = construct_pos(game, movelist);
@@ -181,6 +183,39 @@ void play(solver_t *solver, void *pos, bool p1, bool p2)
 
 		seq_add(move);
 	}
+}
+
+bool load_pgn(solver_t *solver, void *pos, char *in)
+{
+	//void *pos = solver->initial_pos;
+	bool valid;
+	if(in[strlen(in)-1] == '\n')
+		in[strlen(in)-1] = '\0';
+	if(strstr(in, ".txt"))
+		valid = read_pgn_file(solver, pos, in);
+	else
+		valid = seq_charp_to_ints(solver, pos, in);
+	return valid;
+}
+
+bool read_pgn_file(solver_t *solver, void *pos, char *name)
+{
+	//make file name
+	const char *dir = "algos/solver/pgns";
+	char buf[640];
+	snprintf(buf, 639, "%s/%s", dir, name);
+
+	//open file
+	FILE *fp = fopen(buf, "r");
+	if(!fp)
+	{
+		printf("invalid file %s\n", buf);
+		return false;
+	}
+
+	//load moves
+	fgets(buf, 639, fp);
+	return seq_charp_to_ints(solver, pos, buf);
 }
 
 bool seq_charp_to_ints(solver_t *solver, void *pos, char *seq)

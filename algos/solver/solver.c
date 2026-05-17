@@ -368,7 +368,7 @@ float eval(tree_t *gt, tnode_t *n, int depth,
 	sorter_t order[solver->possible_moves];
 	int len;
 	int only = solver->only_move? solver->only_move(pos) : -1;
-	if(only != -1)
+	if(only != -1 && solver->is_legal(pos, only))
 	//if(0)
 	{
 		order[0].move = only;
@@ -706,7 +706,7 @@ float analyze_all_children(tree_t *gt, tnode_t *n,
 		//printf("%d\n", killer);
 	}
 
-	assert(best_move != -1);
+	//assert(best_move != -1);
 	tree_get(gt, n);
 	minimax(gt, depth);
 	//tree_swap_children(gt, 0, best_move);
@@ -798,6 +798,7 @@ int order_compare(const void *aa, const void *bb)
 void build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth)
 {
 	void *pos = node_get_pos(n);
+	(void)pos;
 	trans_value_t *v = tt_get(n, depth);
 	int best = v? v->best_move : -1;
 	for(int i=0; i<solver->possible_moves; i++)

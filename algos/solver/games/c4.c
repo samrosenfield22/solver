@@ -818,7 +818,7 @@ solver_t C4_SOLVER =
 	.possible_moves = 7,
 	.transtbl_buckets_ct = 180000003,
 	.default_order = (uint8_t[]){3, 2, 4, 1, 5, 0, 6},
-	.flip_depth = 14,
+	.flip_depth = 18,
 
 	.gameover = c4_gameover,
 	.estimate = c4_estimate,
