@@ -36,7 +36,7 @@ void order_children(tree_t *gt, tnode_t *n, int depth, int killer);
 float sort_score(tree_t *gt, tnode_t *parent, tnode_t *n,
 	int best, int depth, int index);
 float analyze_all_children(tree_t *gt, tnode_t *n,
-	sorter_t *order, int depth, float alpha, float beta);
+	sorter_t *order, int len, int depth, float alpha, float beta);
 
 bool tt_check(tnode_t *n);
 trans_value_t *tt_get(tnode_t *n, int depth);
@@ -360,16 +360,34 @@ float eval(tree_t *gt, tnode_t *n, int depth,
 		return n->score;
 	}
 
-	//main analysis -- recursive tree search
+	float score;
+
+	//make move order
+	//if there's only one move (that wins or loses),
+	//just play that
 	sorter_t order[solver->possible_moves];
-	build_order(order, gt, n, depth);
-	assert(n->child_ct == 0);
+	int len;
+	int only = solver->only_move? solver->only_move(pos) : -1;
+	if(only != -1)
+	//if(0)
+	{
+		order[0].move = only;
+		len = 1;
+	}
+	else
+	{
+		build_order(order, gt, n, depth);
+		assert(n->child_ct == 0);
 
-	//add_all_new_moves(gt, n, depth);
-	//order_children(gt, n, depth, killer);
-	//int *order;
+		//add_all_new_moves(gt, n, depth);
+		//order_children(gt, n, depth, killer);
+		//int *order;
 
-	float score = analyze_all_children(gt, n, order, depth, alpha, beta);
+		len = solver->possible_moves;
+	}
+
+	//main analysis -- recursive tree search
+	score = analyze_all_children(gt, n, order, len, depth, alpha, beta);
 
 	assert(n->child_ct);
 	int best_move = n->children[0]->move_index;
@@ -511,7 +529,7 @@ float sort_score(tree_t *gt, tnode_t *parent, tnode_t *n,
 }
 
 float analyze_all_children(tree_t *gt, tnode_t *n,
-	sorter_t *order, int depth, float alpha, float beta)
+	sorter_t *order, int len, int depth, float alpha, float beta)
 {
 	assert(n->child_ct == 0);
 
@@ -538,7 +556,7 @@ float analyze_all_children(tree_t *gt, tnode_t *n,
 
 	//bool bound_changed = false;
 	//for(int i=0; i<n->child_ct; i++)
-	for(int i=0; i<solver->possible_moves; i++)
+	for(int i=0; i<len; i++)
 	{
 
 		tree_get(gt, n);
@@ -810,10 +828,7 @@ void build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth)
 	//sort
 	qsort(order, solver->possible_moves,
 		sizeof(*order), order_compare);
-	//for(int i=0; i<solver->possible_moves; i++)
-	//	printf("move %d has sort score %.2f\n",
-	//		order[i].move, order[i].score);
-	//exit(0);
+
 	return;
 
 
@@ -1046,21 +1061,9 @@ trans_value_t *tt_get(tnode_t *n, int depth)
 
 	if(!value && solver->flip && depth<=solver->flip_depth)
 	{
-		//void *flipped = mem_malloc(solver->pos_size);
 		uint8_t flipped[solver->pos_size];
 		solver->flip(flipped, pos);
-
-		/*printf("checking flip...\n");
-		solver->draw_full(pos);
-		printf("flipped:\n");
-		solver->draw_full(flipped);
-		printf("---------------------------------------\n\n");
-		*/
-
 		value = hashmap_key_get_value(trans_tbl, flipped, NULL);
-		//if(value)
-		//	printf("found flipped!\n");
-		//mem_free(flipped);
 	}
 
 	if(value)

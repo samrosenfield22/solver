@@ -647,6 +647,32 @@ void c4_flip_horiz(void *to, void *from)
 	t->filled = flip_64(f->filled);
 }
 
+int c4_only_move(void *pos)
+{
+	c4_pos_t *p = pos;
+
+	//check if we have a win on next move
+	uint64_t wmap = win_map(p->x, p->filled);
+	for(int i=0; i<7; i++)
+	{
+		uint64_t mb = move_bit(p, i);
+		if(mb & wmap)
+			return i;
+	}
+
+	//check if opp has a win we have to block on next move
+	uint64_t opp = p->x ^ p->filled;
+	uint64_t opp_wmap = win_map(opp, p->filled);
+	for(int i=0; i<7; i++)
+	{
+		uint64_t mb = move_bit(p, i);
+		if(mb & opp_wmap)
+			return i;
+	}
+
+	return -1;
+}
+
 /*void draw_color(uint8_t *cols, uint8_t *opp)
 {
 	char indent[] = "\t\t\t\t\t\t\t";
@@ -792,7 +818,7 @@ solver_t C4_SOLVER =
 	.possible_moves = 7,
 	.transtbl_buckets_ct = 180000003,
 	.default_order = (uint8_t[]){3, 2, 4, 1, 5, 0, 6},
-	.flip_depth = 12,
+	.flip_depth = 14,
 
 	.gameover = c4_gameover,
 	.estimate = c4_estimate,
@@ -800,7 +826,8 @@ solver_t C4_SOLVER =
 	.whosemove = c4_whosemove,
 	.is_legal = c4_is_legal,
 	.make_move = c4_make_move,
-	.move_loses = c4_move_loses,
+	//.move_loses = c4_move_loses,
+	.only_move = c4_only_move,
 
 	.print_pos = NULL,
 	.hash = c4_hash,

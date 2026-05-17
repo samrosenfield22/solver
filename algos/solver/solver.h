@@ -11,7 +11,7 @@
 #define USE_TRANSPOSITION_TABLE
 #define CLEAR_SUB_NODES
 
-//#define FORCE_SEARCH_DEPTH	(28)
+#define FORCE_SEARCH_DEPTH	(35)
 
 #define VARIATION_LENGTH	(3)
 #define PRINCIPAL_VAR_CT	(7)
@@ -62,7 +62,8 @@ typedef struct
 	//bool (*is_end)(void *pos);
 	bool (*is_legal)(void *pos, int index);
 	void (*make_move)(void *pos, int index, uint32_t *hash);
-	bool (*move_loses)(void *pos, int move);
+	//bool (*move_loses)(void *pos, int move);
+	int (*only_move)(void *pos);
 	uint32_t (*hash)(void *key, size_t size);
 	bool uses_zobrist;
 	bool (*keys_match)(void *k1, void *k2);
