@@ -210,6 +210,7 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms,
 		to get the best move
 		*/
 		float score = eval(gt, gt->head, 0, -WIN_SCORE, WIN_SCORE, -1);
+		//float score = eval(gt, gt->head, 0, 10, 11, -1);
 		if(score > MATE_LIMIT || score < -MATE_LIMIT)
 		{
 			full_solve = true;
@@ -387,7 +388,8 @@ float eval(tree_t *gt, tnode_t *n, int depth,
 	}
 
 	//main analysis -- recursive tree search
-	score = analyze_all_children(gt, n, order, len, depth, alpha, beta);
+	score = analyze_all_children(gt, n, order, len,
+		depth, alpha, beta);
 
 	assert(n->child_ct);
 	int best_move = n->children[0]->move_index;
@@ -539,25 +541,17 @@ float analyze_all_children(tree_t *gt, tnode_t *n,
 
 	int killer = -1;
 
-	//quick check to see if moves win
-	/*for(int i=0; i<n->child_ct; i++)
-	{
-		tnode_t *child = n->children[i];
-		int i_won = max_or_min(depth)? END_P1_WON : END_P2_WON;
-		if(solver->gameover(child->data) == i_won)
-		{
-			child->score = max_or_min(depth)? WIN_SCORE : -WIN_SCORE;
-			tree_get(gt, n);
-			minimax(gt, depth);
-			return child->score;
-		}
-
-	}*/
-
 	//bool bound_changed = false;
 	//for(int i=0; i<n->child_ct; i++)
 	for(int i=0; i<len; i++)
 	{
+
+		//hmmmm
+		/*if(alpha >= beta)
+		{
+			break;
+		}*/
+
 
 		tree_get(gt, n);
 		int move = order[i].move;
@@ -567,23 +561,9 @@ float analyze_all_children(tree_t *gt, tnode_t *n,
 		tnode_t *child = node_make_new_move(gt, n, move);
 		if(!child)
 			continue;
-
 		//tnode_t *child = n->children[i];
 
-		/*float c_score;
-		if(bound_changed)
-		{
-			if(max_or_min(depth)==MAX_LAYER)
-				c_score = eval(gt, child, depth+1,
-					alpha, alpha+2, killer);
-			else
-				c_score = eval(gt, child, depth+1,
-					beta-2, beta, killer);
-		}
-		else
-			c_score = eval(gt, child, depth+1,
-			alpha, beta, killer);
-		*/
+
 		float c_score = eval(gt, child, depth+1,
 			alpha, beta, killer);
 
@@ -616,17 +596,6 @@ float analyze_all_children(tree_t *gt, tnode_t *n,
 			}
 		}
 
-		/*if((max_or_min(depth)==MAX_LAYER && c_score > MATE_LIMIT)
-			|| (max_or_min(depth)!=MAX_LAYER && c_score < -MATE_LIMIT))
-		{
-			best = c_score;
-			break;
-		}*/
-
-
-		//if(is_better(cscore, best_so_far, depth))
-		//	best_so_far = cscore;
-		//(void)c_score;
 		if(max_or_min(depth)==MAX_LAYER)
 		{
 			//best = max(best, c_score);
@@ -650,54 +619,26 @@ float analyze_all_children(tree_t *gt, tnode_t *n,
 		if(max_or_min(depth)==MAX_LAYER)
 		{
 			if(c_score > alpha)
-			{
 				alpha = c_score;
-				//bound_changed = true;
-			}
 		}
 		else	//min
 		{
 			if(c_score < beta)
-			{
 				beta = c_score;
-				//bound_changed = true;
-			}
 		}
-		/*	alpha = max(alpha, c_score);
+		/*if(max_or_min(depth)==MAX_LAYER)
+			alpha = max(alpha, c_score);
 		else	//min
-			beta = min(beta, c_score);
-		*/
-		//if(depth == 1)
-		//	printf("\t");
-		//if(depth <= 1)
-		//	printf("score is %.1f --> ab=[%.1f,%.1f]\n", c_score, alpha, beta);
+			beta = min(beta, c_score);*/
+
 		if(alpha >= beta)
 		{
-			//if(depth == 1)
-			//	printf("\t");
-			//if(depth <= 1)
-			//	printf("cutoff!\n");
-
 			if(max_or_min(depth) == MAX_LAYER)
-				//&& (-MATE_LIMIT <= c_score && c_score <= MATE_LIMIT))
 				{alpha++; best++;}
 			else
 				{beta--; best--;}
-			//cutoff = true;
-			//if(depth == 1)
-			//	printf("\t");
-			//if(depth <= 1)
-			//	printf("(ab updated to [%.1f,%.1f])\n", alpha, beta);
-
-			/*tree_get(gt, n);
-			while(n->child_ct > i+1)
-				tree_delete_child(gt, i+1);*/
 
 			break;
-
-			//n->score = beta;
-			//return beta;
-			//return;
 		}
 		#endif
 
@@ -714,15 +655,15 @@ float analyze_all_children(tree_t *gt, tnode_t *n,
 	assert(n->child_ct);
 	assert(n->children[0]);
 	//n->score = n->children[0]->score;
-	if(!(n->children[0]->score == best))
+	/*if(!(n->children[0]->score == best))
 	{
 		//printf("!!! minimax child score = %.2f, best is %.2f\n",
 		//	n->children[0]->score, best);
 		//assert(0);
-	}
+	}*/
 
 
-	/*if(max_or_min(depth)==MAX_LAYER)
+	if(max_or_min(depth)==MAX_LAYER)
 	{
 		n->score = best;
 		//n->score = alpha;
@@ -737,8 +678,8 @@ float analyze_all_children(tree_t *gt, tnode_t *n,
 		//if(cutoff)
 		//	n->score++;
 		//return beta;
-	}*/
-	n->score = best;
+	}
+	//n->score = best;
 
 	/*if(n->score > MATE_LIMIT)
 	{
