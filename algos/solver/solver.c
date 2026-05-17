@@ -706,6 +706,7 @@ float analyze_all_children(tree_t *gt, tnode_t *n,
 		//printf("%d\n", killer);
 	}
 
+	(void)best_move;
 	//assert(best_move != -1);
 	tree_get(gt, n);
 	minimax(gt, depth);
@@ -757,7 +758,7 @@ float analyze_all_children(tree_t *gt, tnode_t *n,
 	return n->score;
 }
 
-bool move_loses(void *pos, int move)
+/*bool move_loses(void *pos, int move)
 {
 	if(!solver->is_legal(pos, move))
 		return false;
@@ -785,7 +786,7 @@ bool move_loses(void *pos, int move)
 	mem_free(after);
 	mem_free(next);
 	return losing;
-}
+}*/
 
 int order_compare(const void *aa, const void *bb)
 {

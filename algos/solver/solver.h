@@ -11,7 +11,7 @@
 #define USE_TRANSPOSITION_TABLE
 #define CLEAR_SUB_NODES
 
-//#define FORCE_SEARCH_DEPTH	(32)
+#define FORCE_SEARCH_DEPTH	(30)
 
 #define VARIATION_LENGTH	(3)
 #define PRINCIPAL_VAR_CT	(7)
@@ -47,36 +47,122 @@ typedef struct
 {
 	char *name;
 
+	/*required:
+	points to the game start position, which you must define*/
 	void *initial_pos;
+
+	/*required:
+	number of bytes of the position structure
+	sizeof(my_initial_pos)*/
 	size_t pos_size;
+
+	/*required:
+	maximum value for move iteration
+	i.e. 9 for tictactoe, 7 for connect 4*/
 	int possible_moves;
+
+	/*optional (but not really):
+	size of the transposition table hashmap, if using one.
+	this should basically be as big as possible.
+	and also prime? hmmm*/
 	uint32_t transtbl_buckets_ct;
+
+	/*optional: if checking for symmetrical positions in
+	the transposition table, only check for symmetries up
+	to this depth*/
 	int flip_depth;
 
+	/*optional:
+	int array of move indices, in order from best guess to worst
+	ex. for connect 4, this would be:
+	.default_order = (uint8_t[]){3, 2, 4, 1, 5, 0, 6}
+	(central moves are better than flank moves)*/
 	uint8_t *default_order;
 
+	/*required:
+	checks if the game is a win for either player, draw,
+	or is still in progress*/
 	endstate_t (*gameover)(void *pos);
+
+	/*optional:*/
 	float (*estimate)(void *pos);
+
+	/*optional:*/
 	float (*estimate_sort)(void *pos, int move);
+
+	/*required:
+	returns true for p1, false for p2*/
 	bool (*whosemove)(void *pos);
+
 	//bool (*is_end)(void *pos);
+
+	/*required:
+	returns true if the move is legal*/
 	bool (*is_legal)(void *pos, int index);
+
+	/*required:
+	makes the given move, updating the position in place.
+	this assumes that the move is legal.
+	if using an updating hash system like zobrist, we can pass
+	a pointer to the current hash to be updated. if not, pass
+	NULL.*/
 	void (*make_move)(void *pos, int index, uint32_t *hash);
+
 	//bool (*move_loses)(void *pos, int move);
+
+	/*optional:
+	if there is a move that wins immediately, return it
+	if not,
+	if there is a move that blocks opponent's immediate win,
+	play it
+	if not, returns -1*/
 	int (*only_move)(void *pos);
+
+	/*required:
+	computes the hash. in updating hash systems like zobrist,
+	this is still required (currently) for the initial pos
+	(although it doesn't really need to be)*/
 	uint32_t (*hash)(void *key, size_t size);
+
+
 	bool uses_zobrist;
+
+	/*optional:
+	determines if keys are the same
+	this is to avoid the problem of memcmp() reading slack bytes
+	in the key struct, and reporting false for keys that match*/
 	bool (*keys_match)(void *k1, void *k2);
+
+	/*optional:
+	creates a symmetrically equivalent version of the position*/
 	void (*flip)(void *to, void *from);
+
 	//void (*normalize_position)(void *k);
 	//bool (*replace_transpose)(void *k1, void *k2);
+
+	/*optional:
+	compares 2 KV pairs, and determines if the transposition
+	table should keep the previously stored position, or replace
+	it with the new one*/
 	bool (*replace_transpose)(void *k1, void *v1,
 		void *k2, void *d1);
 
+	/*optional:
+	short print, for tree draw*/
 	int (*print_pos)(void *pos);
 
+	/*required:
+	draws the position, make it nice looking*/
 	void (*draw_full)(void *pos);
+
+	/*optional:
+	converts a human-friendly expression of a move (i.e. Nc3)
+	into a move index*/
 	int (*human_to_iter)(char *human);
+
+	/*optional:
+	converts a move index into a human-friendly expression
+	of a move (i.e. Nc3)*/
 	char *(*iter_to_human)(int move);
 
 } solver_t;
