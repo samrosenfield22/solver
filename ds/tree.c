@@ -223,6 +223,12 @@ void tree_destroy(tree_t *t)
 
 	tree_clear(t);
 	list_destroy(t->search_list);
+
+	#ifdef USE_BLOCK_ALLOC
+	block_allocator_destroy(t->node_allocator);
+	block_allocator_destroy(t->data_allocator);
+	#endif
+
 	mem_free(t);
 }
 

@@ -18,6 +18,7 @@ typedef struct
 } b_alloc_t;
 
 b_alloc_t *block_allocator(size_t size, int init);
+void block_allocator_destroy(b_alloc_t *ba);
 void *block(b_alloc_t *ba);
 void block_free(b_alloc_t *ba, void *data);
 

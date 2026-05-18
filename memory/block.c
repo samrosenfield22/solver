@@ -25,6 +25,21 @@ b_alloc_t *block_allocator(size_t size, int init)
 	return ba;
 }
 
+void block_allocator_destroy(b_alloc_t *ba)
+{
+	//free all blocks
+	block_t *b = ba->first;
+	while(b)
+	{
+		block_t *next = b->next;
+		mem_free(b);
+		b = next;
+	}
+
+	//free allocator
+	mem_free(ba);
+}
+
 void *block(b_alloc_t *ba)
 {
 	block_t *b = ba->first;
