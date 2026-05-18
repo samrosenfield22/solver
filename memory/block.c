@@ -14,7 +14,8 @@ b_alloc_t *block_allocator(size_t size, int init)
 {
 	b_alloc_t *ba = mem_malloc(sizeof(*ba));
 	assert(ba);
-	ba->size = size + sizeof(block_t);
+	ba->size = size;
+	//ba->size = size + sizeof(block_t);
 
 	ba->first = NULL;
 	//ba->last = NULL;
@@ -48,13 +49,14 @@ void *block(b_alloc_t *ba)
 	else
 		b = block_create(ba);
 
-	return b->data;
+	return b;
+	//return b->data;
 }
 
 void block_free(b_alloc_t *ba, void *data)
 {
 	block_t *b = data;
-	b--;
+	//b--;
 	block_insert(ba, b);
 }
 
