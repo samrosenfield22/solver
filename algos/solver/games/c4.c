@@ -38,6 +38,10 @@ void zobrist_init(void)
 	assert(!zobrist_computed);
 	zobrist_computed = true;
 
+	/*tried srand seeds from 0 through 50
+	best: 17 (43 collisions at d=18)
+	worst: 19 (122)*/
+	srand(9);
 	for(int i=0; i<ZOBRIST_LEN; i++)
 	{
 		zobrist_strings[i] = rand()<<16 | rand();

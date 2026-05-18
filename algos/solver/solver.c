@@ -199,8 +199,8 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms,
 	{
 		full_solve = true;
 
-		if(verbose)
-			printf("\niddfs depth=%d\n", iddfs);
+		//if(verbose)
+		//	printf("\niddfs depth=%d\n", iddfs);
 
 		tree_set_search_depth(gt, iddfs);
 		uint32_t last = toc_ms();
@@ -217,11 +217,7 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms,
 			break;
 		}
 		//eval(gt, gt->head, 0, -5, 5, -1);
-		uint32_t now = toc_ms();
 
-		if(verbose)
-			printf("\ttook %u ms\n", now-last);
-		last = now;
 
 		//conditions for ending the search
 		#ifdef FORCE_SEARCH_DEPTH
@@ -238,7 +234,7 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms,
 		{
 			if(iddfs >= 1)
 			{
-				printf("\t(%+.1f)   ", score);
+				printf("%+.2f (depth: %d)  \t", score, iddfs);
 				tnode_t *n = gt->head->children[0];
 				for(int i=0; i<2*VARIATION_LENGTH; i++)
 				{
@@ -252,6 +248,10 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms,
 					//assert(n->child_ct);
 					n = n->children[0];
 				}
+
+				uint32_t now = toc_ms();
+				printf("\n\ttook %u ms\n", now-last);
+				last = now;
 			}
 		}
 

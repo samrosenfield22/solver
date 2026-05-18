@@ -6,6 +6,7 @@
 #include <stdlib.h>
 
 #include "list.h"
+#include "../memory/block.h"
 
 #define tree(type)	tree_create(sizeof(type))
 
@@ -47,6 +48,8 @@ typedef struct
 	tnode_t *p, *head;
 	int depth;
 	bool first_visit;
+
+	void *node_allocator, *data_allocator;
 
 	void (*destroy_fp)(void *d);
 	int (*print_fp)(void *d);

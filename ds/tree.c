@@ -8,6 +8,8 @@
 #include <string.h>
 #include <assert.h>
 
+#define USE_BLOCK_ALLOC
+
 //statics
 tnode_t *tree_node_create(tree_t *t, void *data);
 void tree_node_add_child(tnode_t *p, tnode_t *n);
@@ -20,6 +22,8 @@ void searchlist_add_children(tree_t *t, tnode_t *n, int cdepth);
 void searchlist_add_node(tree_t *t, tnode_t *n, int cdepth);
 void node_delete(tree_t *t, tnode_t *n);
 
+tnode_t *node_and_data_alloc(tree_t *t);
+void node_and_data_free(tree_t *t, tnode_t *n);
 
 tree_t *tree_create(size_t size)
 {
@@ -40,6 +44,11 @@ tree_t *tree_create(size_t size)
 	t->first_visit = false;
 
 	t->search_depth = NO_DEPTH_LIMIT;
+
+	#ifdef USE_BLOCK_ALLOC
+	t->node_allocator = block_allocator(sizeof(tnode_t), 200);
+	t->data_allocator = block_allocator(size, 200);
+	#endif
 
 	return t;
 }
@@ -580,7 +589,7 @@ tnode_t *tree_node_create(tree_t *t, void *data)
 	if(!t)
 		return NULL;
 
-	tnode_t *n = mem_malloc(sizeof(*n));
+	tnode_t *n = node_and_data_alloc(t);
 	if(!n)
 		return NULL;
 
@@ -589,12 +598,12 @@ tnode_t *tree_node_create(tree_t *t, void *data)
 	n->child_ct = 0;
 	if(data)
 	{
-		n->data = mem_malloc(t->item_size);
+		/*n->data = mem_malloc(t->item_size);
 		if(!n->data)
 		{
 			mem_free(n);
 			return NULL;
-		}
+		}*/
 		memcpy(n->data, data, t->item_size);
 	}
 
@@ -603,7 +612,7 @@ tnode_t *tree_node_create(tree_t *t, void *data)
 	n->children = vector(tnode_t *, 4);
 	if(!n->children)
 	{
-		mem_free(n);
+		node_and_data_free(t, n);
 		return NULL;
 	}
 
@@ -770,12 +779,39 @@ void node_delete(tree_t *t, tnode_t *n)
 	vector_destroy(n->children);
 	if(t->destroy_fp)
 		t->destroy_fp(n->data);
-	if(n->data)
-		mem_free(n->data);
-	mem_free(n);
+
+	node_and_data_free(t, n);
 
 	t->node_ct--;
 }
+
+tnode_t *node_and_data_alloc(tree_t *t)
+{
+	#ifdef USE_BLOCK_ALLOC
+	tnode_t *n = block(t->node_allocator);
+	n->data = block(t->data_allocator);
+	#else
+	tnode_t *n = mem_malloc(sizeof(*n));
+	n->data = mem_malloc(t->item_size);
+	#endif
+
+	return n;
+}
+
+
+void node_and_data_free(tree_t *t, tnode_t *n)
+{
+	#ifdef USE_BLOCK_ALLOC
+	if(n->data)
+		block_free(t->data_allocator, n->data);
+	block_free(t->node_allocator, n);
+	#else
+	if(n->data)
+		mem_free(n->data);
+	mem_free(n);
+	#endif
+}
+
 
 int compare_by_score_ascending(const void *a, const void *b)
 {
