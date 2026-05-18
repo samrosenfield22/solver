@@ -34,6 +34,22 @@ hashmap_t *hashmap_create(size_t ksize, size_t vsize, uint32_t len)
 	h->compare_keys_fp = NULL;
 	h->normalize_key = NULL;
 
+	h->p2_mask = 0;
+	uint32_t b = 0b1;
+	for(int i=0; i<32; i++)
+	{
+		if(b == len)
+		{
+			h->p2_mask = b-1;
+			break;
+		}
+		else if(b > len)
+			break;
+		b<<=1;
+	}
+	printf("len=%d, mask=0x%0x\n", len, h->p2_mask);
+	//exit(0);
+
 	return h;
 }
 
@@ -357,6 +373,17 @@ void *copy_key_normalize(hashmap_t *h, void *key)
 		return NULL;*/
 }
 
+uint32_t avalanche(uint32_t index)
+{
+	uint64_t x = index;
+
+	x *= 0x61664b66ad5f0385ull;
+	x ^= x >> 32;
+	x *= 0xf959d19084fd5339ull;
+	x ^= x >> 32;
+	return x;
+}
+
 void *hashmap_key_get_bucket(hashmap_t *h, void *key, uint32_t *hash)
 {
 	if(!h)
@@ -365,9 +392,15 @@ void *hashmap_key_get_bucket(hashmap_t *h, void *key, uint32_t *hash)
 	//uint32_t index = hashmap_key_get_index(h, key);
 	uint32_t index;
 	if(hash)
-		index = (*hash) % h->len;
+		index = (*hash);
 	else
 		index = hashmap_key_get_index(h, key);
+	index = avalanche(index);
+
+	if(h->p2_mask)
+		index &= h->p2_mask;
+	else
+		index %= h->len;
 	return &h->map[index];
 	//list_t **pairlist = (list_t**)&h->map[index];
 	//return pairlist;
@@ -380,7 +413,7 @@ uint32_t hashmap_key_get_index(hashmap_t *h, void *key)
 
 
 	uint32_t index = h->hash(key, h->ksize);
-	index %= h->len;
+	//index %= h->len;
 
 	return index;
 }

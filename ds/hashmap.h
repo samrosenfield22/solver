@@ -16,6 +16,7 @@ typedef struct
 	size_t ksize, vsize;
 	uint32_t len, filled;
 	uint32_t collisions;
+	int p2_mask;
 
 	uint32_t (*hash)(void *key, size_t size);
 	bool (*compare_keys_fp)(void *k1, void *k2);

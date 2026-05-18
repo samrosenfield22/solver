@@ -165,14 +165,8 @@ float c4_estimate(void *pos)
 	//assert(c4_ok(pos));
 	c4_pos_t *p = pos;
 
-
-	//float est = 0;
-
 	uint64_t x = p->x;
 	uint64_t opp = p->x ^ p->filled;
-
-	//float est = estimate_color(me, opp, false);
-	//est -= estimate_color(opp, me, false);
 
 	//calculate est for the player whose turn it is
 	float est = estimate_color(x, opp, false);
@@ -809,8 +803,8 @@ solver_t C4_SOLVER =
 	.initial_pos = &C4_INIT_POS,
 	.pos_size = sizeof(c4_pos_t),
 	.possible_moves = 7,
-	.transtbl_buckets_ct = 180000001,
-	//.transtbl_buckets_ct = 2147483648,
+	//.transtbl_buckets_ct = 180000001,
+	.transtbl_buckets_ct = (1<<28),
 	.default_order = (uint8_t[]){3, 2, 4, 1, 5, 0, 6},
 	.flip_depth = 16,
 

@@ -238,7 +238,7 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms,
 		{
 			if(iddfs >= 1)
 			{
-				printf("\tpv: ");
+				printf("\t(%+.1f)   ", score);
 				tnode_t *n = gt->head->children[0];
 				for(int i=0; i<2*VARIATION_LENGTH; i++)
 				{
@@ -536,7 +536,8 @@ float analyze_all_children(tree_t *gt, tnode_t *n,
 	assert(n->child_ct == 0);
 
 	float best = worst_score(depth);
-	int best_move = -1;
+	//int best_move = -1;
+	int best_move = (len==1)? -1 : order[0].move;
 	//bool cutoff = false;
 
 	int killer = -1;
@@ -647,8 +648,8 @@ float analyze_all_children(tree_t *gt, tnode_t *n,
 		//printf("%d\n", killer);
 	}
 
-	(void)best_move;
-	//assert(best_move != -1);
+	//(void)best_move;
+	assert(best_move != -1);
 	tree_get(gt, n);
 	minimax(gt, depth);
 	//tree_swap_children(gt, 0, best_move);
