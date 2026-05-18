@@ -9,6 +9,7 @@
 #include <assert.h>
 
 #define USE_BLOCK_ALLOC
+#define BLOCK_ALLOC_INIT_LEN	(200)
 
 //statics
 tnode_t *tree_node_create(tree_t *t, void *data);
@@ -46,8 +47,8 @@ tree_t *tree_create(size_t size)
 	t->search_depth = NO_DEPTH_LIMIT;
 
 	#ifdef USE_BLOCK_ALLOC
-	t->node_allocator = block_allocator(sizeof(tnode_t), 200);
-	t->data_allocator = block_allocator(size, 200);
+	t->node_allocator = block_allocator(sizeof(tnode_t), BLOCK_ALLOC_INIT_LEN);
+	t->data_allocator = block_allocator(size, BLOCK_ALLOC_INIT_LEN);
 	#endif
 
 	return t;
