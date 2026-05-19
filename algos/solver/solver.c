@@ -2,10 +2,7 @@
 
 #include "solver.h"
 
-#include "../../ds/tree.h"
-#include "../../ds/hashmap.h"
-#include "../../misc/timing.h"
-#include "../../memory/alloc.h"
+#include "../../utils.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -168,7 +165,7 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms,
 	th->hash = solver->hash(pos, solver->pos_size);
 	memcpy(&th->pos, pos, solver->pos_size);
 	tree_add(gt, th);
-	free(th);
+	mem_free(th);
 
 
 
@@ -561,7 +558,10 @@ float analyze_all_children(tree_t *gt, tnode_t *n,
 		assert(0 <= move && move < solver->possible_moves);
 		tnode_t *child = node_make_new_move(gt, n, move);
 		if(!child)
+		{
+			//assert(len != 1);
 			continue;
+		}
 		//tnode_t *child = n->children[i];
 
 
@@ -653,7 +653,10 @@ float analyze_all_children(tree_t *gt, tnode_t *n,
 	tree_get(gt, n);
 	minimax(gt, depth);
 	//tree_swap_children(gt, 0, best_move);
+
+	//no legal moves??
 	assert(n->child_ct);
+	
 	assert(n->children[0]);
 	//n->score = n->children[0]->score;
 	/*if(!(n->children[0]->score == best))
@@ -1087,7 +1090,7 @@ void minimax(tree_t *gt, int depth)
 	//assert(!tree_is_leaf(gt));
 	if(tree_is_leaf(gt))
 	{
-		assert(0);
+		//assert(0);
 		return;
 	}
 

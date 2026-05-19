@@ -14,22 +14,6 @@
 
 int main(void)
 {
-
-	/*sl_init();
-	void *b = sl_alloc(50);
-	void *b1 = sl_alloc(50);
-	void *more = sl_alloc(64);
-	sl_free(b);
-	sl_free(more);
-	sl_free(b1);
-	return 0;*/
-
-
-	/*int seq[] = {3, 0, 3, 3, 3, 4, 4, 5, 5, 2, 4, 2, 0, 4};
-	float score = test_pos(&C4_SOLVER, seq, sizeof(seq)/sizeof(seq[0]));
-	printf("pos has score of %.1f\n", score);
-	return 0;*/
-
 	play_menu();
 	if(mem_check())
 		printf("\nmemory good!\n");

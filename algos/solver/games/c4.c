@@ -12,12 +12,12 @@
 float estimate_color(uint64_t x, uint64_t opp, bool verbose);
 uint32_t c4_hash(void *key, size_t size);
 
-#define MOVE_BIT	(((uint64_t)1)<<63)
+#define WHOSEMOVE_BIT	(((uint64_t)1)<<63)
 
 c4_pos_t C4_INIT_POS =
 {
 	.x = 0,
-	.filled = MOVE_BIT,
+	.filled = WHOSEMOVE_BIT,
 	//.whosemove = true,
 };
 
@@ -88,7 +88,7 @@ bool c4_whosemove(void *pos)
 	//assert(c4_ok(pos));
 	c4_pos_t *p = pos;
 	//return p->whosemove;
-	return p->filled & MOVE_BIT;
+	return p->filled & WHOSEMOVE_BIT;
 }
 
 uint8_t get_col(uint64_t col, int index)
@@ -149,10 +149,10 @@ endstate_t c4_gameover(void *pos)
 
 	//check draw
 	//printf("filled = %s\n", print64(p->filled));
-	uint64_t full = 0b01111110111111011111101111110111111011111101111110111111;
+	uint64_t full = 0b0111111011111101111110111111011111101111110111111;
 	//assert(p->filled <= full);
 	//printf("good!\n");
-	if((p->filled & ~MOVE_BIT) == full)
+	if((p->filled & ~WHOSEMOVE_BIT) == full)
 	{
 		//printf("draw detected!\n");
 		//exit(0);
@@ -486,7 +486,7 @@ void c4_make_move(void *pos, int index, uint32_t *hash)
 	p->x ^= p->filled;
 
 	//p->whosemove = !p->whosemove;
-	p->filled ^= MOVE_BIT;
+	p->filled ^= WHOSEMOVE_BIT;
 
 	//update hash
 	if(!hash)

@@ -1,7 +1,7 @@
 
 
 #include "vector.h"
-#include "../memory/alloc.h"
+#include "../utils.h"
 
 #include <stdio.h>
 #include <stdlib.h>

@@ -1,12 +1,13 @@
 
 
 #include "list.h"
-#include "../memory/alloc.h"
+#include "../utils.h"
 
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
 
+#define USE_SLAB_ALLOC
 
 //static protos
 void list_dummy_print_node(void *d);
@@ -14,6 +15,7 @@ lnode_t *list_create_node(int size, void *data);
 lnode_t *list_create_node_empty(void);
 void *list_set_current_node(list_t *ll, lnode_t *n);
 
+void lnode_free(lnode_t *n);
 
 list_t *list_create(size_t item_size)
 {
@@ -94,7 +96,8 @@ void list_delete(list_t *ll)
 	//if(ll->p->data)
 	//	mem_free(ll->p->data);
 
-	mem_free(ll->p);
+	lnode_free(ll->p);
+	//mem_free(ll->p);
 	ll->p = NULL;
 
 	ll->len--;
@@ -374,7 +377,8 @@ lnode_t *list_create_node(int size, void *data)
 	n->data = mem_malloc(size);
 	if(!n->data)
 	{
-		mem_free(n);
+		lnode_free(n);
+		//mem_free(n);
 		n = NULL;
 	}
 	else
@@ -384,7 +388,12 @@ lnode_t *list_create_node(int size, void *data)
 
 lnode_t *list_create_node_empty(void)
 {
+	#ifdef USE_SLAB_ALLOC
+	lnode_t *n = sl_alloc(sizeof(*n));
+	#else
 	lnode_t *n = mem_malloc(sizeof(*n));
+	#endif
+
 	if(!n)
 		return NULL;
 	n->prev = NULL;
@@ -416,4 +425,13 @@ void *list_set_current_node(list_t *ll, lnode_t *n)
 	if(ll->p)		assert(ll->p->next == ll->next);
 
 	return node_data;
+}
+
+void lnode_free(lnode_t *n)
+{
+	#ifdef USE_SLAB_ALLOC
+	sl_free(n);
+	#else
+	mem_free(n);
+	#endif
 }

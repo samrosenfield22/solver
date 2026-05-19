@@ -22,7 +22,8 @@ typedef struct
 	void *head;
 } slabman_t;
 
-slabman_t slab_mgrs[SLAB_CT];
+//intialize w size and head = 0
+slabman_t slab_mgrs[SLAB_CT] = {0};
 
 //statics
 void carve_slab(slabman_t *mgr, int index, size_t size);
@@ -30,7 +31,7 @@ void *unlink_chunk(slabman_t *mgr);
 void *nth_slab(int i);
 
 
-void sl_init(void)
+/*void sl_init(void)
 {
 	for(int i=0; i<SLAB_CT; i++)
 	{
@@ -39,7 +40,7 @@ void sl_init(void)
 		mgr->size = 0;
 		mgr->head = NULL;
 	}
-}
+}*/
 
 void *sl_alloc(size_t size)
 {
@@ -72,6 +73,9 @@ void *sl_alloc(size_t size)
 
 void sl_free(void *chunk)
 {
+	if(!chunk)
+		return;
+	
 	assert(SLABS <= (uint8_t *)chunk
 		&& (uint8_t *)chunk <= SLABS_END);
 

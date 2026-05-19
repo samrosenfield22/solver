@@ -1,6 +1,5 @@
 
 
-#include "list.h"
 
 #define hashmap(ktype, vtype, len)		\
 	hashmap_create(sizeof(ktype), sizeof(vtype), len)

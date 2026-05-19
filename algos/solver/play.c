@@ -12,7 +12,7 @@
 #include <time.h>
 
 
-#define COMP_TIME	(1 * 1000)
+#define COMP_TIME	(30 * 1000)
 #define DEV_MODE	(true)
 //#define DEV_MODE	(false)
 
@@ -126,6 +126,8 @@ void play(solver_t *solver, void *pos, bool p1, bool p2)
 			printf("\n\nenter your move:   ");
 			char buf[80];
 			fgets(buf, 79, stdin);
+
+			//if(strcmp(buf, "u")==0 || strcmp(buf, "undo")==0)
 
 			//int hmove;
 			if(solver->human_to_iter)

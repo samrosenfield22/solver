@@ -9,7 +9,7 @@
 #define SLAB_CT		(4)
 
 //
-void sl_init(void);
+//void sl_init(void);
 void *sl_alloc(size_t size);
 void sl_free(void *chunk);
 
