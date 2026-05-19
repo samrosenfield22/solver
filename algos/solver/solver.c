@@ -21,18 +21,25 @@ typedef struct
 	float score;
 } sorter_t;
 
+
+typedef struct
+{
+	float score;
+	bool full;
+} result_t;
+
 //statics
 void tt_create(void);
-int tt_add(tnode_t *n, float score, int depth, int best_move);
+int tt_add(tnode_t *n, result_t *result, int depth, int best_move);
 
-float eval(tree_t *gt, tnode_t *n, int depth,
+result_t eval(tree_t *gt, tnode_t *n, int depth,
 	float alpha, float beta, int killer);
 void build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth);
 void add_all_new_moves(tree_t *gt, tnode_t *n, int depth);
 void order_children(tree_t *gt, tnode_t *n, int depth, int killer);
 float sort_score(tree_t *gt, tnode_t *parent, tnode_t *n,
 	int best, int depth, int index);
-float analyze_all_children(tree_t *gt, tnode_t *n,
+result_t analyze_all_children(tree_t *gt, tnode_t *n,
 	sorter_t *order, int len, int depth, float alpha, float beta);
 
 bool tt_check(tnode_t *n);
@@ -69,6 +76,7 @@ typedef struct
 	uint8_t pos[];
 } gdata_t;
 size_t gdata_size;
+
 
 uint32_t passed=0, checked=0;
 
@@ -206,9 +214,10 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms,
 		there's no tree after found a mate -- need a way
 		to get the best move
 		*/
-		float score = eval(gt, gt->head, 0, -WIN_SCORE, WIN_SCORE, -1);
+		result_t result = eval(gt, gt->head, 0, -WIN_SCORE, WIN_SCORE, -1);
 		//float score = eval(gt, gt->head, 0, 10, 11, -1);
-		if(score > MATE_LIMIT || score < -MATE_LIMIT)
+		//if(score > MATE_LIMIT || score < -MATE_LIMIT)
+		if(result.full)
 		{
 			full_solve = true;
 			break;
@@ -231,7 +240,7 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms,
 		{
 			if(iddfs >= 1)
 			{
-				printf("%+.2f (depth: %d)  \t", score, iddfs);
+				printf("%+.2f (depth: %d)  \t", result.score, iddfs);
 				tnode_t *n = gt->head->children[0];
 				for(int i=0; i<2*VARIATION_LENGTH; i++)
 				{
@@ -302,7 +311,7 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms,
 }
 
 //recursive
-float eval(tree_t *gt, tnode_t *n, int depth,
+result_t eval(tree_t *gt, tnode_t *n, int depth,
 	float alpha, float beta, int killer)
 {
 	if(depth == 0)
@@ -323,10 +332,11 @@ float eval(tree_t *gt, tnode_t *n, int depth,
 	if(val)
 	{
 		assert(val->score == n->score);
-		if(n->score > MATE_LIMIT || n->score < -MATE_LIMIT)
-			return n->score;
+		//if(n->score > MATE_LIMIT || n->score < -MATE_LIMIT)
+		if(val->full)
+			return (result_t){n->score, true};
 		if(val->iddfs == iddfs)
-			return n->score;
+			return (result_t){n->score, false};
 	}
 	#endif
 
@@ -346,7 +356,7 @@ float eval(tree_t *gt, tnode_t *n, int depth,
 			case END_DRAW:		n->score = 0;			break;
 			default:	printf("invalid endstate!\n"); exit(0);
 		}
-		return n->score;
+		return (result_t){n->score, true};
 	}
 	else if(depth >= gt->search_depth)
 	{
@@ -355,10 +365,10 @@ float eval(tree_t *gt, tnode_t *n, int depth,
 			n->score = solver->estimate(pos);
 		else
 			n->score = 0;
-		return n->score;
+		return (result_t){n->score, false};
 	}
 
-	float score;
+	//float score;
 
 	//make move order
 	//if there's only one move (that wins or loses),
@@ -385,7 +395,7 @@ float eval(tree_t *gt, tnode_t *n, int depth,
 	}
 
 	//main analysis -- recursive tree search
-	score = analyze_all_children(gt, n, order, len,
+	result_t result = analyze_all_children(gt, n, order, len,
 		depth, alpha, beta);
 
 	assert(n->child_ct);
@@ -397,12 +407,12 @@ float eval(tree_t *gt, tnode_t *n, int depth,
 	#endif
 
 	#ifdef USE_TRANSPOSITION_TABLE
-		tt_add(n, n->score, depth, best_move);
+		tt_add(n, &result, depth, best_move);
 	#endif
 
-	assert(score == n->score);
+	assert(result.score == n->score);
 	//return n->score;
-	return score;
+	return result;
 }
 
 void add_all_new_moves(tree_t *gt, tnode_t *n, int depth)
@@ -527,13 +537,14 @@ float sort_score(tree_t *gt, tnode_t *parent, tnode_t *n,
 	return score;
 }
 
-float analyze_all_children(tree_t *gt, tnode_t *n,
+result_t analyze_all_children(tree_t *gt, tnode_t *n,
 	sorter_t *order, int len, int depth, float alpha, float beta)
 {
 	assert(n->child_ct == 0);
 
+	result_t result;
 	float best = worst_score(depth);
-	//int best_move = -1;
+	bool best_full = false;
 	int best_move = (len==1)? -1 : order[0].move;
 	//bool cutoff = false;
 
@@ -565,67 +576,72 @@ float analyze_all_children(tree_t *gt, tnode_t *n,
 		//tnode_t *child = n->children[i];
 
 
-		float c_score = eval(gt, child, depth+1,
+		result = eval(gt, child, depth+1,
 			alpha, beta, killer);
+		//float c_score = result.score;
 
-		if(c_score > MATE_LIMIT)
+		if(result.score > MATE_LIMIT)
 		{
-			c_score--;
+			assert(result.full);
+			result.score--;
 			if(max_or_min(depth)==MAX_LAYER)
 			{
-				n->score = c_score;
+				n->score = result.score;
 				best_move = child->move_index;
 				tree_get(gt, n);
 				//minimax(gt, depth);
 				if(n->child_ct-1)
 					tree_swap_children(gt, 0, n->child_ct-1);
-				return n->score;
+				return result;
 			}
 		}
-		else if(c_score < -MATE_LIMIT)
+		else if(result.score < -MATE_LIMIT)
 		{
-			c_score++;
+			assert(result.full);
+			result.score++;
 			if(max_or_min(depth)!=MAX_LAYER)
 			{
-				n->score = c_score;
+				n->score = result.score;
 				best_move = child->move_index;
 				tree_get(gt, n);
 				//minimax(gt, depth);
 				if(n->child_ct-1)
 					tree_swap_children(gt, 0, n->child_ct-1);
-				return n->score;
+				return result;
 			}
 		}
 
 		if(max_or_min(depth)==MAX_LAYER)
 		{
 			//best = max(best, c_score);
-			if(c_score > best)
+			if(result.score > best)
 			{
-				best = c_score;
+				best = result.score;
 				best_move = n->child_ct-1;
+				best_full = result.full;
 			}
 		}
 		else	//min
 		{
 			//best = min(best, c_score);
-			if(c_score < best)
+			if(result.score < best)
 			{
-				best = c_score;
+				best = result.score;
 				best_move = n->child_ct-1;
+				best_full = result.full;
 			}
 		}
 
 		#ifdef USE_ALPHABETA_PRUNING
 		if(max_or_min(depth)==MAX_LAYER)
 		{
-			if(c_score > alpha)
-				alpha = c_score;
+			if(result.score > alpha)
+				alpha = result.score;
 		}
 		else	//min
 		{
-			if(c_score < beta)
-				beta = c_score;
+			if(result.score < beta)
+				beta = result.score;
 		}
 		/*if(max_or_min(depth)==MAX_LAYER)
 			alpha = max(alpha, c_score);
@@ -639,6 +655,7 @@ float analyze_all_children(tree_t *gt, tnode_t *n,
 			else
 				{beta--; best--;}
 
+			//best_full = result.full;
 			break;
 		}
 		#endif
@@ -656,7 +673,7 @@ float analyze_all_children(tree_t *gt, tnode_t *n,
 
 	//no legal moves??
 	assert(n->child_ct);
-	
+
 	assert(n->children[0]);
 	//n->score = n->children[0]->score;
 	/*if(!(n->children[0]->score == best))
@@ -665,6 +682,9 @@ float analyze_all_children(tree_t *gt, tnode_t *n,
 		//	n->children[0]->score, best);
 		//assert(0);
 	}*/
+
+	if(best_full)
+		best = 0;
 
 
 	if(max_or_min(depth)==MAX_LAYER)
@@ -699,8 +719,10 @@ float analyze_all_children(tree_t *gt, tnode_t *n,
 	}*/
 
 
-
-	return n->score;
+	//result.score = best;
+	//result = (result_t){best, best_full};
+	result = (result_t){best, false};
+	return result;
 }
 
 /*bool move_loses(void *pos, int move)
@@ -965,14 +987,15 @@ void tt_create(void)
 	*/
 }
 
-int tt_add(tnode_t *n, float score, int depth, int best_move)
+int tt_add(tnode_t *n, result_t *result, int depth, int best_move)
 {
 	void *pos = node_get_pos(n);
 	uint32_t *hash = node_get_hash(n);
 
 	trans_value_t value =
 	{
-		.score = score,
+		.score = result->score,
+		.full = result->full,
 		.iddfs = iddfs,
 		.depth = depth,
 		.best_move = best_move,
@@ -981,24 +1004,6 @@ int tt_add(tnode_t *n, float score, int depth, int best_move)
 
 	return hashmap_add_kvpair(trans_tbl, pos, &value, hash);
 }
-
-/*trans_value_t *tt_key_get_value(void *pos)
-{
-	//float *ttval = hashmap_key_get_value(trans_tbl, pos);
-	trans_value_t *val = hashmap_key_get_value(trans_tbl, pos);
-}*/
-
-/*bool tt_check(tnode_t *n)
-{
-	void *pos = n->data;
-	float *ttval = hashmap_key_get_value(trans_tbl, pos);
-	if(ttval)
-	{
-		float prev_score = *ttval;
-		n->score = prev_score;
-	}
-	return ttval;
-}*/
 
 trans_value_t *tt_get(tnode_t *n, int depth)
 {

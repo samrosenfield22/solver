@@ -38,6 +38,7 @@ typedef struct
 	uint8_t best;
 	uint8_t iddfs;
 	uint8_t depth;
+	bool full;
 	//ab bounds
 	//uint8_t move_index;
 	int8_t best_move;
