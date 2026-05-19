@@ -1,15 +1,12 @@
 
 
-#include "tree.h"
-#include "vector.h"
-#include "../memory/alloc.h"
+#include "../utils.h"
 
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
 
-#define USE_BLOCK_ALLOC
-#define BLOCK_ALLOC_INIT_LEN	(200)
+#define USE_SLAB_ALLOC
 
 //statics
 tnode_t *tree_node_create(tree_t *t, void *data);
@@ -46,10 +43,10 @@ tree_t *tree_create(size_t size)
 
 	t->search_depth = NO_DEPTH_LIMIT;
 
-	#ifdef USE_BLOCK_ALLOC
+	/*#ifdef USE_SLAB_ALLOC
 	t->node_allocator = block_allocator(sizeof(tnode_t), BLOCK_ALLOC_INIT_LEN);
 	t->data_allocator = block_allocator(size, BLOCK_ALLOC_INIT_LEN);
-	#endif
+	#endif*/
 
 	return t;
 }
@@ -224,10 +221,10 @@ void tree_destroy(tree_t *t)
 	tree_clear(t);
 	list_destroy(t->search_list);
 
-	#ifdef USE_BLOCK_ALLOC
+	/*#ifdef USE_SLAB_ALLOC
 	block_allocator_destroy(t->node_allocator);
 	block_allocator_destroy(t->data_allocator);
-	#endif
+	#endif*/
 
 	mem_free(t);
 }
@@ -794,9 +791,11 @@ void node_delete(tree_t *t, tnode_t *n)
 
 tnode_t *node_and_data_alloc(tree_t *t)
 {
-	#ifdef USE_BLOCK_ALLOC
-	tnode_t *n = block(t->node_allocator);
-	n->data = block(t->data_allocator);
+	#ifdef USE_SLAB_ALLOC
+	tnode_t *n = sl_alloc(sizeof(*n));
+	n->data = sl_alloc(t->item_size);
+	//tnode_t *n = block(t->node_allocator);
+	//n->data = block(t->data_allocator);
 	#else
 	tnode_t *n = mem_malloc(sizeof(*n));
 	n->data = mem_malloc(t->item_size);
@@ -808,10 +807,13 @@ tnode_t *node_and_data_alloc(tree_t *t)
 
 void node_and_data_free(tree_t *t, tnode_t *n)
 {
-	#ifdef USE_BLOCK_ALLOC
+	#ifdef USE_SLAB_ALLOC
+	//if(n->data)
+	//	block_free(t->data_allocator, n->data);
+	//block_free(t->node_allocator, n);
 	if(n->data)
-		block_free(t->data_allocator, n->data);
-	block_free(t->node_allocator, n);
+		sl_free(n->data);
+	sl_free(n);
 	#else
 	if(n->data)
 		mem_free(n->data);

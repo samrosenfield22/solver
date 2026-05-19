@@ -49,7 +49,7 @@ typedef struct
 	int depth;
 	bool first_visit;
 
-	void *node_allocator, *data_allocator;
+	//void *node_allocator, *data_allocator;
 
 	void (*destroy_fp)(void *d);
 	int (*print_fp)(void *d);

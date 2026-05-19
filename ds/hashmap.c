@@ -1,7 +1,5 @@
 
-
-#include "hashmap.h"
-#include "../memory/alloc.h"
+#include "../utils.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,12 +7,14 @@
 #include <assert.h>
 
 //statics
-void *copy_key_normalize(hashmap_t *h, void *key);
+//void *copy_key_normalize(hashmap_t *h, void *key);
 void *hashmap_key_get_bucket(hashmap_t *h, void *key, uint32_t *hash);
 uint32_t hashmap_key_get_index(hashmap_t *h, void *key);
-void *pairlist_find_matching_key(hashmap_t *h,
-	list_t *pairlist, void *key);
+//void *pairlist_find_matching_key(hashmap_t *h,
+//	list_t *pairlist, void *key);
 bool keys_match(hashmap_t *h, void *k1, void *k2);
+kvpair_t *alloc_kvpair(hashmap_t *h);
+void free_kvpair(kvpair_t *kv);
 
 uint32_t default_hash(void *key, size_t size);
 
@@ -47,7 +47,7 @@ hashmap_t *hashmap_create(size_t ksize, size_t vsize, uint32_t len)
 			break;
 		b<<=1;
 	}
-	printf("len=%d, mask=0x%0x\n", len, h->p2_mask);
+	//printf("len=%d, mask=0x%0x\n", len, h->p2_mask);
 	//exit(0);
 
 	return h;
@@ -81,12 +81,14 @@ void hashmap_clear(hashmap_t *h)
 				}*/
 			}
 
+			free_kvpair(kv);
 
-			if(kv->key)
+			/*if(kv->key)
 				mem_free(kv->key);
 			if(kv->value)
 				mem_free(kv->value);
-			mem_free(kv);
+			mem_free(kv);*/
+
 			h->map[i] = NULL;
 
 			h->filled--;
@@ -137,12 +139,8 @@ int hashmap_add_kvpair(hashmap_t *h, void *key, void *value,
 	}
 	else	//bucket empty, add the kv pair
 	{
-		kvpair_t *kv = mem_malloc(sizeof(*kv));
-		assert(kv);
-		kv->key = mem_malloc(h->ksize);
-		kv->value = mem_malloc(h->vsize);
-		assert(kv->key);
-		assert(kv->value);
+		kvpair_t *kv = alloc_kvpair(h);
+
 		//printf("moving %d bytes from %p to %p\n", h->ksize, key, kv->key);
 		memcpy(kv->key, key, h->ksize);
 		memcpy(kv->value, value, h->vsize);
@@ -339,7 +337,7 @@ void hashmap_demo(void)
 ////////////////////////// statics ///////////////////////////
 
 //have to mem_free it
-void *copy_key_normalize(hashmap_t *h, void *key)
+/*void *copy_key_normalize(hashmap_t *h, void *key)
 {
 	void *norm_key = mem_malloc(h->ksize);
 	if(!norm_key)
@@ -352,26 +350,7 @@ void *copy_key_normalize(hashmap_t *h, void *key)
 	if(h->normalize_key)
 		h->normalize_key(norm_key);
 	return norm_key;
-
-
-	/*
-	//void *norm_key = key;
-	if(h->normalize_key)
-	{
-		void *norm_key = mem_malloc(h->ksize);
-		if(!norm_key)
-		{
-			printf("failed to allocate for normalization!\n");
-			assert(0);
-			return NULL;
-		}
-		memcpy(norm_key, key, h->ksize);
-		h->normalize_key(norm_key);
-		return norm_key;
-	}
-	else
-		return NULL;*/
-}
+}*/
 
 uint32_t avalanche(uint32_t index)
 {
@@ -448,6 +427,27 @@ bool keys_match(hashmap_t *h, void *k1, void *k2)
 		return h->compare_keys_fp(k1, k2);
 	else
 		return (memcmp(k1, k2, h->ksize)==0);
+}
+
+kvpair_t *alloc_kvpair(hashmap_t *h)
+{
+	kvpair_t *kv = mem_malloc(sizeof(*kv));
+	assert(kv);
+	kv->key = mem_malloc(h->ksize);
+	kv->value = mem_malloc(h->vsize);
+	assert(kv->key);
+	assert(kv->value);
+
+	return kv;
+}
+
+void free_kvpair(kvpair_t *kv)
+{
+	if(kv->key)
+		mem_free(kv->key);
+	if(kv->value)
+		mem_free(kv->value);
+	mem_free(kv);
 }
 
 uint32_t default_hash(void *key, size_t size)
