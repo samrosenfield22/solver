@@ -596,33 +596,6 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n,
 			return result;
 		}
 
-		/*bool won = false;
-		if(result.score > MATE_LIMIT)
-		{
-			assert(result.full);
-			result.score--;
-			if(is_max)
-				won = true;
-		}
-		else if(result.score < -MATE_LIMIT)
-		{
-			assert(result.full);
-			result.score++;
-			if(!is_max)
-				won = true;
-		}
-
-		if(won)
-		{
-			n->score = result.score;
-			//best_move = child->move_index;
-			tree_get(gt, n);
-			//minimax(gt, depth);
-			if(n->child_ct-1)
-				tree_swap_children(gt, 0, n->child_ct-1);
-			return result;
-		}*/
-
 		if(is_better(result.score, best, depth))
 		{
 			best = result.score;
