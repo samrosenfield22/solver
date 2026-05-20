@@ -57,6 +57,7 @@ void clear_suboptimal_nodes(tree_t *gt, tnode_t *n, int depth, int var_length);
 bool is_better(float s0, float s1, int depth);
 bool is_worse(float s0, float s1, int depth);
 float worst_score(int depth);
+bool is_win_score(float s, int depth);
 bool max_or_min(int depth);
 
 tnode_t *node_make_new_move(tree_t *gt, tnode_t *n, int move);
@@ -215,14 +216,13 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms,
 		to get the best move
 		*/
 		result_t result = eval(gt, gt->head, 0, -WIN_SCORE, WIN_SCORE, -1);
-		//float score = eval(gt, gt->head, 0, 10, 11, -1);
+		//result_t result = eval(gt, gt->head, 0, MATE_LIMIT, WIN_SCORE, -1);
 		//if(score > MATE_LIMIT || score < -MATE_LIMIT)
 		if(result.full)
 		{
 			full_solve = true;
 			break;
 		}
-		//eval(gt, gt->head, 0, -5, 5, -1);
 
 
 		//conditions for ending the search
@@ -334,7 +334,12 @@ result_t eval(tree_t *gt, tnode_t *n, int depth,
 		assert(val->score == n->score);
 		//if(n->score > MATE_LIMIT || n->score < -MATE_LIMIT)
 		if(val->full)
+		{
+			assert(n->score > MATE_LIMIT
+				|| n->score < -MATE_LIMIT
+				|| n->score == 0);
 			return (result_t){n->score, true};
+		}
 		if(val->iddfs == iddfs)
 			return (result_t){n->score, false};
 	}
@@ -347,7 +352,7 @@ result_t eval(tree_t *gt, tnode_t *n, int depth,
 
 	//evaluate end states/leaf nodes
 	int endstate = solver->gameover(pos);
-	if(endstate)
+	if(endstate != END_NOT_OVER)
 	{
 		switch(endstate)
 		{
@@ -544,13 +549,12 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n,
 
 	result_t result;
 	float best = worst_score(depth);
-	bool best_full = false;
+	bool best_full = true;
 	int best_move = (len==1)? -1 : order[0].move;
-	//bool cutoff = false;
+	bool is_max = (max_or_min(depth)==MAX_LAYER);
 
 	int killer = -1;
 
-	//bool bound_changed = false;
 	//for(int i=0; i<n->child_ct; i++)
 	for(int i=0; i<len; i++)
 	{
@@ -578,86 +582,64 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n,
 
 		result = eval(gt, child, depth+1,
 			alpha, beta, killer);
-		//float c_score = result.score;
 
+
+		if(is_win_score(result.score, depth))
+		{
+			result.score -= is_max? 1: -1;
+			n->score = result.score;
+			//best_move = child->move_index;
+			tree_get(gt, n);
+			//minimax(gt, depth);
+			if(n->child_ct-1)
+				tree_swap_children(gt, 0, n->child_ct-1);
+			return result;
+		}
+
+		/*bool won = false;
 		if(result.score > MATE_LIMIT)
 		{
 			assert(result.full);
 			result.score--;
-			if(max_or_min(depth)==MAX_LAYER)
-			{
-				n->score = result.score;
-				best_move = child->move_index;
-				tree_get(gt, n);
-				//minimax(gt, depth);
-				if(n->child_ct-1)
-					tree_swap_children(gt, 0, n->child_ct-1);
-				return result;
-			}
+			if(is_max)
+				won = true;
 		}
 		else if(result.score < -MATE_LIMIT)
 		{
 			assert(result.full);
 			result.score++;
-			if(max_or_min(depth)!=MAX_LAYER)
-			{
-				n->score = result.score;
-				best_move = child->move_index;
-				tree_get(gt, n);
-				//minimax(gt, depth);
-				if(n->child_ct-1)
-					tree_swap_children(gt, 0, n->child_ct-1);
-				return result;
-			}
+			if(!is_max)
+				won = true;
 		}
 
-		if(max_or_min(depth)==MAX_LAYER)
+		if(won)
 		{
-			//best = max(best, c_score);
-			if(result.score > best)
-			{
-				best = result.score;
-				best_move = n->child_ct-1;
-				best_full = result.full;
-			}
-		}
-		else	//min
+			n->score = result.score;
+			//best_move = child->move_index;
+			tree_get(gt, n);
+			//minimax(gt, depth);
+			if(n->child_ct-1)
+				tree_swap_children(gt, 0, n->child_ct-1);
+			return result;
+		}*/
+
+		if(is_better(result.score, best, depth))
 		{
-			//best = min(best, c_score);
-			if(result.score < best)
-			{
-				best = result.score;
-				best_move = n->child_ct-1;
-				best_full = result.full;
-			}
+			best = result.score;
+			best_move = n->child_ct-1;
 		}
+
+		if(!result.full)
+			best_full = false;
 
 		#ifdef USE_ALPHABETA_PRUNING
-		if(max_or_min(depth)==MAX_LAYER)
-		{
-			if(result.score > alpha)
-				alpha = result.score;
-		}
+		if(is_max)
+			alpha = max(alpha, result.score);
 		else	//min
-		{
-			if(result.score < beta)
-				beta = result.score;
-		}
-		/*if(max_or_min(depth)==MAX_LAYER)
-			alpha = max(alpha, c_score);
-		else	//min
-			beta = min(beta, c_score);*/
+			beta = min(beta, result.score);
 
 		if(alpha >= beta)
-		{
-			if(max_or_min(depth) == MAX_LAYER)
-				{alpha++; best++;}
-			else
-				{beta--; best--;}
-
-			//best_full = result.full;
 			break;
-		}
 		#endif
 
 		//if(i==0 && child->children[0])
@@ -668,62 +650,19 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n,
 	//(void)best_move;
 	assert(best_move != -1);
 	tree_get(gt, n);
-	minimax(gt, depth);
-	//tree_swap_children(gt, 0, best_move);
+	//minimax(gt, depth);
+	tree_swap_children(gt, 0, best_move);
 
 	//no legal moves??
 	assert(n->child_ct);
 
 	assert(n->children[0]);
-	//n->score = n->children[0]->score;
-	/*if(!(n->children[0]->score == best))
-	{
-		//printf("!!! minimax child score = %.2f, best is %.2f\n",
-		//	n->children[0]->score, best);
-		//assert(0);
-	}*/
-
-	if(best_full)
-		best = 0;
 
 
-	if(max_or_min(depth)==MAX_LAYER)
-	{
-		n->score = best;
-		//n->score = alpha;
-		//if(cutoff)
-		//	n->score--;
-		//return alpha;
-	}
-	else	//min
-	{
-		n->score = best;
-		//n->score = beta;
-		//if(cutoff)
-		//	n->score++;
-		//return beta;
-	}
-	//n->score = best;
-
-	/*if(n->score > MATE_LIMIT)
-	{
-		n->score--;
-		if(cutoff)
-			n->score--;
-	}
-	else if(n->score < -MATE_LIMIT)
-	{
-		n->score++;
-		if(cutoff)
-			n->score++;
-	}*/
-
-
-	//result.score = best;
-	//result = (result_t){best, best_full};
-	result = (result_t){best, false};
-	return result;
+	n->score = best;	//fail soft
+	return (result_t){best, best_full};
 }
+
 
 /*bool move_loses(void *pos, int move)
 {
@@ -1063,6 +1002,15 @@ float worst_score(int depth)
 	return worst;
 }
 
+bool is_win_score(float s, int depth)
+{
+	bool turn = max_or_min(depth)==MAX_LAYER;
+	if(turn)
+		return s > MATE_LIMIT;
+	else
+		return s < -MATE_LIMIT;
+}
+
 float max(float x, float y)
 {
 	return (x>y)? x : y;
@@ -1085,8 +1033,8 @@ void print_score(float score)
 	else
 	{
 		int dif = WIN_SCORE - abs_f(score);
-		int m = dif/2;
-		printf("M%d", m);
+		//int m = dif/2;
+		printf("M%d", dif);
 	}
 }
 
