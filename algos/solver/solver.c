@@ -33,14 +33,15 @@ void tt_create(void);
 int tt_add(tnode_t *n, result_t *result, int depth, int best_move);
 
 result_t eval(tree_t *gt, tnode_t *n, int depth,
-	float alpha, float beta, int killer);
+	float alpha, float beta, bool is_pv, int killer);
 void build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth);
 void add_all_new_moves(tree_t *gt, tnode_t *n, int depth);
 void order_children(tree_t *gt, tnode_t *n, int depth, int killer);
 float sort_score(tree_t *gt, tnode_t *parent, tnode_t *n,
 	int best, int depth, int index);
 result_t analyze_all_children(tree_t *gt, tnode_t *n,
-	sorter_t *order, int len, int depth, float alpha, float beta);
+	sorter_t *order, int len, int depth, float alpha, float beta,
+	bool is_pv);
 
 bool tt_check(tnode_t *n);
 trans_value_t *tt_get(tnode_t *n, int depth);
@@ -215,8 +216,10 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms,
 		there's no tree after found a mate -- need a way
 		to get the best move
 		*/
-		result_t result = eval(gt, gt->head, 0, -WIN_SCORE, WIN_SCORE, -1);
-		//result_t result = eval(gt, gt->head, 0, MATE_LIMIT, WIN_SCORE, -1);
+		result_t result = eval(gt, gt->head, 0,
+			-WIN_SCORE, WIN_SCORE,
+			//0, 2,
+			true, -1);
 		//if(score > MATE_LIMIT || score < -MATE_LIMIT)
 		if(result.full)
 		{
@@ -312,8 +315,11 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms,
 
 //recursive
 result_t eval(tree_t *gt, tnode_t *n, int depth,
-	float alpha, float beta, int killer)
+	float alpha, float beta, bool is_pv, int killer)
 {
+	if(is_pv)
+		printf("\tpv node at d=%d w [%.1f,%.1f]\n",
+		depth, alpha, beta);
 	if(depth == 0)
 		assert(max_or_min(depth) == MAX_LAYER);
 	assert(n);
@@ -401,7 +407,7 @@ result_t eval(tree_t *gt, tnode_t *n, int depth,
 
 	//main analysis -- recursive tree search
 	result_t result = analyze_all_children(gt, n, order, len,
-		depth, alpha, beta);
+		depth, alpha, beta, is_pv);
 
 	assert(n->child_ct);
 	int best_move = n->children[0]->move_index;
@@ -543,9 +549,12 @@ float sort_score(tree_t *gt, tnode_t *parent, tnode_t *n,
 }
 
 result_t analyze_all_children(tree_t *gt, tnode_t *n,
-	sorter_t *order, int len, int depth, float alpha, float beta)
+	sorter_t *order, int len, int depth, float alpha, float beta,
+	bool is_pv)
 {
-	assert(n->child_ct == 0);
+	//assert(n->child_ct == 0);
+
+	float alpha_init = alpha, beta_init = beta;
 
 	result_t result;
 	float best = worst_score(depth);
@@ -567,21 +576,41 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n,
 
 
 		tree_get(gt, n);
-		int move = order[i].move;
-		if(move == -1)
-			continue;
-		assert(0 <= move && move < solver->possible_moves);
-		tnode_t *child = node_make_new_move(gt, n, move);
-		if(!child)
+		/*tnode_t *child;
+		if(n->child_ct >= i+1)
 		{
-			//assert(len != 1);
-			continue;
-		}
-		//tnode_t *child = n->children[i];
+			child = n->children[i];
+			assert(n->children[i]->move_index == order[i].move);
+		}*/
+		//else
+		//{
+			int move = order[i].move;
+			assert(move != -1);
+			if(move == -1)
+				continue;
+			assert(0 <= move && move < solver->possible_moves);
+			tnode_t *child = node_make_new_move(gt, n, move);
+			if(!child)
+			{
+				assert(len != 1);
+				continue;
+			}
+		//}
+		//
 
+		/*if(is_pv && i)
+		{
+			//printf("window tightened from [%.1f,%.1f] to", alpha, beta);
+			if(is_max)
+				beta = alpha+1;
+			else
+				alpha = beta-1;
+			//printf("[%.1f,%.1f]\n", alpha, beta);
+		}*/
 
+		bool child_pv = is_pv && (i==0);
 		result = eval(gt, child, depth+1,
-			alpha, beta, killer);
+			alpha, beta, child_pv, killer);
 
 
 		if(is_win_score(result.score, depth))
@@ -606,6 +635,7 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n,
 			best_full = false;
 
 		#ifdef USE_ALPHABETA_PRUNING
+
 		if(is_max)
 			alpha = max(alpha, result.score);
 		else	//min
@@ -613,6 +643,38 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n,
 
 		if(alpha >= beta)
 			break;
+
+
+		if(is_pv)
+		{
+			if(i==0)
+			{
+				printf("\twindow tightened from [%.1f,%.1f] to ", alpha, beta);
+				if(is_max)
+					beta = alpha+1;
+				else
+					alpha = beta-1;
+				printf("[%.1f,%.1f]\n", alpha, beta);
+			}
+			else
+			{
+
+				//if we failed high, rerun
+				float high_limit = is_max? beta : alpha;
+				//printf("\t\tchecking fail state w score=%.1f against lim=%.1f\n",
+				//result.score, high_limit);
+				bool fail_high = is_better(result.score,
+					high_limit, depth);
+				if(fail_high)
+				{
+					printf("------------ rerunning analysis\n");
+					exit(0);
+					return analyze_all_children(gt, n, order,
+						len, depth, alpha_init, beta_init,
+						false);
+				}
+			}
+		}
 		#endif
 
 		//if(i==0 && child->children[0])
