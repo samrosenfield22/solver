@@ -451,9 +451,11 @@ float estimate_color_count_open_threes(uint64_t x, uint64_t opp, bool verbose)
 float estimate_color(uint64_t x, uint64_t opp, bool verbose)
 //float estimate_color(uint64_t x, uint64_t filled, bool verbose)
 {
-	return estimate_color_count_middles(x);
-	//return estimate_color_count_wins(x, opp, verbose);
-	//return estimate_color_count_open_threes(x, opp, verbose);
+	float est = 0;
+	est += estimate_color_count_middles(x);
+	est += 3*estimate_color_count_wins(x, opp, verbose);
+	//est += estimate_color_count_open_threes(x, opp, verbose);
+	return est;
 }
 
 

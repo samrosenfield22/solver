@@ -31,7 +31,8 @@ typedef struct
 //statics
 void tt_create(void);
 int tt_add(tnode_t *n, result_t *result, int depth, int best_move);
-
+bool set_aspiration_window(float *asp_window,
+	float *asp_window_size, float *last_score, float score);
 result_t eval(tree_t *gt, tnode_t *n, int depth,
 	float alpha, float beta, bool is_pv, int killer);
 int build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth);
@@ -202,7 +203,7 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms,
 	//eval(gt, gt->head, 0, -INF, INF);
 
 	result_t result;
-	float window_lo = -WIN_SCORE, window_hi = WIN_SCORE;
+	float asp_window[] = {-WIN_SCORE, WIN_SCORE};
 	float last_iddfs_score = 0;
 
 	//iddfs
@@ -220,41 +221,24 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms,
 		uint32_t last = toc_ms();
 
 
-		float asp_window = 1;
+		float asp_window_size = 1;
 		while(1)
 		{
 
 			printf("iddfs=%d in window [%.1f,%.1f]\n",
-				iddfs, window_lo, window_hi);
+				iddfs, asp_window[0], asp_window[1]);
 			result = eval(gt, gt->head, 0,
-				window_lo, window_hi,
+				asp_window[0], asp_window[1],
 				true, -1);
 
+			bool in_window = true;
 			#ifdef ASPIRATION_WINDOW
-			if(window_lo < result.score
-				&& result.score < window_hi)
-			{
-				//set window for next iddfs
-				last_iddfs_score = result.score;
-				asp_window = 1;
-				window_lo = last_iddfs_score - asp_window;
-				window_hi = last_iddfs_score + asp_window;
-
-				break;
-			}
-			else
-			{
-				asp_window *= 2;
-				printf("\t--- extending aspiration window size to %.1f ---\n",
-					asp_window);
-				window_lo = last_iddfs_score - asp_window;
-				window_hi = last_iddfs_score + asp_window;
-			}
-
-
-			#else
-			break;
+			in_window = set_aspiration_window(asp_window, &asp_window_size,
+				&last_iddfs_score, result.score);
 			#endif
+
+			if(in_window)
+				break;
 		}
 		//
 
@@ -352,6 +336,38 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms,
 	hashmap_destroy(trans_tbl);
 
 	return best_move;
+}
+
+//returns true if we're in the window
+bool set_aspiration_window(float *asp_window,
+	float *asp_window_size, float *last_score, float score)
+{
+	bool in_window = false;
+
+	if(asp_window[0] < score
+		&& score < asp_window[1])
+	{
+		//set window for next iddfs
+		*last_score = score;
+		*asp_window_size = 1;
+		//asp_window[0] = last_iddfs_score - *asp_window_size;
+		//asp_window[1] = last_iddfs_score + *asp_window_size;
+
+		in_window = true;
+	}
+	else
+	{
+		*asp_window_size *= 2;
+		printf("\t--- extending aspiration window size to %.1f ---\n",
+			*asp_window_size);
+		//asp_window[0] = last_iddfs_score - *asp_window_size;
+		//asp_window[1] = last_iddfs_score + *asp_window_size;
+	}
+
+	asp_window[0] = *last_score - *asp_window_size;
+	asp_window[1] = *last_score + *asp_window_size;
+
+	return in_window;
 }
 
 //recursive
