@@ -34,7 +34,7 @@ int tt_add(tnode_t *n, result_t *result, int depth, int best_move);
 
 result_t eval(tree_t *gt, tnode_t *n, int depth,
 	float alpha, float beta, bool is_pv, int killer);
-void build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth);
+int build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth);
 void add_all_new_moves(tree_t *gt, tnode_t *n, int depth);
 void order_children(tree_t *gt, tnode_t *n, int depth, int killer);
 float sort_score(tree_t *gt, tnode_t *parent, tnode_t *n,
@@ -436,14 +436,14 @@ result_t eval(tree_t *gt, tnode_t *n, int depth,
 	}
 	else
 	{
-		build_order(order, gt, n, depth);
+		len = build_order(order, gt, n, depth);
 		assert(n->child_ct == 0);
 
 		//add_all_new_moves(gt, n, depth);
 		//order_children(gt, n, depth, killer);
 		//int *order;
 
-		len = solver->possible_moves;
+		//len = solver->possible_moves;
 	}
 
 	//main analysis -- recursive tree search
@@ -631,9 +631,11 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n,
 				continue;
 			assert(0 <= move && move < solver->possible_moves);
 			tnode_t *child = node_make_new_move(gt, n, move);
+			assert(child);
 			if(!child)
 			{
 				assert(len != 1);
+				assert(i);
 				continue;
 			}
 		//}
@@ -676,6 +678,32 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n,
 
 		#ifdef USE_ALPHABETA_PRUNING
 
+		#ifdef PRINCIPAL_VAR_SEARCH
+		if(is_pv && i)
+		{
+			assert(alpha+1 == beta);
+			//if we failed high, rerun
+			float high_limit = is_max? beta : alpha;
+			//printf("\t\tchecking fail state w score=%.1f against lim=%.1f\n",
+			//	result.score, high_limit);
+			bool fail_high = is_better(result.score,
+				high_limit, depth);
+			if(fail_high)
+			{
+				printf("------------ rerunning analysis\n");
+				//exit(0);
+				/*return analyze_all_children(gt, n, order,
+					len, depth, alpha_init, beta_init,
+					false);*/
+				is_pv = false;
+				alpha = alpha_init;
+				beta = beta_init;
+				i--;
+				continue;
+			}
+		}
+		#endif	//PRINCIPAL_VAR_SEARCH
+
 		if(is_max)
 			alpha = max(alpha, result.score);
 		else	//min
@@ -684,38 +712,17 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n,
 		if(alpha >= beta)
 			break;
 
-
-		/*if(is_pv)
+		#ifdef PRINCIPAL_VAR_SEARCH
+		if(is_pv && (i==0))
 		{
-			if(i==0)
-			{
-				//printf("\twindow tightened from [%.1f,%.1f] to ", alpha, beta);
-				if(is_max)
-					beta = alpha+1;
-				else
-					alpha = beta-1;
-				//printf("[%.1f,%.1f]\n", alpha, beta);
-			}
+			if(is_max)
+				beta = alpha+1;
 			else
-			{
-
-				//if we failed high, rerun
-				float high_limit = is_max? beta : alpha;
-				//printf("\t\tchecking fail state w score=%.1f against lim=%.1f\n",
-				//result.score, high_limit);
-				bool fail_high = is_better(result.score,
-					high_limit, depth);
-				if(fail_high)
-				{
-					printf("------------ rerunning analysis\n");
-					exit(0);
-					return analyze_all_children(gt, n, order,
-						len, depth, alpha_init, beta_init,
-						false);
-				}
-			}
-		}*/
-		#endif
+				alpha = beta-1;
+			//printf("[%.1f,%.1f]\n", alpha, beta);
+		}
+		#endif	//PRINCIPAL_VAR_SEARCH
+		#endif	//USE_ALPHABETA_PRUNING
 
 		//if(i==0 && child->children[0])
 		//	killer = child->children[0]->move_index;
@@ -724,11 +731,6 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n,
 
 	//(void)best_move;
 	assert(best_index != -1);
-	if(best_index >= n->child_ct)
-	{
-		printf("len=%d, best_index=%d, child ct = %d\n",
-		len, best_index, n->child_ct);
-	}
 	assert(best_index < n->child_ct);
 	tree_get(gt, n);
 	//minimax(gt, depth);
@@ -783,18 +785,21 @@ int order_compare(const void *aa, const void *bb)
 	return (a->score > b->score)? -1 : 1;
 }
 
-void build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth)
+int build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth)
 {
+	int ct = 0;
 	void *pos = node_get_pos(n);
 	(void)pos;
 	trans_value_t *v = tt_get(n, depth);
 	int best = v? v->best_move : -1;
 	for(int i=0; i<solver->possible_moves; i++)
 	{
-		//get move
+		//get move, going in default order
 		int move = solver->default_order?
 		 	solver->default_order[i] : i;
-		order[i].move = move;
+		if(!solver->is_legal(pos, move))
+			continue;
+		order[ct].move = move;
 
 		//score it
 		/*if(move == best)
@@ -807,18 +812,22 @@ void build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth)
 		//	order[i].score = 0;
 
 		if(move == best)
-			order[i].score = 10000;
+			order[ct].score = 10000;
 		else
-			order[i].score = 0;
+			order[ct].score = 0;
 
-		order[i].score -= (float)i/100;
+		order[ct].score -= (float)i/100;
+
+		ct++;
 	}
 
+	assert(ct);
+
 	//sort
-	qsort(order, solver->possible_moves,
+	qsort(order, ct,
 		sizeof(*order), order_compare);
 
-	return;
+	return ct;
 
 
 	int set = 0;
