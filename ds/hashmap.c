@@ -123,17 +123,18 @@ int hashmap_add_kvpair(hashmap_t *h, void *key, void *value,
 		else	//collision, apply replacement policy
 		{
 			h->collisions++;
+			bool replace = true;
 			if(h->replace_fp)
+				replace = h->replace_fp(kv->key, kv->value, key, value);
+
+			if(replace)
 			{
-				if(h->replace_fp(kv->key, kv->value, key, value))
-				{
-					memcpy(kv->key, key, h->ksize);
-					memcpy(kv->value, value, h->vsize);
-					add_result = HM_POLICY_OVERWRITE_KV;
-				}
-				else
-					add_result = HM_POLICY_DENIED_KV;
+				memcpy(kv->key, key, h->ksize);
+				memcpy(kv->value, value, h->vsize);
+				add_result = HM_POLICY_OVERWRITE_KV;
 			}
+			else
+				add_result = HM_POLICY_DENIED_KV;
 		}
 
 	}

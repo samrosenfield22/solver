@@ -168,6 +168,48 @@ int nim_human_to_iter(char *human)
 	return move;
 }
 
+int nim_only_move(void *pos)
+{
+	nim_pos_t *p = pos;
+
+	//p->piles[i]
+	int last_pile = -1;
+	int filled = 0;
+	for(int i=0; i<3; i++)
+	{
+		if(p->piles[i])
+		{
+			filled++;
+			if(last_pile == -1)
+				last_pile = i;
+			else
+			{
+				break;
+			}
+		}
+	}
+
+	if(filled == 1)
+	{
+		int cnt = p->piles[last_pile];
+		printf("found last pile %d w %d\n", last_pile, cnt);
+		if(cnt > 1)
+		{
+			char hmove[3];
+			hmove[0] = 'A' + last_pile;
+			hmove[1] = '0' + cnt-1;
+			hmove[2] = '\0';
+			printf("only move %s\n", hmove);
+			return nim_human_to_iter(hmove);
+		}
+	}
+
+	//check if opp has a win we have to block on next move
+
+
+	return -1;
+}
+
 solver_t NIM_SOLVER =
 {
 	.name = "nim",
@@ -184,6 +226,7 @@ solver_t NIM_SOLVER =
 	//.is_end = nim_is_end,
 	.is_legal = nim_is_legal,
 	.make_move = nim_make_move,
+	.only_move = nim_only_move,
 	//.get_move = nim_get_move,
 	//.evaluate_leaf = nim_evaluate_leaf,
 
