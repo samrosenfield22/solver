@@ -12,8 +12,18 @@
 #include "algos/solver/games/ttt.h"
 #include "algos/solver/games/c4.h"
 
+#include <windows.h>
+
 int main(void)
 {
+	term_fg(TERM_RED | TERM_BRIGHT);
+	printf("text is red\n");
+	term_bg(TERM_BLUE);
+	printf("bg is blue\n");
+
+	term_clear();
+
+    return 0;
 	play_menu();
 	if(mem_check())
 		printf("\nmemory good!\n");

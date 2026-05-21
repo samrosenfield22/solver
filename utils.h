@@ -6,6 +6,7 @@
 #include "ds/hashmap.h"
 
 #include "misc/timing.h"
+#include "misc/winterm.h"
 
 #include "memory/slab.h"
 //#include "memory/block.h"
