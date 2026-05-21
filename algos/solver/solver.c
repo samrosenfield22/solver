@@ -206,7 +206,10 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms,
 	float last_iddfs_score = 0;
 
 	//iddfs
-	for(iddfs=0;; iddfs+=2)
+	int incr = solver->iddfs_increment;
+	if(!incr)
+		incr = 1;
+	for(iddfs=0;; iddfs+=incr)
 	{
 		full_solve = true;
 
@@ -220,10 +223,6 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms,
 		float asp_window = 1;
 		while(1)
 		{
-			#ifdef ASPIRATION_WINDOW
-			window_lo = last_iddfs_score - asp_window;
-			window_hi = last_iddfs_score + asp_window;
-			#endif
 
 			printf("iddfs=%d in window [%.1f,%.1f]\n",
 				iddfs, window_lo, window_hi);
@@ -234,68 +233,32 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms,
 			#ifdef ASPIRATION_WINDOW
 			if(window_lo < result.score
 				&& result.score < window_hi)
+			{
+				//set window for next iddfs
+				last_iddfs_score = result.score;
+				asp_window = 1;
+				window_lo = last_iddfs_score - asp_window;
+				window_hi = last_iddfs_score + asp_window;
+
 				break;
+			}
+			else
+			{
+				asp_window *= 2;
+				printf("\t--- extending aspiration window size to %.1f ---\n",
+					asp_window);
+				window_lo = last_iddfs_score - asp_window;
+				window_hi = last_iddfs_score + asp_window;
+			}
 
 
-			asp_window *= 2;
-			printf("\t--- extending aspiration window size to %.1f ---\n",
-				asp_window);
 			#else
 			break;
 			#endif
 		}
-		last_iddfs_score = result.score;
+		//
 
-		/*result = eval(gt, gt->head, 0,
-			window_lo, window_hi,
-			true, -1);
-
-		#ifdef ASPIRATION_WINDOW
-		bool outside_window = false;
-		if(result.score < window_lo)
-		{
-			outside_window = true;
-			window_lo = -WIN_SCORE;
-		}
-		else if(result.score > window_hi)
-		{
-			outside_window = true;
-			window_hi = WIN_SCORE;
-		}
-
-		if(outside_window)	//re-search
-		{
-			printf("!!!!! re searching iddfs %d\n", iddfs);
-			result = eval(gt, gt->head, 0,
-				window_lo, window_hi,
-				true, -1);
-		}
-
-		//set window for next iteration
-		window_lo = result.score-1;
-		window_hi = result.score+1;
-
-		#endif*/
-
-		//if(score > MATE_LIMIT || score < -MATE_LIMIT)
-		if(result.full)
-		{
-			full_solve = true;
-			break;
-		}
-
-
-		//conditions for ending the search
-		#ifdef FORCE_SEARCH_DEPTH
-			if(iddfs >= FORCE_SEARCH_DEPTH)
-				break;
-		#else
-			if((toc_ms() >= time_lim_ms) && !(iddfs & 0b1))
-				break;
-			if(full_solve)
-				break;
-		#endif
-
+		//print info
 		if(verbose)
 		{
 			if(iddfs >= 1)
@@ -320,6 +283,27 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms,
 				last = now;
 			}
 		}
+
+		//if(score > MATE_LIMIT || score < -MATE_LIMIT)
+		if(result.full)
+		{
+			full_solve = true;
+			break;
+		}
+
+
+		//conditions for ending the search
+		#ifdef FORCE_SEARCH_DEPTH
+			if(iddfs >= FORCE_SEARCH_DEPTH)
+				break;
+		#else
+			if((toc_ms() >= time_lim_ms) && !(iddfs & 0b1))
+				break;
+			if(full_solve)
+				break;
+		#endif
+
+
 
 		//clear the tree
 		tnode_t *h = tree_get(gt, gt->head);
@@ -395,8 +379,8 @@ result_t eval(tree_t *gt, tnode_t *n, int depth,
 	if(val)
 	{
 		assert(val->score == n->score);
-		//if(n->score > MATE_LIMIT || n->score < -MATE_LIMIT)
-		if(val->full)
+		if(n->score > MATE_LIMIT || n->score < -MATE_LIMIT)
+		//if(val->full)
 		{
 			assert(n->score > MATE_LIMIT
 				|| n->score < -MATE_LIMIT
@@ -702,7 +686,7 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n,
 			break;
 
 
-		if(is_pv)
+		/*if(is_pv)
 		{
 			if(i==0)
 			{
@@ -731,7 +715,7 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n,
 						false);
 				}
 			}
-		}
+		}*/
 		#endif
 
 		//if(i==0 && child->children[0])

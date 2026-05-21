@@ -12,7 +12,7 @@
 #define CLEAR_SUB_NODES
 #define ASPIRATION_WINDOW
 
-//#define FORCE_SEARCH_DEPTH	(30)
+#define FORCE_SEARCH_DEPTH	(32)
 
 #define VARIATION_LENGTH	(3)
 #define PRINCIPAL_VAR_CT	(7)
@@ -68,6 +68,12 @@ typedef struct
 	this should basically be as big as possible.
 	and also prime? hmmm*/
 	uint32_t transtbl_buckets_ct;
+
+	/*required:
+	how many iddfs iterations get skipped
+	set it to 1 to start, then play around with making
+	it bigger*/
+	int iddfs_increment;
 
 	/*optional: if checking for symmetrical positions in
 	the transposition table, only check for symmetries up
