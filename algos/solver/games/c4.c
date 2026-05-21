@@ -9,6 +9,8 @@
 #include <inttypes.h>
 #include <assert.h>
 
+#include "../../../utils.h"
+
 float estimate_color(uint64_t x, uint64_t opp, bool verbose);
 uint32_t c4_hash(void *key, size_t size);
 
@@ -709,20 +711,25 @@ void c4_draw_full(void *pos)
 		for(int col=0; col<7; col++)
 		{
 			char c = '_';
+			int color = TERM_NEUTRAL;
 			uint64_t bit_m = row_m << (7*col);
 			if(p->filled & bit_m)
 			{
 				bool ry = (p->x & bit_m);
 				if(!c4_whosemove(p))
 					ry = !ry;
-				c = ry? 'R':'Y';
+				color = ry? TERM_RED : TERM_YELLOW;
+				//c = ry? 'R':'Y';
+				c = 'O';
 
 				if(wm & bit_m)
 					assert(0);
 			}
 			else if(wm & bit_m)
 				c = '!';
+			term_fg(color);
 			printf("%c   ", c);
+			term_clear();
 		}
 	}
 	putchar('\n');

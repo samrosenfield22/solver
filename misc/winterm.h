@@ -5,6 +5,7 @@
 
 enum
 {
+	TERM_BLACK	= 0,
 	TERM_BLUE	= 1,
 	TERM_GREEN	= 2,
 	TERM_CYAN	= 3,
