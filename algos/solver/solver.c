@@ -201,8 +201,12 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms,
 	//dfs
 	//eval(gt, gt->head, 0, -INF, INF);
 
+	result_t result;
+	float window_lo = -WIN_SCORE, window_hi = WIN_SCORE;
+	float last_iddfs_score = 0;
+
 	//iddfs
-	for(iddfs=0;; iddfs++)
+	for(iddfs=0;; iddfs+=2)
 	{
 		full_solve = true;
 
@@ -211,15 +215,68 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms,
 
 		tree_set_search_depth(gt, iddfs);
 		uint32_t last = toc_ms();
-		/*
-		if eval == a mate, break
-		there's no tree after found a mate -- need a way
-		to get the best move
-		*/
-		result_t result = eval(gt, gt->head, 0,
-			-WIN_SCORE, WIN_SCORE,
-			//0, 2,
+
+
+		float asp_window = 1;
+		while(1)
+		{
+			#ifdef ASPIRATION_WINDOW
+			window_lo = last_iddfs_score - asp_window;
+			window_hi = last_iddfs_score + asp_window;
+			#endif
+
+			printf("iddfs=%d in window [%.1f,%.1f]\n",
+				iddfs, window_lo, window_hi);
+			result = eval(gt, gt->head, 0,
+				window_lo, window_hi,
+				true, -1);
+
+			#ifdef ASPIRATION_WINDOW
+			if(window_lo < result.score
+				&& result.score < window_hi)
+				break;
+
+
+			asp_window *= 2;
+			printf("\t--- extending aspiration window size to %.1f ---\n",
+				asp_window);
+			#else
+			break;
+			#endif
+		}
+		last_iddfs_score = result.score;
+
+		/*result = eval(gt, gt->head, 0,
+			window_lo, window_hi,
 			true, -1);
+
+		#ifdef ASPIRATION_WINDOW
+		bool outside_window = false;
+		if(result.score < window_lo)
+		{
+			outside_window = true;
+			window_lo = -WIN_SCORE;
+		}
+		else if(result.score > window_hi)
+		{
+			outside_window = true;
+			window_hi = WIN_SCORE;
+		}
+
+		if(outside_window)	//re-search
+		{
+			printf("!!!!! re searching iddfs %d\n", iddfs);
+			result = eval(gt, gt->head, 0,
+				window_lo, window_hi,
+				true, -1);
+		}
+
+		//set window for next iteration
+		window_lo = result.score-1;
+		window_hi = result.score+1;
+
+		#endif*/
+
 		//if(score > MATE_LIMIT || score < -MATE_LIMIT)
 		if(result.full)
 		{
@@ -317,9 +374,9 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms,
 result_t eval(tree_t *gt, tnode_t *n, int depth,
 	float alpha, float beta, bool is_pv, int killer)
 {
-	if(is_pv)
-		printf("\tpv node at d=%d w [%.1f,%.1f]\n",
-		depth, alpha, beta);
+	//if(is_pv)
+	//	printf("\tpv node at d=%d w [%.1f,%.1f]\n",
+	//	depth, alpha, beta);
 	if(depth == 0)
 		assert(max_or_min(depth) == MAX_LAYER);
 	assert(n);
@@ -649,12 +706,12 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n,
 		{
 			if(i==0)
 			{
-				printf("\twindow tightened from [%.1f,%.1f] to ", alpha, beta);
+				//printf("\twindow tightened from [%.1f,%.1f] to ", alpha, beta);
 				if(is_max)
 					beta = alpha+1;
 				else
 					alpha = beta-1;
-				printf("[%.1f,%.1f]\n", alpha, beta);
+				//printf("[%.1f,%.1f]\n", alpha, beta);
 			}
 			else
 			{
