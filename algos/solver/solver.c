@@ -690,7 +690,8 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n,
 				high_limit, depth);
 			if(fail_high)
 			{
-				printf("------------ rerunning analysis\n");
+				printf("------------ rerunning analysis at d=%d\n",
+					depth);
 				//exit(0);
 				/*return analyze_all_children(gt, n, order,
 					len, depth, alpha_init, beta_init,
