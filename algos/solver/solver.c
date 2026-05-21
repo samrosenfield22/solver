@@ -600,7 +600,7 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n,
 	result_t result;
 	float best = worst_score(depth);
 	bool best_full = true;
-	int best_move = (len==1)? -1 : order[0].move;
+	int best_index = 0;
 	bool is_max = (max_or_min(depth)==MAX_LAYER);
 
 	int killer = -1;
@@ -658,7 +658,6 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n,
 		{
 			result.score -= is_max? 1: -1;
 			n->score = result.score;
-			//best_move = child->move_index;
 			tree_get(gt, n);
 			//minimax(gt, depth);
 			if(n->child_ct-1)
@@ -669,7 +668,7 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n,
 		if(is_better(result.score, best, depth))
 		{
 			best = result.score;
-			best_move = n->child_ct-1;
+			best_index = n->child_ct-1;
 		}
 
 		if(!result.full)
@@ -724,10 +723,16 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n,
 	}
 
 	//(void)best_move;
-	assert(best_move != -1);
+	assert(best_index != -1);
+	if(best_index >= n->child_ct)
+	{
+		printf("len=%d, best_index=%d, child ct = %d\n",
+		len, best_index, n->child_ct);
+	}
+	assert(best_index < n->child_ct);
 	tree_get(gt, n);
 	//minimax(gt, depth);
-	tree_swap_children(gt, 0, best_move);
+	tree_swap_children(gt, 0, best_index);
 
 	//no legal moves??
 	assert(n->child_ct);
