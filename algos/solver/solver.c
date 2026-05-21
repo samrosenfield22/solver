@@ -342,26 +342,20 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms,
 bool set_aspiration_window(float *asp_window,
 	float *asp_window_size, float *last_score, float score)
 {
-	bool in_window = false;
+	bool in_window = (asp_window[0] < score
+		&& score < asp_window[1]);
 
-	if(asp_window[0] < score
-		&& score < asp_window[1])
+	if(in_window)
 	{
-		//set window for next iddfs
+		//set window params for next iddfs
 		*last_score = score;
 		*asp_window_size = 1;
-		//asp_window[0] = last_iddfs_score - *asp_window_size;
-		//asp_window[1] = last_iddfs_score + *asp_window_size;
-
-		in_window = true;
 	}
 	else
 	{
 		*asp_window_size *= 2;
 		printf("\t--- extending aspiration window size to %.1f ---\n",
 			*asp_window_size);
-		//asp_window[0] = last_iddfs_score - *asp_window_size;
-		//asp_window[1] = last_iddfs_score + *asp_window_size;
 	}
 
 	asp_window[0] = *last_score - *asp_window_size;
