@@ -82,29 +82,35 @@ void play_menu(void)
 				len-1);
 	}
 
-	printf("enter pgn, or press enter for a new game:\n");
-	char pgn[640];
-	fgets(pgn, 639, stdin);
 
-	uint8_t pos[game->pos_size];
-	memcpy(pos, game->initial_pos, game->pos_size);
-	bool valid = load_pgn(game, pos, pgn);
-	if(!valid)
-		return;
-	//void *starting_pos = construct_pos(game, movelist);
 
-	//play(game, pos, COMPUTER_PLAYER, HUMAN_PLAYER);
-	play(game, pos, HUMAN_PLAYER, COMPUTER_PLAYER);
-
-	/*if(playing)
+	while(1)
 	{
-		//if(rand() & 0b1)
-		//	play(game, NULL, HUMAN_PLAYER, COMPUTER_PLAYER);
-		//else
+		printf("enter pgn, or press enter for a new game:\n");
+		char pgn[640];
+		fgets(pgn, 639, stdin);
+
+		uint8_t pos[game->pos_size];
+		memcpy(pos, game->initial_pos, game->pos_size);
+		bool valid = load_pgn(game, pos, pgn);
+		if(!valid)
+			return;
+
+		play(game, pos, COMPUTER_PLAYER, HUMAN_PLAYER);
+		//play(game, pos, HUMAN_PLAYER, COMPUTER_PLAYER);
+
+		/*if(rand() & 0b1)
+			play(game, NULL, HUMAN_PLAYER, COMPUTER_PLAYER);
+		else
 			play(game, NULL, COMPUTER_PLAYER, HUMAN_PLAYER);
+		*/
+		printf("play again? y/n\n");
+		char opt = getchar();
+		if(opt != 'y')
+			break;
+
+
 	}
-	else
-		solve(game, NULL, 0);*/
 }
 
 void play(solver_t *solver, void *start_pos, bool p1, bool p2)
@@ -121,7 +127,7 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 	//if(!pos)
 	//	pos = solver->initial_pos;
 
-	bool turn = true;
+	bool turn = !(seq_ct & 0b1);
 	while(1)
 	{
 		bool player = turn? p1 : p2;
@@ -134,7 +140,7 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 			*/
 			solver->draw_full(pos);
 			print_sequence(solver, seq, stdout);
-			printf("\n\nenter your move, [b]ack, [f]orward, [s]ave, or e[x]it:\n> ");
+			printf("\n\nenter your move, [b]ack, [f]orward, [s]ave, [q]uit game, or e[x]it:\n> ");
 			char buf[80];
 			fgets(buf, 79, stdin);
 			char *end = &buf[strlen(buf)-1];
@@ -169,6 +175,10 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 					*end = '\0';
 				save_pgn(solver, buf);
 				continue;
+			}
+			else if(strcmp(buf, "q")==0 || strcmp(buf, "quit game")==0)
+			{
+				return;
 			}
 			else if(strcmp(buf, "x")==0 || strcmp(buf, "exit")==0)
 			{
@@ -236,6 +246,11 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 
 bool load_pgn(solver_t *solver, void *pos, char *in)
 {
+	//
+	//reset
+	seq_ct = 0;
+	seq_entire = 0;
+
 	//void *pos = solver->initial_pos;
 	if(in[strlen(in)-1] == '\n')
 		in[strlen(in)-1] = '\0';
