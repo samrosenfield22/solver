@@ -396,6 +396,8 @@ float estimate_color_count_wins(uint64_t x, uint64_t filled, bool verbose)
 {
 	return __builtin_popcount(win_map(x, filled));
 
+	/////////////////////////////////////
+
 	uint64_t wmap = win_map(x, filled);
 	int wins = __builtin_popcount(wmap);
 
@@ -425,7 +427,7 @@ float estimate_color_count_wins(uint64_t x, uint64_t filled, bool verbose)
 	if(parity_wins)
 	{
 		//assert(0);
-		wins += 2;
+		wins += 20;
 	}
 
 	return wins;
@@ -514,6 +516,20 @@ bool c4_is_legal(void *pos, int index)
 	return (col & 0b111111) != 0b111111;
 }
 
+void c4_make_move_temp(void *made, void *pos, int index)
+{
+	c4_pos_t *p = pos;
+	c4_pos_t *m = made;
+
+	uint64_t col = get_col(p->filled, index)+1;
+	uint64_t b = col<<(7*index);
+
+	m->x = p->x ^ p->filled;
+	m->filled = (p->filled | b) ^ WHOSEMOVE_BIT;
+
+	//return &made;
+}
+
 void c4_make_move(void *pos, int index, uint32_t *hash)
 {
 	//assert(c4_ok(pos));
@@ -527,11 +543,13 @@ void c4_make_move(void *pos, int index, uint32_t *hash)
 	uint64_t b = col<<(7*index);
 
 
-	p->x |= b;
-	p->filled |= b;
+	//p->x |= b;
+	//p->filled |= b;
 
 	//invert x
 	p->x ^= p->filled;
+
+	p->filled |= b;
 
 	//p->whosemove = !p->whosemove;
 	p->filled ^= WHOSEMOVE_BIT;
@@ -878,6 +896,7 @@ solver_t C4_SOLVER =
 	.whosemove = c4_whosemove,
 	.is_legal = c4_is_legal,
 	.make_move = c4_make_move,
+	.make_move_temp = c4_make_move_temp,
 	//.move_loses = c4_move_loses,
 	.only_move = c4_only_move,
 

@@ -241,6 +241,22 @@ void tree_clear(tree_t *t)
 	}
 }
 
+void tree_delete_all_but_first(tree_t *t, int n)
+{
+	if(!t) 					return;
+	if(!t->p)				return;
+	if(n > t->p->child_ct)	return;
+
+	//int n_after = t->p->child_ct - n;
+	//while(t->p->child_ct > n)
+	//int del_ct = t->p->child_ct - n;
+	for(int i=n; i<t->p->child_ct; i++)
+		node_delete(t, t->p->children[i]);
+
+	t->p->child_ct = n;
+	vector_resize(&t->p->children, t->p->child_ct);
+}
+
 void tree_delete_child(tree_t *t, int n)
 {
 	if(!t) 					return;

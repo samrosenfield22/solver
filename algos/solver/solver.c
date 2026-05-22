@@ -34,11 +34,11 @@ int tt_add(tnode_t *n, result_t *result, int depth, int best_move);
 bool set_aspiration_window(float *asp_window,
 	float *asp_window_size, float *last_score, float score);
 result_t eval(tree_t *gt, tnode_t *n, int depth,
-	float alpha, float beta, bool is_pv, int killer);
+	float alpha, float beta, bool is_pv);
 int build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth);
 bool move_is_forcing(void *pos, int move);
 void add_all_new_moves(tree_t *gt, tnode_t *n, int depth);
-void order_children(tree_t *gt, tnode_t *n, int depth, int killer);
+void order_children(tree_t *gt, tnode_t *n, int depth);
 float sort_score(tree_t *gt, tnode_t *parent, tnode_t *n,
 	int best, int depth, int index);
 result_t analyze_all_children(tree_t *gt, tnode_t *n,
@@ -81,8 +81,11 @@ typedef struct
 } gdata_t;
 size_t gdata_size;
 
+#define MAX_PLY	(42)
+#define NUM_KILLERS	(2)
+uint8_t killers[MAX_PLY][NUM_KILLERS] = {0};
 
-uint32_t passed=0, checked=0;
+//uint32_t passed=0, checked=0;
 
 void print_eval_bar(float score)
 {
@@ -230,7 +233,7 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms,
 				iddfs, asp_window[0], asp_window[1]);
 			result = eval(gt, gt->head, 0,
 				asp_window[0], asp_window[1],
-				true, -1);
+				true);
 
 			bool in_window = true;
 			#ifdef ASPIRATION_WINDOW
@@ -367,7 +370,7 @@ bool set_aspiration_window(float *asp_window,
 
 //recursive
 result_t eval(tree_t *gt, tnode_t *n, int depth,
-	float alpha, float beta, bool is_pv, int killer)
+	float alpha, float beta, bool is_pv)
 {
 	//if(is_pv)
 	//	printf("\tpv node at d=%d w [%.1f,%.1f]\n",
@@ -452,7 +455,7 @@ result_t eval(tree_t *gt, tnode_t *n, int depth,
 		assert(n->child_ct == 0);
 
 		//add_all_new_moves(gt, n, depth);
-		//order_children(gt, n, depth, killer);
+		//order_children(gt, n, depth);
 		//int *order;
 
 		//len = solver->possible_moves;
@@ -530,7 +533,7 @@ void add_all_new_moves(tree_t *gt, tnode_t *n, int depth)
 
 }
 
-void order_children(tree_t *gt, tnode_t *n, int depth, int killer)
+void order_children(tree_t *gt, tnode_t *n, int depth)
 {
 	/*printf("before sorting @ d=%d:\n", depth);
 	for(int i=0; i<n->child_ct; i++)
@@ -615,8 +618,6 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n,
 	int best_index = 0;
 	bool is_max = (max_or_min(depth)==MAX_LAYER);
 
-	int killer = -1;
-
 	//for(int i=0; i<n->child_ct; i++)
 	for(int i=0; i<len; i++)
 	{
@@ -665,7 +666,7 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n,
 
 		bool child_pv = is_pv && (i==0);
 		result = eval(gt, child, depth+1,
-			alpha, beta, child_pv, killer);
+			alpha, beta, child_pv);
 
 
 		if(is_win_score(result.score, depth))
@@ -723,7 +724,22 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n,
 			beta = min(beta, result.score);
 
 		if(alpha >= beta)
+		{
+			//update killers
+			assert(depth < MAX_PLY);
+			if(solver->only_move
+				&& solver->only_move(child)==-1)	//non forcing
+			{
+				uint8_t *killers_ply = killers[depth];
+				if(killers_ply[0] != move)
+				{
+					killers_ply[1] = killers_ply[0];
+					killers_ply[0] = move;
+				}
+			}
+
 			break;
+		}
 
 		#ifdef PRINCIPAL_VAR_SEARCH
 		if(is_pv && (i==0))
@@ -737,9 +753,6 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n,
 		#endif	//PRINCIPAL_VAR_SEARCH
 		#endif	//USE_ALPHABETA_PRUNING
 
-		//if(i==0 && child->children[0])
-		//	killer = child->children[0]->move_index;
-		//printf("%d\n", killer);
 	}
 
 	//(void)best_move;
@@ -805,6 +818,10 @@ int build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth)
 	//(void)pos;
 	trans_value_t *v = tt_get(n, depth);
 	int best = v? v->best_move : -1;
+	uint8_t *killers_ply = killers[depth];
+
+	//printf("killers are %d and %d\n", killers_ply[0], killers_ply[1]);
+
 	for(int i=0; i<solver->possible_moves; i++)
 	{
 		//get move, going in default order
@@ -827,7 +844,10 @@ int build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth)
 		if(move == best)	//hash move
 			order[ct].score = 10000;
 		else if(move_is_forcing(pos, move))
-			order[ct].score = 100;
+			order[ct].score = 500;
+		//else if(move == killers_ply[0]
+		//	|| move == killers_ply[1])
+		//	order[ct].score = 400;
 		else
 			order[ct].score = 0;
 
@@ -913,9 +933,15 @@ int build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth)
 
 bool move_is_forcing(void *pos, int move)
 {
+	if((!solver->make_move_temp) || (!solver->only_move))
+		return false;
+
+	//int only = solver->only_move(solver->make_move_temp(pos, move));
+
 	uint8_t after[solver->pos_size];
-	memcpy(after, pos, solver->pos_size);
-	solver->make_move(after, move, NULL);
+	//memcpy(after, pos, solver->pos_size);
+	//solver->make_move(after, move, NULL);
+	solver->make_move_temp(&after, pos, move);
 	int only = solver->only_move(after);
 	return (only != -1);
 }
@@ -1190,20 +1216,24 @@ bool max_or_min(int depth)
 
 void clear_suboptimal_nodes(tree_t *gt, tnode_t *n, int depth, int var_length)
 {
+	tree_get(gt, n);
 	if(depth >= var_length*2)
 	{
-		while(n->child_ct > 0)
-			tree_delete_child(gt, 0);
+		//while(n->child_ct > 0)
+		//	tree_delete_child(gt, 0);
+		tree_delete_all_but_first(gt, 0);
 	}
 	else if(depth)
 	{
-		while(n->child_ct > INNER_VAR_CT)
-			tree_delete_child(gt, INNER_VAR_CT);
+		//while(n->child_ct > INNER_VAR_CT)
+		//	tree_delete_child(gt, INNER_VAR_CT);
+		tree_delete_all_but_first(gt, INNER_VAR_CT);
 	}
 	else	//root node
 	{
-		while(n->child_ct > PRINCIPAL_VAR_CT)
-			tree_delete_child(gt, PRINCIPAL_VAR_CT);
+		//while(n->child_ct > PRINCIPAL_VAR_CT)
+		//	tree_delete_child(gt, PRINCIPAL_VAR_CT);
+		tree_delete_all_but_first(gt, PRINCIPAL_VAR_CT);
 	}
 }
 

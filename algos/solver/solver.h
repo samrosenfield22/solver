@@ -13,7 +13,7 @@
 #define ASPIRATION_WINDOW
 #define PRINCIPAL_VAR_SEARCH
 
-#define FORCE_SEARCH_DEPTH	(40)
+//#define FORCE_SEARCH_DEPTH	(20)
 
 #define VARIATION_LENGTH	(3)
 #define PRINCIPAL_VAR_CT	(7)
@@ -116,6 +116,8 @@ typedef struct
 	a pointer to the current hash to be updated. if not, pass
 	NULL.*/
 	void (*make_move)(void *pos, int index, uint32_t *hash);
+
+	void (*make_move_temp)(void *made, void *pos, int index);
 
 	//bool (*move_loses)(void *pos, int move);
 

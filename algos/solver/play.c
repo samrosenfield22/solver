@@ -12,7 +12,7 @@
 #include <time.h>
 
 
-#define COMP_TIME	(1 * 1000)
+#define COMP_TIME	(10 * 1000)
 #define DEV_MODE	(true)
 //#define DEV_MODE	(false)
 

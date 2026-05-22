@@ -78,6 +78,7 @@ void tree_add_copies(tree_t *t, int cnt);
 void tree_add_empties(tree_t *t, int cnt);
 void tree_destroy(tree_t *t);
 void tree_clear(tree_t *t);
+void tree_delete_all_but_first(tree_t *t, int n);
 void tree_delete_child(tree_t *t, int n);
 void tree_draw(tree_t *t, int maxdepth);
 void tree_set_search_depth(tree_t *t, int d);
