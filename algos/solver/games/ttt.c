@@ -186,6 +186,7 @@ void ttt_draw_full(void *pos)
 
 int ttt_human_to_iter(char *human)
 {
+	printf("move str %s\n", human);
 	if(human[0] >= 'a')
 		human[0] -= ('a'-'A');
 	int c = human[0]-'A';
@@ -196,7 +197,11 @@ int ttt_human_to_iter(char *human)
 
 char *ttt_iter_to_human(int move)
 {
-	return NULL;
+	int col = move % 3;
+	int row = move / 3;
+	static char buf[3];
+	snprintf(buf, 3, "%c%d", col + 'A', row);
+	return buf;
 }
 
 solver_t TTT_SOLVER =

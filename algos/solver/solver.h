@@ -168,7 +168,8 @@ typedef struct
 
 	/*optional:
 	converts a human-friendly expression of a move (i.e. Nc3)
-	into a move index*/
+	into a move index
+	should return -1 if the move is invalid*/
 	int (*human_to_iter)(char *human);
 
 	/*optional:

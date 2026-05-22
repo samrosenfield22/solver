@@ -16,10 +16,10 @@
 #define DEV_MODE	(true)
 //#define DEV_MODE	(false)
 
-void print_sequence(int8_t *seq);
+void print_sequence(solver_t *solver, int8_t *seq);
 bool load_pgn(solver_t *solver, void *pos, char *in);
-bool read_pgn_file(char *name);
-void load_seq_string(char *seq);
+bool read_pgn_file(solver_t *solver, char *name);
+void load_seq_string(solver_t *solver, char *seq);
 bool make_sequence_moves(solver_t *solver, void *pos);
 void seq_add(int move);
 
@@ -129,7 +129,7 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 			make move, update pos
 			*/
 			solver->draw_full(pos);
-			print_sequence(seq);
+			print_sequence(solver, seq);
 			printf("\n\nenter your move, [b]ack, [s]ave, or e[x]it:\n> ");
 			char buf[80];
 			fgets(buf, 79, stdin);
@@ -145,6 +145,16 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 				memcpy(pos, solver->initial_pos, solver->pos_size);
 				make_sequence_moves(solver, pos);
 				continue;
+			}
+			else if(strcmp(buf, "s")==0 || strcmp(buf, "save")==0)
+			{
+				printf("save isn\'t implemented yet!\n");
+				continue;
+			}
+			else if(strcmp(buf, "x")==0 || strcmp(buf, "exit")==0)
+			{
+				printf("ggs\n");
+				exit(0);
 			}
 
 			//int hmove;
@@ -195,7 +205,7 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 				case END_NOT_OVER:	break;
 			}
 			solver->draw_full(pos);
-			print_sequence(seq);
+			print_sequence(solver, seq);
 			break;
 		}
 
@@ -212,15 +222,15 @@ bool load_pgn(solver_t *solver, void *pos, char *in)
 		in[strlen(in)-1] = '\0';
 	if(strstr(in, ".txt"))
 	{
-		if(!read_pgn_file(in))
+		if(!read_pgn_file(solver, in))
 			return false;
 	}
 	else
-		load_seq_string(in);
+		load_seq_string(solver, in);
 	return make_sequence_moves(solver, pos);
 }
 
-bool read_pgn_file(char *name)
+bool read_pgn_file(solver_t *solver, char *name)
 {
 	//make file name
 	const char *dir = "algos/solver/pgns";
@@ -238,19 +248,27 @@ bool read_pgn_file(char *name)
 	//load moves
 	fgets(buf, 639, fp);
 	//return load_seq_string(solver, pos, buf);
-	load_seq_string(buf);
+	load_seq_string(solver, buf);
 	//return make_sequence_moves(solver, pos);
 	return true;
 }
 
-void load_seq_string(char *seq)
+void load_seq_string(solver_t *solver, char *seq)
 {
 	for(char *token = strtok(seq, ","); token;
 		token = strtok(NULL, ","))
 	{
 		if(*token == '\n')
 			return;
-		int move = strtol(token, NULL, 10);
+
+		while(*token==' ' || *token=='\t')
+			token++;
+
+		int move = -1;
+		if(solver->human_to_iter)
+			move = solver->human_to_iter(token);
+		if(move < 0 || move >= solver->possible_moves)
+			move = strtol(token, NULL, 10);
 		printf("move=%d\n", move);
 
 		seq_add(move);
@@ -289,7 +307,7 @@ bool make_sequence_moves(solver_t *solver, void *pos)
 	return true;
 }
 
-void print_sequence(int8_t *seq)
+void print_sequence(solver_t *solver, int8_t *seq)
 {
 	bool partial = (seq_entire != seq_ct);
 	printf("\n\nmoves played: ");
@@ -299,7 +317,11 @@ void print_sequence(int8_t *seq)
 		if(partial && i==seq_ct)
 			printf("(");
 		//printf("%d, ", *move);
-		printf("%d", seq[i]);
+
+		if(solver->iter_to_human)
+			printf("%s", solver->iter_to_human(seq[i]));
+		else
+			printf("%d", seq[i]);
 
 		if(i==seq_entire-1)
 		{
