@@ -11,7 +11,8 @@
 
 #include "../../../utils.h"
 
-float estimate_color(uint64_t x, uint64_t opp, bool verbose);
+float estimate_color(uint64_t x, uint64_t opp, uint64_t filled, bool verbose);
+void c4_draw_full(void *pos);
 uint32_t c4_hash(void *key, size_t size);
 
 #define WHOSEMOVE_BIT	(((uint64_t)1)<<63)
@@ -171,15 +172,24 @@ float c4_estimate(void *pos)
 	//assert(c4_ok(pos));
 	c4_pos_t *p = pos;
 
-	uint64_t x = p->x;
-	uint64_t opp = p->x ^ p->filled;
+	uint64_t x = p->x | WHOSEMOVE_BIT;
+	uint64_t opp = (p->x ^ p->filled) & ~WHOSEMOVE_BIT;
+
+
 
 	//calculate est for the player whose turn it is
-	float est = estimate_color(x, opp, false);
-	est -= estimate_color(opp, x, false);
+	float est = estimate_color(x, opp, p->filled, false);
+	est -= estimate_color(opp, x, p->filled, false);
 
 	if(!c4_whosemove(p))
 		est *= -1;
+
+	/*if(est >= 95 || est <= -95)
+	{
+		printf("parity win (%.1f):\n", est);
+		c4_draw_full(pos);
+		getchar();
+	}*/
 
 	///est /= 10;
 	return est;
@@ -385,6 +395,40 @@ float estimate_color_count_middles(uint64_t x)
 float estimate_color_count_wins(uint64_t x, uint64_t filled, bool verbose)
 {
 	return __builtin_popcount(win_map(x, filled));
+
+	uint64_t wmap = win_map(x, filled);
+	int wins = __builtin_popcount(wmap);
+
+	//parity
+	int nmoves = 0;
+	for(int i=0; i<7; i++)
+	{
+		nmoves += __builtin_popcount(get_col(filled, i));
+		//printf("\t0x%0x\n", get_col(filled, i));
+	}
+	//int nmoves = __builtin_popcount(filled & ~WHOSEMOVE_BIT);
+	bool parity = !(nmoves & 0b1);
+	//printf("%d moves played (%s)\n", nmoves, parity? "even":"odd");
+	//printf("filled: %s\n", print64(filled));
+
+	if((x & WHOSEMOVE_BIT))
+		parity = !parity;
+	uint64_t pmask = 0b0010101001010100101010010101001010100101010010101;
+	if(parity)
+		pmask <<= 1;
+	uint64_t parity_wins = wmap & pmask;
+
+	//clear ones that can be immediately played
+	//(win spots with a token already underneath them)
+	parity_wins &= ~(filled<<1);
+
+	if(parity_wins)
+	{
+		//assert(0);
+		wins += 2;
+	}
+
+	return wins;
 }
 
 float estimate_color_count_open_threes(uint64_t x, uint64_t opp, bool verbose)
@@ -448,12 +492,12 @@ float estimate_color_count_open_threes(uint64_t x, uint64_t opp, bool verbose)
 }
 
 
-float estimate_color(uint64_t x, uint64_t opp, bool verbose)
+float estimate_color(uint64_t x, uint64_t opp, uint64_t filled, bool verbose)
 //float estimate_color(uint64_t x, uint64_t filled, bool verbose)
 {
 	float est = 0;
 	est += estimate_color_count_middles(x);
-	est += 3*estimate_color_count_wins(x, opp, verbose);
+	est += 3*estimate_color_count_wins(x, filled, verbose);
 	//est += estimate_color_count_open_threes(x, opp, verbose);
 	return est;
 }
@@ -683,7 +727,7 @@ int c4_only_move(void *pos)
 	}
 	putchar('\n');
 
-	estimate_color(cols, opp, true);
+	//estimate_color(cols, opp, true);
 }*/
 
 void c4_draw_full(void *pos)
@@ -696,7 +740,8 @@ void c4_draw_full(void *pos)
 	uint64_t r = p->x ^ p->filled;
 	uint64_t filled = p->filled;
 	//uint64_t = ;
-	uint64_t wm = win_map(r, filled);
+	uint64_t rwm = win_map(r, filled);
+	uint64_t ywm = win_map(p->x, filled);
 
 
 	//header
@@ -724,11 +769,16 @@ void c4_draw_full(void *pos)
 				//c = ry? 'R':'Y';
 				c = 'O';
 
-				if(wm & bit_m)
-					assert(0);
+				//if(wm & bit_m)
+				//	assert(0);
 			}
-			else if(wm & bit_m)
+			else if((rwm | ywm) & bit_m)
+			{
 				c = '!';
+				color = 0;
+				if(rwm & bit_m)	color |= TERM_RED;
+				if(ywm & bit_m)	color |= TERM_YELLOW;
+			}
 			term_fg(color);
 			printf("%c   ", c);
 			term_clear();

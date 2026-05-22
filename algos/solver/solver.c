@@ -36,6 +36,7 @@ bool set_aspiration_window(float *asp_window,
 result_t eval(tree_t *gt, tnode_t *n, int depth,
 	float alpha, float beta, bool is_pv, int killer);
 int build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth);
+bool move_is_forcing(void *pos, int move);
 void add_all_new_moves(tree_t *gt, tnode_t *n, int depth);
 void order_children(tree_t *gt, tnode_t *n, int depth, int killer);
 float sort_score(tree_t *gt, tnode_t *parent, tnode_t *n,
@@ -427,6 +428,7 @@ result_t eval(tree_t *gt, tnode_t *n, int depth,
 			n->score = solver->estimate(pos);
 		else
 			n->score = 0;
+		assert(-WIN_SCORE < n->score && n->score < WIN_SCORE);
 		return (result_t){n->score, false};
 	}
 
@@ -800,7 +802,7 @@ int build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth)
 {
 	int ct = 0;
 	void *pos = node_get_pos(n);
-	(void)pos;
+	//(void)pos;
 	trans_value_t *v = tt_get(n, depth);
 	int best = v? v->best_move : -1;
 	for(int i=0; i<solver->possible_moves; i++)
@@ -822,8 +824,10 @@ int build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth)
 		//else
 		//	order[i].score = 0;
 
-		if(move == best)
+		if(move == best)	//hash move
 			order[ct].score = 10000;
+		else if(move_is_forcing(pos, move))
+			order[ct].score = 100;
 		else
 			order[ct].score = 0;
 
@@ -905,6 +909,15 @@ int build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth)
 		printf("%d, ", order[i]);
 	printf("\n\n");*/
 
+}
+
+bool move_is_forcing(void *pos, int move)
+{
+	uint8_t after[solver->pos_size];
+	memcpy(after, pos, solver->pos_size);
+	solver->make_move(after, move, NULL);
+	int only = solver->only_move(after);
+	return (only != -1);
 }
 
 /*tnode_t *create_next_order_child(tree_t *gt, tnode_t *n, int index)
