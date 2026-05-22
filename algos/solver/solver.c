@@ -374,8 +374,8 @@ result_t eval(tree_t *gt, tnode_t *n, int depth,
 	//if(is_pv)
 	//	printf("\tpv node at d=%d w [%.1f,%.1f]\n",
 	//	depth, alpha, beta);
-	if(depth == 0)
-		assert(max_or_min(depth) == MAX_LAYER);
+	//if(depth == 0)
+	//	assert(max_or_min(depth) == MAX_LAYER);
 	assert(n);
 	if(depth > 1000)
 	{

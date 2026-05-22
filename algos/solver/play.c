@@ -11,13 +11,16 @@
 #include <string.h>
 #include <time.h>
 
+#define PGN_DIR	"algos/solver/pgns"
+
 
 #define COMP_TIME	(1 * 1000)
 #define DEV_MODE	(true)
 //#define DEV_MODE	(false)
 
-void print_sequence(solver_t *solver, int8_t *seq);
+void print_sequence(solver_t *solver, int8_t *seq, FILE *stream);
 bool load_pgn(solver_t *solver, void *pos, char *in);
+void save_pgn(solver_t *solver, char *path);
 bool read_pgn_file(solver_t *solver, char *name);
 void load_seq_string(solver_t *solver, char *seq);
 bool make_sequence_moves(solver_t *solver, void *pos);
@@ -90,7 +93,8 @@ void play_menu(void)
 		return;
 	//void *starting_pos = construct_pos(game, movelist);
 
-	play(game, pos, COMPUTER_PLAYER, HUMAN_PLAYER);
+	//play(game, pos, COMPUTER_PLAYER, HUMAN_PLAYER);
+	play(game, pos, HUMAN_PLAYER, COMPUTER_PLAYER);
 
 	/*if(playing)
 	{
@@ -129,8 +133,8 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 			make move, update pos
 			*/
 			solver->draw_full(pos);
-			print_sequence(solver, seq);
-			printf("\n\nenter your move, [b]ack, [s]ave, or e[x]it:\n> ");
+			print_sequence(solver, seq, stdout);
+			printf("\n\nenter your move, [b]ack, [f]orward, [s]ave, or e[x]it:\n> ");
 			char buf[80];
 			fgets(buf, 79, stdin);
 			char *end = &buf[strlen(buf)-1];
@@ -139,16 +143,31 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 
 			if(strcmp(buf, "b")==0 || strcmp(buf, "back")==0)
 			{
-				printf("you selected back!\n");
 				seq_ct -= 2;
 				//pos = solver->initial_pos;
 				memcpy(pos, solver->initial_pos, solver->pos_size);
 				make_sequence_moves(solver, pos);
 				continue;
 			}
+			else if(strcmp(buf, "f")==0 || strcmp(buf, "forward")==0)
+			{
+				if(seq_ct+2 <= seq_entire)
+				{
+					seq_ct += 2;
+					//pos = solver->initial_pos;
+					memcpy(pos, solver->initial_pos, solver->pos_size);
+					make_sequence_moves(solver, pos);
+				}
+				continue;
+			}
 			else if(strcmp(buf, "s")==0 || strcmp(buf, "save")==0)
 			{
-				printf("save isn\'t implemented yet!\n");
+				printf("enter save path:  \n");
+				fgets(buf, 79, stdin);
+				char *end = &buf[strlen(buf)-1];
+				if(*end == '\n')
+					*end = '\0';
+				save_pgn(solver, buf);
 				continue;
 			}
 			else if(strcmp(buf, "x")==0 || strcmp(buf, "exit")==0)
@@ -205,7 +224,7 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 				case END_NOT_OVER:	break;
 			}
 			solver->draw_full(pos);
-			print_sequence(solver, seq);
+			print_sequence(solver, seq, stdout);
 			break;
 		}
 
@@ -233,9 +252,8 @@ bool load_pgn(solver_t *solver, void *pos, char *in)
 bool read_pgn_file(solver_t *solver, char *name)
 {
 	//make file name
-	const char *dir = "algos/solver/pgns";
 	char buf[640];
-	snprintf(buf, 639, "%s/%s", dir, name);
+	snprintf(buf, 639, "%s/%s", PGN_DIR, name);
 
 	//open file
 	FILE *fp = fopen(buf, "r");
@@ -250,7 +268,28 @@ bool read_pgn_file(solver_t *solver, char *name)
 	//return load_seq_string(solver, pos, buf);
 	load_seq_string(solver, buf);
 	//return make_sequence_moves(solver, pos);
+	fclose(fp);
 	return true;
+}
+
+void save_pgn(solver_t *solver, char *path)
+{
+	//make file name
+	char buf[640];
+	snprintf(buf, 639, "%s/%s", PGN_DIR, path);
+
+	//open file
+	FILE *fp = fopen(buf, "w");
+	if(!fp)
+	{
+		printf("invalid file %s\n", buf);
+		return;
+	}
+
+	//write moves
+	print_sequence(solver, seq, fp);
+
+	fclose(fp);
 }
 
 void load_seq_string(solver_t *solver, char *seq)
@@ -307,32 +346,37 @@ bool make_sequence_moves(solver_t *solver, void *pos)
 	return true;
 }
 
-void print_sequence(solver_t *solver, int8_t *seq)
+void print_sequence(solver_t *solver, int8_t *seq, FILE *stream)
 {
+	bool to_term = (stream == stdout);
 	bool partial = (seq_entire != seq_ct);
-	printf("\n\nmoves played: ");
+
+	if(to_term)
+		printf("\n\nmoves played: ");
 	//for(int8_t *move = seq; *move!=-1; move++)
 	for(int i=0; i<seq_entire; i++)
 	{
-		if(partial && i==seq_ct)
+		if(to_term && partial && i==seq_ct)
 			printf("(");
 		//printf("%d, ", *move);
 
 		if(solver->iter_to_human)
-			printf("%s", solver->iter_to_human(seq[i]));
+			fprintf(stream, "%s", solver->iter_to_human(seq[i]));
 		else
-			printf("%d", seq[i]);
+			fprintf(stream, "%d", seq[i]);
 
 		if(i==seq_entire-1)
 		{
-			if(partial)
+			if(to_term && partial)
 				printf(")");
 		}
 		else
-			printf(", ");
+			fprintf(stream, ", ");
 
 	}
-	printf("\n");
+
+	if(to_term)
+		printf("\n");
 }
 
 void seq_add(int move)
