@@ -13,7 +13,7 @@
 #define ASPIRATION_WINDOW
 #define PRINCIPAL_VAR_SEARCH
 
-//#define FORCE_SEARCH_DEPTH	(20)
+#define FORCE_SEARCH_DEPTH	(20)
 
 #define VARIATION_LENGTH	(3)
 #define PRINCIPAL_VAR_CT	(7)
@@ -117,7 +117,7 @@ typedef struct
 	NULL.*/
 	void (*make_move)(void *pos, int index, uint32_t *hash);
 
-	void (*make_move_temp)(void *made, void *pos, int index);
+	void (*make_move_temp)(void *made, void *pos, int index, uint32_t *hash);
 
 	//bool (*move_loses)(void *pos, int move);
 

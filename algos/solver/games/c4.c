@@ -516,7 +516,7 @@ bool c4_is_legal(void *pos, int index)
 	return (col & 0b111111) != 0b111111;
 }
 
-void c4_make_move_temp(void *made, void *pos, int index)
+void c4_make_move_temp(void *made, void *pos, int index, uint32_t *hash)
 {
 	c4_pos_t *p = pos;
 	c4_pos_t *m = made;
@@ -528,6 +528,31 @@ void c4_make_move_temp(void *made, void *pos, int index)
 	m->filled = (p->filled | b) ^ WHOSEMOVE_BIT;
 
 	//return &made;
+
+	//update hash
+	if(!hash)
+		return;
+	assert(zobrist_computed);
+	//*hash = check_hash;
+
+
+	int hi = 6*index;
+
+	for(uint8_t c=col>>1; c; c>>=1)
+		hi++;
+	//hi += 32 - __builtin_clz((unsigned int)col);
+	//hi += __builtin_popcount(col);
+	//printf("now hi is %d\n", hi);
+	//if(p->whosemove)
+	if(c4_whosemove(m))
+		hi += 42;
+	//printf("final hi: %d\n", hi);
+
+	zobrist_update(hash, hi);
+
+	//test
+	//uint32_t check_hash = c4_hash(m, 0);
+	//assert(*hash == check_hash);
 }
 
 void c4_make_move(void *pos, int index, uint32_t *hash)

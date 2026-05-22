@@ -12,18 +12,19 @@
 #include <time.h>
 
 
-#define COMP_TIME	(10 * 1000)
+#define COMP_TIME	(1 * 1000)
 #define DEV_MODE	(true)
 //#define DEV_MODE	(false)
 
 void print_sequence(int8_t *seq);
 bool load_pgn(solver_t *solver, void *pos, char *in);
-bool read_pgn_file(solver_t *solver, void *pos, char *name);
-bool seq_charp_to_ints(solver_t *solver, void *pos, char *seq);
+bool read_pgn_file(char *name);
+void load_seq_string(char *seq);
+bool make_sequence_moves(solver_t *solver, void *pos);
 void seq_add(int move);
 
 int8_t seq[200] = {-1};
-int seq_ct = 0;
+int seq_ct = 0, seq_entire = 0;
 
 void play_menu(void)
 {
@@ -81,7 +82,9 @@ void play_menu(void)
 	printf("enter pgn, or press enter for a new game:\n");
 	char pgn[640];
 	fgets(pgn, 639, stdin);
-	void *pos = game->initial_pos;
+
+	uint8_t pos[game->pos_size];
+	memcpy(pos, game->initial_pos, game->pos_size);
 	bool valid = load_pgn(game, pos, pgn);
 	if(!valid)
 		return;
@@ -100,15 +103,19 @@ void play_menu(void)
 		solve(game, NULL, 0);*/
 }
 
-void play(solver_t *solver, void *pos, bool p1, bool p2)
+void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 {
 	int move;
 
 	printf("starting %s! %s goes first.\n\n",
 		solver->name, (p1==HUMAN_PLAYER)? "human":"computer");
 
-	if(!pos)
-		pos = solver->initial_pos;
+	uint8_t pos[solver->pos_size];
+	if(!start_pos)
+		start_pos = solver->initial_pos;
+	memcpy(pos, start_pos, solver->pos_size);
+	//if(!pos)
+	//	pos = solver->initial_pos;
 
 	bool turn = true;
 	while(1)
@@ -123,11 +130,22 @@ void play(solver_t *solver, void *pos, bool p1, bool p2)
 			*/
 			solver->draw_full(pos);
 			print_sequence(seq);
-			printf("\n\nenter your move:   ");
+			printf("\n\nenter your move, [b]ack, [s]ave, or e[x]it:\n> ");
 			char buf[80];
 			fgets(buf, 79, stdin);
+			char *end = &buf[strlen(buf)-1];
+			if(*end == '\n')
+				*end = '\0';
 
-			//if(strcmp(buf, "u")==0 || strcmp(buf, "undo")==0)
+			if(strcmp(buf, "b")==0 || strcmp(buf, "back")==0)
+			{
+				printf("you selected back!\n");
+				seq_ct -= 2;
+				//pos = solver->initial_pos;
+				memcpy(pos, solver->initial_pos, solver->pos_size);
+				make_sequence_moves(solver, pos);
+				continue;
+			}
 
 			//int hmove;
 			if(solver->human_to_iter)
@@ -190,17 +208,19 @@ void play(solver_t *solver, void *pos, bool p1, bool p2)
 bool load_pgn(solver_t *solver, void *pos, char *in)
 {
 	//void *pos = solver->initial_pos;
-	bool valid;
 	if(in[strlen(in)-1] == '\n')
 		in[strlen(in)-1] = '\0';
 	if(strstr(in, ".txt"))
-		valid = read_pgn_file(solver, pos, in);
+	{
+		if(!read_pgn_file(in))
+			return false;
+	}
 	else
-		valid = seq_charp_to_ints(solver, pos, in);
-	return valid;
+		load_seq_string(in);
+	return make_sequence_moves(solver, pos);
 }
 
-bool read_pgn_file(solver_t *solver, void *pos, char *name)
+bool read_pgn_file(char *name)
 {
 	//make file name
 	const char *dir = "algos/solver/pgns";
@@ -217,23 +237,47 @@ bool read_pgn_file(solver_t *solver, void *pos, char *name)
 
 	//load moves
 	fgets(buf, 639, fp);
-	return seq_charp_to_ints(solver, pos, buf);
+	//return load_seq_string(solver, pos, buf);
+	load_seq_string(buf);
+	//return make_sequence_moves(solver, pos);
+	return true;
 }
 
-bool seq_charp_to_ints(solver_t *solver, void *pos, char *seq)
+void load_seq_string(char *seq)
 {
 	for(char *token = strtok(seq, ","); token;
 		token = strtok(NULL, ","))
 	{
 		if(*token == '\n')
-			return true;
+			return;
 		int move = strtol(token, NULL, 10);
 		printf("move=%d\n", move);
 
-		if(solver->is_legal(pos, move))
+		seq_add(move);
+
+		/*if(solver->is_legal(pos, move))
 		{
 			solver->make_move(pos, move, NULL);
 			seq_add(move);
+		}
+		else
+		{
+			printf("illegal move %d\n", move);
+			return false;
+		}*/
+	}
+
+	//return true;
+}
+
+bool make_sequence_moves(solver_t *solver, void *pos)
+{
+	for(int i=0; i<seq_ct; i++)
+	{
+		int move = seq[i];
+		if(solver->is_legal(pos, move))
+		{
+			solver->make_move(pos, move, NULL);
 		}
 		else
 		{
@@ -247,17 +291,37 @@ bool seq_charp_to_ints(solver_t *solver, void *pos, char *seq)
 
 void print_sequence(int8_t *seq)
 {
+	bool partial = (seq_entire != seq_ct);
 	printf("\n\nmoves played: ");
-	for(int8_t *move = seq; *move!=-1; move++)
+	//for(int8_t *move = seq; *move!=-1; move++)
+	for(int i=0; i<seq_entire; i++)
 	{
-		printf("%d, ", *move);
+		if(partial && i==seq_ct)
+			printf("(");
+		//printf("%d, ", *move);
+		printf("%d", seq[i]);
+
+		if(i==seq_entire-1)
+		{
+			if(partial)
+				printf(")");
+		}
+		else
+			printf(", ");
+
 	}
 	printf("\n");
 }
 
 void seq_add(int move)
 {
+	//if we're modifying past history, erase the rest of it
+	if(seq_ct != seq_entire && seq[seq_ct] != move)
+		seq_entire = seq_ct;
+
 	seq[seq_ct] = move;
 	seq_ct++;
 	seq[seq_ct] = -1;
+	if(seq_ct > seq_entire)
+		seq_entire = seq_ct;
 }

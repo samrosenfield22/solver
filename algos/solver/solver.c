@@ -240,7 +240,6 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms,
 			in_window = set_aspiration_window(asp_window, &asp_window_size,
 				&last_iddfs_score, result.score);
 			#endif
-
 			if(in_window)
 				break;
 		}
@@ -830,27 +829,29 @@ int build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth)
 		if(!solver->is_legal(pos, move))
 			continue;
 		order[ct].move = move;
+		order[ct].score = 0;
 
-		//score it
-		/*if(move == best)
-			order[i].score = 10000;
-		else *//*if(solver->is_legal(pos, move))
-			order[i].score = solver->estimate_sort(pos, move);
-		else
-			order[i].score = -10000;*/
-		//else
-		//	order[i].score = 0;
 
+		/*tnode_t *after = node_make_new_move(gt, n, move);
+		v = tt_get(after, depth);
+		if(v)
+		{
+			order[ct].score = v->score;
+			if(max_or_min(depth)==MIN_LAYER)
+				order[ct].score *= -1;
+		}*/
+
+
+		//heuristic bonuses
 		if(move == best)	//hash move
-			order[ct].score = 10000;
+			order[ct].score += 10000;
 		else if(move_is_forcing(pos, move))
-			order[ct].score = 500;
+			order[ct].score += 500;
 		//else if(move == killers_ply[0]
 		//	|| move == killers_ply[1])
 		//	order[ct].score = 400;
-		else
-			order[ct].score = 0;
 
+		//add default move ordering
 		order[ct].score -= (float)i/100;
 
 		ct++;
@@ -861,6 +862,9 @@ int build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth)
 	//sort
 	qsort(order, ct,
 		sizeof(*order), order_compare);
+
+	//tree_get(gt, n);
+	//tree_delete_all_but_first(gt, 0);
 
 	return ct;
 
@@ -941,7 +945,7 @@ bool move_is_forcing(void *pos, int move)
 	uint8_t after[solver->pos_size];
 	//memcpy(after, pos, solver->pos_size);
 	//solver->make_move(after, move, NULL);
-	solver->make_move_temp(&after, pos, move);
+	solver->make_move_temp(&after, pos, move, NULL);
 	int only = solver->only_move(after);
 	return (only != -1);
 }
@@ -1244,12 +1248,15 @@ tnode_t *node_make_new_move(tree_t *gt, tnode_t *n, int move)
 	{
 		tree_get(gt, n);
 		tree_add_copies(gt, 1);
+		//tree_add(gt, NULL);
 		child = n->children[n->child_ct-1];
 
 		uint32_t *hp = node_get_hash(child);
+		//*hp = *node_get_hash(n);
 
 
 		solver->make_move(node_get_pos(child), move, hp);
+		//solver->make_move_temp(node_get_pos(child), node_get_pos(n), move, hp);
 		child->move_index = move;
 		assert(child->score == 0);
 
