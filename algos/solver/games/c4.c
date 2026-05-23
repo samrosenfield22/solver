@@ -780,11 +780,22 @@ void c4_draw_full(void *pos)
 	char indent[] = "\t\t\t\t\t\t\t";
 
 	//test
-	uint64_t r = p->x ^ p->filled;
+	uint64_t red, yel;
+	if(c4_whosemove(p))
+	{
+		yel = p->x ^ p->filled;
+		red = p->x;
+	}
+	else
+	{
+		red = p->x ^ p->filled;
+		yel = p->x;
+	}
+
 	uint64_t filled = p->filled;
 	//uint64_t = ;
-	uint64_t rwm = win_map(r, filled);
-	uint64_t ywm = win_map(p->x, filled);
+	uint64_t rwm = win_map(red, filled);
+	uint64_t ywm = win_map(yel, filled);
 
 
 	//header
@@ -805,9 +816,10 @@ void c4_draw_full(void *pos)
 			uint64_t bit_m = row_m << (7*col);
 			if(p->filled & bit_m)
 			{
-				bool ry = (p->x & bit_m);
-				if(!c4_whosemove(p))
-					ry = !ry;
+				//bool ry = (p->x & bit_m);
+				//if(!c4_whosemove(p))
+				//	ry = !ry;
+				bool ry = red & bit_m;
 				color = ry? TERM_RED : TERM_YELLOW;
 				//c = ry? 'R':'Y';
 				c = 'O';
@@ -912,6 +924,7 @@ solver_t C4_SOLVER =
 	//.transtbl_buckets_ct = 180000001,
 	.transtbl_buckets_ct = (1<<28),
 	.iddfs_increment = 4,
+	.aspiration_default_width = 2,
 	.default_order = (uint8_t[]){3, 2, 4, 1, 5, 0, 6},
 	.flip_depth = 16,
 

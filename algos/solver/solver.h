@@ -10,10 +10,11 @@
 #define USE_ALPHABETA_PRUNING
 #define USE_TRANSPOSITION_TABLE
 #define CLEAR_SUB_NODES
+#define RETURN_FIRST_WIN_FOUND
 #define ASPIRATION_WINDOW
 #define PRINCIPAL_VAR_SEARCH
 
-#define FORCE_SEARCH_DEPTH	(20)
+//#define FORCE_SEARCH_DEPTH	(32)
 
 #define VARIATION_LENGTH	(3)
 #define PRINCIPAL_VAR_CT	(7)
@@ -75,6 +76,10 @@ typedef struct
 	set it to 1 to start, then play around with making
 	it bigger*/
 	int iddfs_increment;
+
+	/*optional:
+	*/
+	int aspiration_default_width;
 
 	/*optional: if checking for symmetrical positions in
 	the transposition table, only check for symmetries up

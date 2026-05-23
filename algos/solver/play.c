@@ -96,14 +96,17 @@ void play_menu(void)
 		if(!valid)
 			return;
 
-		play(game, pos, COMPUTER_PLAYER, HUMAN_PLAYER);
-		//play(game, pos, HUMAN_PLAYER, COMPUTER_PLAYER);
-
-		/*if(rand() & 0b1)
-			play(game, NULL, HUMAN_PLAYER, COMPUTER_PLAYER);
+		if(DEV_MODE)
+			play(game, pos, COMPUTER_PLAYER, HUMAN_PLAYER);
+			//play(game, pos, HUMAN_PLAYER, COMPUTER_PLAYER);
 		else
-			play(game, NULL, COMPUTER_PLAYER, HUMAN_PLAYER);
-		*/
+		{
+			if(rand() & 0b1)
+				play(game, NULL, HUMAN_PLAYER, COMPUTER_PLAYER);
+			else
+				play(game, NULL, COMPUTER_PLAYER, HUMAN_PLAYER);
+		}
+
 		printf("play again? y/n\n");
 		char opt = getchar();
 		if(opt != 'y')

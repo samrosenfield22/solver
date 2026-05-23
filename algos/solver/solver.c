@@ -153,6 +153,8 @@ void print_eval_bar(float score)
 	return pos;
 }*/
 
+bool asp_window_rerun = false;
+
 float solve(solver_t *game_solver, void *pos, int time_lim_ms,
 	bool verbose)
 {
@@ -225,7 +227,8 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms,
 		uint32_t last = toc_ms();
 
 
-		float asp_window_size = 1;
+		float asp_window_size[] = {solver->aspiration_default_width,
+								solver->aspiration_default_width};
 		while(1)
 		{
 
@@ -237,8 +240,9 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms,
 
 			bool in_window = true;
 			#ifdef ASPIRATION_WINDOW
-			in_window = set_aspiration_window(asp_window, &asp_window_size,
-				&last_iddfs_score, result.score);
+			in_window = set_aspiration_window(asp_window,
+				asp_window_size, &last_iddfs_score,
+				result.score);
 			#endif
 			if(in_window)
 				break;
@@ -352,18 +356,30 @@ bool set_aspiration_window(float *asp_window,
 	{
 		//set window params for next iddfs
 		*last_score = score;
-		*asp_window_size = 1;
+		asp_window_size[0] = solver->aspiration_default_width;
+		asp_window_size[1] = solver->aspiration_default_width;
 	}
 	else
 	{
-		*asp_window_size *= 2;
-		printf("\t--- extending aspiration window size to %.1f ---\n",
-			*asp_window_size);
+		//test
+		//asp_window[0] = -WIN_SCORE;
+		//asp_window[1] = WIN_SCORE;
+		//return false;
+
+
+		if(score <= asp_window[0])
+			asp_window_size[0] *= 2;
+		else if(score >= asp_window[1])
+			asp_window_size[1] *= 2;
+		//*asp_window_size *= 2;
+		printf("\t--- extending aspiration window size to %.1f,%.1f ---\n",
+			asp_window_size[0], asp_window_size[1]);
 	}
 
-	asp_window[0] = *last_score - *asp_window_size;
-	asp_window[1] = *last_score + *asp_window_size;
+	asp_window[0] = *last_score - asp_window_size[0];
+	asp_window[1] = *last_score + asp_window_size[1];
 
+	asp_window_rerun = !in_window;
 	return in_window;
 }
 
@@ -392,15 +408,15 @@ result_t eval(tree_t *gt, tnode_t *n, int depth,
 	if(val)
 	{
 		assert(val->score == n->score);
-		if(n->score > MATE_LIMIT || n->score < -MATE_LIMIT)
-		//if(val->full)
+		//if(n->score > MATE_LIMIT || n->score < -MATE_LIMIT)
+		if(val->full)
 		{
 			assert(n->score > MATE_LIMIT
 				|| n->score < -MATE_LIMIT
 				|| n->score == 0);
 			return (result_t){n->score, true};
 		}
-		if(val->iddfs == iddfs)
+		if(val->iddfs == iddfs && !asp_window_rerun)
 			return (result_t){n->score, false};
 	}
 	#endif
@@ -451,7 +467,7 @@ result_t eval(tree_t *gt, tnode_t *n, int depth,
 	else
 	{
 		len = build_order(order, gt, n, depth);
-		assert(n->child_ct == 0);
+		//assert(n->child_ct == 0);
 
 		//add_all_new_moves(gt, n, depth);
 		//order_children(gt, n, depth);
@@ -668,6 +684,7 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n,
 			alpha, beta, child_pv);
 
 
+		#ifdef RETURN_FIRST_WIN_FOUND
 		if(is_win_score(result.score, depth))
 		{
 			result.score -= is_max? 1: -1;
@@ -678,6 +695,7 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n,
 				tree_swap_children(gt, 0, n->child_ct-1);
 			return result;
 		}
+		#endif	//RETURN_FIRST_WIN_FOUND
 
 		if(is_better(result.score, best, depth))
 		{
