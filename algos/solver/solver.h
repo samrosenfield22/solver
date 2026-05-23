@@ -14,7 +14,7 @@
 #define ASPIRATION_WINDOW
 #define PRINCIPAL_VAR_SEARCH
 
-//#define FORCE_SEARCH_DEPTH	(32)
+//#define FORCE_SEARCH_DEPTH	(42)
 
 #define VARIATION_LENGTH	(3)
 #define PRINCIPAL_VAR_CT	(7)
@@ -186,8 +186,8 @@ typedef struct
 
 //float test_pos(solver_t *game_solver, int *seq, int len);
 //void *construct_pos(solver_t *game_solver, char *seq);
-float solve(solver_t *solver, void *pos, int time_lim_ms,
-	bool verbose);
+float solve(solver_t *solver, void *pos, int init_depth,
+	int time_lim_ms, bool verbose);
 
 
 #endif	//SOLVER_H_

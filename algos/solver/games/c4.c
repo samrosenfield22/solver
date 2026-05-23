@@ -924,7 +924,7 @@ solver_t C4_SOLVER =
 	//.transtbl_buckets_ct = 180000001,
 	.transtbl_buckets_ct = (1<<28),
 	.iddfs_increment = 4,
-	.aspiration_default_width = 2,
+	.aspiration_default_width = 1,
 	.default_order = (uint8_t[]){3, 2, 4, 1, 5, 0, 6},
 	.flip_depth = 16,
 

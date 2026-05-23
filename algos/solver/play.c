@@ -213,7 +213,7 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 			print which move was played
 			*/
 
-			move = solve(solver, pos, COMP_TIME, DEV_MODE);
+			move = solve(solver, pos, seq_ct, COMP_TIME, DEV_MODE);
 			solver->make_move(pos, move, NULL);
 			//printf("i played: %s\n", solver->iter_to_human(move));
 			//

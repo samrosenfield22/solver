@@ -68,11 +68,10 @@ void *node_get_pos(tnode_t *n);
 uint32_t *node_get_hash(tnode_t *n);
 
 solver_t *solver;
-hashmap_t *trans_tbl;
+hashmap_t *trans_tbl = NULL;
 bool who_goes_first = true;
-bool full_solve;
 uint32_t position_ct = 0, max_node_ct = 0;
-int iddfs;
+int iddfs_depth;
 
 typedef struct
 {
@@ -155,14 +154,13 @@ void print_eval_bar(float score)
 
 bool asp_window_rerun = false;
 
-float solve(solver_t *game_solver, void *pos, int time_lim_ms,
-	bool verbose)
+float solve(solver_t *game_solver, void *pos, int init_depth,
+	int time_lim_ms, bool verbose)
 {
 	solver = game_solver;
 
 	position_ct = 0;
 	max_node_ct = 0;
-	full_solve = true;
 
 
 	//make the tree
@@ -172,7 +170,8 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms,
 	tree_clear_search_depth(gt);
 	tree_attach_print_fn(gt, solver->print_pos);
 	#ifdef USE_TRANSPOSITION_TABLE
-	tt_create();
+	if(!trans_tbl)
+		tt_create();
 	#endif	//USE_TRANSPOSITION_TABLE
 
 	if(!pos)
@@ -213,12 +212,13 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms,
 	float last_iddfs_score = 0;
 
 	//iddfs
+	int iddfs;
 	int incr = solver->iddfs_increment;
 	if(!incr)
 		incr = 1;
 	for(iddfs=0;; iddfs+=incr)
 	{
-		full_solve = true;
+		iddfs_depth = iddfs + init_depth;
 
 		//if(verbose)
 		//	printf("\niddfs depth=%d\n", iddfs);
@@ -238,6 +238,7 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms,
 				asp_window[0], asp_window[1],
 				true);
 
+
 			bool in_window = true;
 			#ifdef ASPIRATION_WINDOW
 			in_window = set_aspiration_window(asp_window,
@@ -246,8 +247,13 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms,
 			#endif
 			if(in_window)
 				break;
+
+			//asp window failed
+			//clear the tree
+			tnode_t *h = tree_get(gt, gt->head);
+			while(h->child_ct)
+				tree_delete_child(gt, 0);
 		}
-		//
 
 		//print info
 		if(verbose)
@@ -276,21 +282,18 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms,
 		}
 
 		//if(score > MATE_LIMIT || score < -MATE_LIMIT)
-		if(result.full)
-		{
-			full_solve = true;
-			break;
-		}
+
 
 
 		//conditions for ending the search
+		if(result.full)
+			break;
+			
 		#ifdef FORCE_SEARCH_DEPTH
 			if(iddfs >= FORCE_SEARCH_DEPTH)
 				break;
 		#else
 			if((toc_ms() >= time_lim_ms) && !(iddfs & 0b1))
-				break;
-			if(full_solve)
 				break;
 		#endif
 
@@ -317,7 +320,7 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms,
 		tree_draw(gt, VARIATION_LENGTH*2);
 
 		printf("\n--- search ran to depth = %d%s ---\n", iddfs,
-			full_solve? " (full solve)":"");
+			result.full? " (full solve)":"");
 
 	}
 
@@ -341,6 +344,7 @@ float solve(solver_t *game_solver, void *pos, int time_lim_ms,
 	//tree_clear(gt);
 	tree_destroy(gt);
 	hashmap_destroy(trans_tbl);
+	trans_tbl = NULL;
 
 	return best_move;
 }
@@ -366,14 +370,21 @@ bool set_aspiration_window(float *asp_window,
 		//asp_window[1] = WIN_SCORE;
 		//return false;
 
-
-		if(score <= asp_window[0])
+		printf("\t--- score %.1f out of window\n", score);
+		/*if(score <= asp_window[0])
 			asp_window_size[0] *= 2;
 		else if(score >= asp_window[1])
-			asp_window_size[1] *= 2;
-		//*asp_window_size *= 2;
-		printf("\t--- extending aspiration window size to %.1f,%.1f ---\n",
-			asp_window_size[0], asp_window_size[1]);
+			asp_window_size[1] *= 2;*/
+		if(score <= asp_window[0])
+			asp_window[0] = -WIN_SCORE;
+		else if(score >= asp_window[1])
+			asp_window[1] = WIN_SCORE;
+
+		asp_window_rerun = true;
+		return false;
+
+		//printf("\t--- extending aspiration window size to %.1f,%.1f ---\n",
+		//	asp_window_size[0], asp_window_size[1]);
 	}
 
 	asp_window[0] = *last_score - asp_window_size[0];
@@ -393,6 +404,7 @@ result_t eval(tree_t *gt, tnode_t *n, int depth,
 	//if(depth == 0)
 	//	assert(max_or_min(depth) == MAX_LAYER);
 	assert(n);
+	//assert(n->child_ct == 0);
 	if(depth > 1000)
 	{
 		printf("error! depth is crazy big lol\n");
@@ -416,7 +428,7 @@ result_t eval(tree_t *gt, tnode_t *n, int depth,
 				|| n->score == 0);
 			return (result_t){n->score, true};
 		}
-		if(val->iddfs == iddfs && !asp_window_rerun)
+		if(val->iddfs >= iddfs_depth && !asp_window_rerun)
 			return (result_t){n->score, false};
 	}
 	#endif
@@ -441,7 +453,6 @@ result_t eval(tree_t *gt, tnode_t *n, int depth,
 	}
 	else if(depth >= gt->search_depth)
 	{
-		full_solve = false;
 		if(solver->estimate)
 			n->score = solver->estimate(pos);
 		else
@@ -466,8 +477,9 @@ result_t eval(tree_t *gt, tnode_t *n, int depth,
 	}
 	else
 	{
+		assert(n->child_ct == 0);
 		len = build_order(order, gt, n, depth);
-		//assert(n->child_ct == 0);
+		assert(n->child_ct == 0);
 
 		//add_all_new_moves(gt, n, depth);
 		//order_children(gt, n, depth);
@@ -1097,7 +1109,7 @@ int tt_add(tnode_t *n, result_t *result, int depth, int best_move)
 	{
 		.score = result->score,
 		.full = result->full,
-		.iddfs = iddfs,
+		.iddfs = iddfs_depth,
 		.depth = depth,
 		.best_move = best_move,
 	};
