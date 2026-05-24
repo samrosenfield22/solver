@@ -21,6 +21,11 @@ uint32_t c4_hash(void *key, size_t size);
 #define WHOSEMOVE_BIT	(((uint64_t)1)<<63)
 #define NO_WIN_MAP		(0xFFFFFFFFFFFFFFFF)
 
+//tried srand seeds from 0 through 50
+//best: 17 (43 collisions at d=18)
+//worst: 19 (122)
+#define ZOBRIST_SEED	(9)
+
 c4_pos_t C4_INIT_POS =
 {
 	.x = 0,
@@ -30,11 +35,6 @@ c4_pos_t C4_INIT_POS =
 	.won = false,
 };
 
-#define ZOBRIST_LEN	(85)
-
-bool zobrist_computed = false;
-uint32_t zobrist_strings[ZOBRIST_LEN];
-
 char *print64(uint64_t n)
 {
 	static char buf[64];
@@ -42,14 +42,19 @@ char *print64(uint64_t n)
 	return buf;
 }
 
+/*#define ZOBRIST_LEN	(85)
+
+bool zobrist_computed = false;
+uint32_t zobrist_strings[ZOBRIST_LEN];
+
 void zobrist_init(void)
 {
 	assert(!zobrist_computed);
 	zobrist_computed = true;
 
-	/*tried srand seeds from 0 through 50
-	best: 17 (43 collisions at d=18)
-	worst: 19 (122)*/
+	//tried srand seeds from 0 through 50
+	//best: 17 (43 collisions at d=18)
+	//worst: 19 (122)
 	srand(9);
 	for(int i=0; i<ZOBRIST_LEN; i++)
 	{
@@ -60,7 +65,7 @@ void zobrist_init(void)
 void zobrist_update(uint32_t *h, int n)
 {
 	*h ^= zobrist_strings[n];
-}
+}*/
 
 /*void c4_zobrist_update(uint32_t *h, int c, int r, bool red_move)
 {
@@ -587,7 +592,7 @@ void c4_make_move_temp(void *made, void *pos, int index, uint32_t *hash)
 	//update hash
 	if(!hash)
 		return;
-	assert(zobrist_computed);
+	//assert(zobrist_computed);
 	//*hash = check_hash;
 
 
@@ -603,7 +608,7 @@ void c4_make_move_temp(void *made, void *pos, int index, uint32_t *hash)
 		hi += 42;
 	//printf("final hi: %d\n", hi);
 
-	zobrist_update(hash, hi);
+	zobrist_place(hash, hi);
 
 	//test
 	//uint32_t check_hash = c4_hash(m, 0);
@@ -651,7 +656,7 @@ void c4_make_move(void *pos, int index, uint32_t *hash)
 	//update hash
 	if(!hash)
 		return;
-	assert(zobrist_computed);
+	//assert(zobrist_computed);
 	//*hash = check_hash;
 
 
@@ -659,7 +664,6 @@ void c4_make_move(void *pos, int index, uint32_t *hash)
 
 	for(uint8_t c=col>>1; c; c>>=1)
 		hi++;
-	//hi += 32 - __builtin_clz((unsigned int)col);
 	//hi += __builtin_popcount(col);
 	//printf("now hi is %d\n", hi);
 	//if(p->whosemove)
@@ -667,7 +671,7 @@ void c4_make_move(void *pos, int index, uint32_t *hash)
 		hi += 42;
 	//printf("final hi: %d\n", hi);
 
-	zobrist_update(hash, hi);
+	zobrist_place(hash, hi);
 
 	//test
 	//uint32_t check_hash = c4_hash(pos, 0);
@@ -695,8 +699,8 @@ uint32_t c4_hash(void *key, size_t size)
 	//	p->x, p->filled);
 
 	//generate bitstrings
-	if(!zobrist_computed)
-		zobrist_init();
+	//if(!zobrist_computed)
+	zobrist_init(ZOBRIST_SEED);
 
 	//compute hash
 	int r=0, i=0;
@@ -719,7 +723,7 @@ uint32_t c4_hash(void *key, size_t size)
 			else
 				index += (c4_whosemove(p))? 42 : 0;
 			//printf("c4hash: zobrist w index %d\n", index);
-			zobrist_update(&h, index);
+			zobrist_place(&h, index);
 		}
 
 		i++;

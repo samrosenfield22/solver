@@ -1,5 +1,7 @@
 
 
+#include "algos/solver/zobrist.h"
+
 #include "ds/list.h"
 #include "ds/vector.h"
 #include "ds/tree.h"
