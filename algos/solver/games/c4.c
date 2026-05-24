@@ -11,17 +11,21 @@
 
 #include "../../../utils.h"
 
-float estimate_color(uint64_t x, uint64_t opp, uint64_t filled, bool verbose);
+float estimate_color(uint64_t x, uint64_t opp, uint64_t filled,
+	uint64_t wmap, bool verbose);
+void get_win_maps(c4_pos_t *p);
+//void get_win_map(uint64_t *wmap, uint64_t x, uint64_t filled);
 void c4_draw_full(void *pos);
 uint32_t c4_hash(void *key, size_t size);
 
 #define WHOSEMOVE_BIT	(((uint64_t)1)<<63)
+#define NO_WIN_MAP		(0xFFFFFFFFFFFFFFFF)
 
 c4_pos_t C4_INIT_POS =
 {
 	.x = 0,
 	.filled = WHOSEMOVE_BIT,
-	//.whosemove = true,
+	.x_wmap = 0, .opp_wmap = 0
 };
 
 #define ZOBRIST_LEN	(85)
@@ -110,7 +114,15 @@ uint64_t move_bit(c4_pos_t *p, int index)
 }
 
 bool is_win(uint64_t x)
+//bool is_win(c4_pos_t *p)
 {
+	//if(p->x_wmap != NO_WIN_MAP)
+	//	return (p->x & p->x_wmap);
+	//get_win_map(p, p->x);
+	//get_win_map(&p->x_wmap, p->x, p->filled);
+	//return (p->x & p->x_wmap);
+	//uint64_t x = p->x;	//compiler
+
 	//horizontal
 	uint64_t half = x & (x<<7);
 	if(half & (half<<14))
@@ -175,11 +187,15 @@ float c4_estimate(void *pos)
 	uint64_t x = p->x | WHOSEMOVE_BIT;
 	uint64_t opp = (p->x ^ p->filled) & ~WHOSEMOVE_BIT;
 
-
+	//get_win_map(p, p->);
+	//p->wmap = win_map(p->x, p->filled);
+	//get_win_map(&p->x_wmap, p->x, p->filled);
+	//get_win_map(&p->opp_wmap, p->x ^ p->filled, p->filled);
+	get_win_maps(p);
 
 	//calculate est for the player whose turn it is
-	float est = estimate_color(x, opp, p->filled, false);
-	est -= estimate_color(opp, x, p->filled, false);
+	float est = estimate_color(x, opp, p->filled, p->opp_wmap, false);
+	est -= estimate_color(opp, x, p->filled, p->x_wmap, false);
 
 	if(!c4_whosemove(p))
 		est *= -1;
@@ -318,6 +334,19 @@ uint64_t win_map(uint64_t x, uint64_t filled)
 	wb &= 0b0111111011111101111110111111011111101111110111111;
 	//return __builtin_popcount(wb);
 	return wb;
+}
+
+void get_win_maps(c4_pos_t *p)
+{
+	//if(*wmap == NO_WIN_MAP)
+	//	*wmap = win_map(x, filled);
+
+	if(p->x_wmap == NO_WIN_MAP)
+		p->x_wmap = win_map(p->x, p->filled);
+
+	if(p->opp_wmap == NO_WIN_MAP)
+		p->opp_wmap = win_map(p->x ^ p->filled, p->filled);
+
 }
 
 float c4_estimate_sort(void *pos, int move)
@@ -494,12 +523,14 @@ float estimate_color_count_open_threes(uint64_t x, uint64_t opp, bool verbose)
 }
 
 
-float estimate_color(uint64_t x, uint64_t opp, uint64_t filled, bool verbose)
+float estimate_color(uint64_t x, uint64_t opp, uint64_t filled,
+	uint64_t wmap, bool verbose)
 //float estimate_color(uint64_t x, uint64_t filled, bool verbose)
 {
 	float est = 0;
 	est += estimate_color_count_middles(x);
-	est += 3*estimate_color_count_wins(x, filled, verbose);
+	//est += 3*estimate_color_count_wins(x, filled, verbose);
+	est += 3*(__builtin_popcount(wmap));
 	//est += estimate_color_count_open_threes(x, opp, verbose);
 	return est;
 }
@@ -526,6 +557,9 @@ void c4_make_move_temp(void *made, void *pos, int index, uint32_t *hash)
 
 	m->x = p->x ^ p->filled;
 	m->filled = (p->filled | b) ^ WHOSEMOVE_BIT;
+
+	m->x_wmap = NO_WIN_MAP;
+	m->opp_wmap = NO_WIN_MAP;
 
 	//return &made;
 
@@ -578,6 +612,9 @@ void c4_make_move(void *pos, int index, uint32_t *hash)
 
 	//p->whosemove = !p->whosemove;
 	p->filled ^= WHOSEMOVE_BIT;
+
+	p->x_wmap = NO_WIN_MAP;
+	p->opp_wmap = NO_WIN_MAP;
 
 	//update hash
 	if(!hash)
@@ -724,8 +761,13 @@ int c4_only_move(void *pos)
 {
 	c4_pos_t *p = pos;
 
+	get_win_maps(p);
+	//get_win_map(&p->x_wmap, p->x, p->filled);
+	//get_win_map(&p->opp_wmap, p->x ^ p->filled, p->filled);
+
 	//check if we have a win on next move
-	uint64_t wmap = win_map(p->x, p->filled);
+	//uint64_t wmap = win_map(p->x, p->filled);
+	uint64_t wmap = p->x_wmap;
 	for(int i=0; i<7; i++)
 	{
 		uint64_t mb = move_bit(p, i);
@@ -734,8 +776,9 @@ int c4_only_move(void *pos)
 	}
 
 	//check if opp has a win we have to block on next move
-	uint64_t opp = p->x ^ p->filled;
-	uint64_t opp_wmap = win_map(opp, p->filled);
+	//uint64_t opp = p->x ^ p->filled;
+	//uint64_t opp_wmap = win_map(opp, p->filled);
+	uint64_t opp_wmap = p->opp_wmap;
 	for(int i=0; i<7; i++)
 	{
 		uint64_t mb = move_bit(p, i);
@@ -792,10 +835,15 @@ void c4_draw_full(void *pos)
 		yel = p->x;
 	}
 
-	uint64_t filled = p->filled;
+	//uint64_t filled = p->filled;
 	//uint64_t = ;
-	uint64_t rwm = win_map(red, filled);
-	uint64_t ywm = win_map(yel, filled);
+	get_win_maps(p);
+	//get_win_map(&p->x_wmap, p->x, p->filled);
+	//get_win_map(&p->opp_wmap, p->x ^ p->filled, p->filled);
+	uint64_t rwm = p->x_wmap;
+	uint64_t ywm = p->opp_wmap;
+	//uint64_t rwm = win_map(red, filled);
+	//uint64_t ywm = win_map(yel, filled);
 
 
 	//header
