@@ -30,7 +30,8 @@ typedef struct
 
 //statics
 void tt_create(void);
-int tt_add(tnode_t *n, result_t *result, int depth, int best_move);
+int tt_add(tnode_t *n, result_t *result, int depth,
+	bool exact, int best_move);
 bool set_aspiration_window(float *asp_window,
 	float *asp_window_size, float *last_score, float score);
 result_t eval(tree_t *gt, tnode_t *n, int depth,
@@ -218,7 +219,8 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 		incr = 1;
 	for(iddfs=0;; iddfs+=incr)
 	{
-		iddfs_depth = iddfs + init_depth;
+		//iddfs_depth = iddfs + init_depth;
+		iddfs_depth = iddfs;
 
 		//if(verbose)
 		//	printf("\niddfs depth=%d\n", iddfs);
@@ -281,14 +283,10 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 			}
 		}
 
-		//if(score > MATE_LIMIT || score < -MATE_LIMIT)
-
-
-
 		//conditions for ending the search
 		if(result.full)
 			break;
-			
+
 		#ifdef FORCE_SEARCH_DEPTH
 			if(iddfs >= FORCE_SEARCH_DEPTH)
 				break;
@@ -429,6 +427,7 @@ result_t eval(tree_t *gt, tnode_t *n, int depth,
 			return (result_t){n->score, true};
 		}
 		if(val->iddfs >= iddfs_depth && !asp_window_rerun)
+		//if(val->iddfs == iddfs_depth && val->exact)
 			return (result_t){n->score, false};
 	}
 	#endif
@@ -501,7 +500,9 @@ result_t eval(tree_t *gt, tnode_t *n, int depth,
 	#endif
 
 	#ifdef USE_TRANSPOSITION_TABLE
-		tt_add(n, &result, depth, best_move);
+	bool exact = (alpha < result.score
+		&& result.score < beta);
+	tt_add(n, &result, depth, exact, best_move);
 	#endif
 
 	assert(result.score == n->score);
@@ -1100,7 +1101,7 @@ void tt_create(void)
 	*/
 }
 
-int tt_add(tnode_t *n, result_t *result, int depth, int best_move)
+int tt_add(tnode_t *n, result_t *result, int depth, bool exact, int best_move)
 {
 	void *pos = node_get_pos(n);
 	uint32_t *hash = node_get_hash(n);
@@ -1109,6 +1110,7 @@ int tt_add(tnode_t *n, result_t *result, int depth, int best_move)
 	{
 		.score = result->score,
 		.full = result->full,
+		.exact = exact,
 		.iddfs = iddfs_depth,
 		.depth = depth,
 		.best_move = best_move,

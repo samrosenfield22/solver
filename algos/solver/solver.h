@@ -11,8 +11,8 @@
 #define USE_TRANSPOSITION_TABLE
 #define CLEAR_SUB_NODES
 #define RETURN_FIRST_WIN_FOUND
-#define ASPIRATION_WINDOW
-#define PRINCIPAL_VAR_SEARCH
+//#define ASPIRATION_WINDOW
+//#define PRINCIPAL_VAR_SEARCH
 
 //#define FORCE_SEARCH_DEPTH	(42)
 
@@ -42,8 +42,7 @@ typedef struct
 	uint8_t iddfs;
 	uint8_t depth;
 	bool full;
-	//ab bounds
-	//uint8_t move_index;
+	bool exact;
 	int8_t best_move;
 } trans_value_t;
 
