@@ -876,8 +876,8 @@ int build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth)
 		//heuristic bonuses
 		if(move == best)	//hash move
 			order[ct].score += 10000;
-		//else if(move_is_forcing(pos, move))
-		//	order[ct].score += 500;
+		else if(move_is_forcing(pos, move))
+			order[ct].score += 500;
 		//else if(move == killers_ply[0]
 		//	|| move == killers_ply[1])
 		//	order[ct].score = 400;

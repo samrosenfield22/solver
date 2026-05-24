@@ -25,7 +25,9 @@ c4_pos_t C4_INIT_POS =
 {
 	.x = 0,
 	.filled = WHOSEMOVE_BIT,
-	.x_wmap = 0, .opp_wmap = 0
+
+	.x_wmap = 0, .opp_wmap = 0,
+	.won = false,
 };
 
 #define ZOBRIST_LEN	(85)
@@ -155,12 +157,13 @@ endstate_t c4_gameover(void *pos)
 
 	uint64_t x = p->x ^ p->filled;
 
-
-
 	int win = !c4_whosemove(p)? END_P1_WON : END_P2_WON;
 
-	if(is_win(x))
+	if(p->won)
 		return win;
+
+	//if(is_win(x))
+	//	return win;
 
 	//check draw
 	//printf("filled = %s\n", print64(p->filled));
@@ -187,15 +190,18 @@ float c4_estimate(void *pos)
 	uint64_t x = p->x | WHOSEMOVE_BIT;
 	uint64_t opp = (p->x ^ p->filled) & ~WHOSEMOVE_BIT;
 
-	//get_win_map(p, p->);
-	//p->wmap = win_map(p->x, p->filled);
-	//get_win_map(&p->x_wmap, p->x, p->filled);
-	//get_win_map(&p->opp_wmap, p->x ^ p->filled, p->filled);
+
+	//get_win_maps(p);
+	//uint64_t x_wmap = win_map(x, p->filled);
+	//uint64_t opp_wmap = win_map(opp, p->filled);
 	get_win_maps(p);
+	uint64_t x_wmap = p->x_wmap;
+	uint64_t opp_wmap = p->opp_wmap;
+
 
 	//calculate est for the player whose turn it is
-	float est = estimate_color(x, opp, p->filled, p->opp_wmap, false);
-	est -= estimate_color(opp, x, p->filled, p->x_wmap, false);
+	float est = estimate_color(x, opp, p->filled, x_wmap, false);
+	est -= estimate_color(opp, x, p->filled, opp_wmap, false);
 
 	if(!c4_whosemove(p))
 		est *= -1;
@@ -338,9 +344,6 @@ uint64_t win_map(uint64_t x, uint64_t filled)
 
 void get_win_maps(c4_pos_t *p)
 {
-	//if(*wmap == NO_WIN_MAP)
-	//	*wmap = win_map(x, filled);
-
 	if(p->x_wmap == NO_WIN_MAP)
 		p->x_wmap = win_map(p->x, p->filled);
 
@@ -529,8 +532,8 @@ float estimate_color(uint64_t x, uint64_t opp, uint64_t filled,
 {
 	float est = 0;
 	est += estimate_color_count_middles(x);
-	//est += 3*estimate_color_count_wins(x, filled, verbose);
-	est += 3*(__builtin_popcount(wmap));
+	est += 3*estimate_color_count_wins(x, filled, verbose);
+	//est += 3*(__builtin_popcount(wmap));
 	//est += estimate_color_count_open_threes(x, opp, verbose);
 	return est;
 }
@@ -552,14 +555,30 @@ void c4_make_move_temp(void *made, void *pos, int index, uint32_t *hash)
 	c4_pos_t *p = pos;
 	c4_pos_t *m = made;
 
+
+
 	uint64_t col = get_col(p->filled, index)+1;
 	uint64_t b = col<<(7*index);
+
+	m->won = false;
+	if(p->x_wmap != NO_WIN_MAP)
+		if(p->x_wmap & b)
+			m->won = true;
+	//break;
 
 	m->x = p->x ^ p->filled;
 	m->filled = (p->filled | b) ^ WHOSEMOVE_BIT;
 
-	m->x_wmap = NO_WIN_MAP;
+	//m->x_wmap = NO_WIN_MAP;
+	m->x_wmap = (p->opp_wmap==NO_WIN_MAP)?
+		NO_WIN_MAP : p->opp_wmap & ~b;
 	m->opp_wmap = NO_WIN_MAP;
+
+	//???
+	/*if(p->x_wmap)
+		m->won = p->opp_wmap & m->x;
+	else
+		m->won = false;*/
 
 	//return &made;
 
@@ -594,12 +613,20 @@ void c4_make_move(void *pos, int index, uint32_t *hash)
 	//assert(c4_ok(pos));
 	c4_pos_t *p = pos;
 
+
+
 	//uint64_t b = p->filled + (((uint64_t)1) << (7*index));
 	//b &= 0b0111111011111101111110111111011111101111110111111;
 	//printf("0x%0x\n", b);
 
 	uint64_t col = get_col(p->filled, index)+1;
 	uint64_t b = col<<(7*index);
+
+	p->won = false;
+	if(p->x_wmap != NO_WIN_MAP)
+		if(p->x_wmap & b)
+			p->won = true;
+	//break;
 
 
 	//p->x |= b;
@@ -613,7 +640,9 @@ void c4_make_move(void *pos, int index, uint32_t *hash)
 	//p->whosemove = !p->whosemove;
 	p->filled ^= WHOSEMOVE_BIT;
 
-	p->x_wmap = NO_WIN_MAP;
+	//p->opp_wmap = NO_WIN_MAP;
+	p->x_wmap = (p->opp_wmap==NO_WIN_MAP)?
+		NO_WIN_MAP : p->opp_wmap & ~b;
 	p->opp_wmap = NO_WIN_MAP;
 
 	//update hash
@@ -761,28 +790,33 @@ int c4_only_move(void *pos)
 {
 	c4_pos_t *p = pos;
 
-	get_win_maps(p);
+	//get_win_maps(p);
+
 	//get_win_map(&p->x_wmap, p->x, p->filled);
 	//get_win_map(&p->opp_wmap, p->x ^ p->filled, p->filled);
 
 	//check if we have a win on next move
 	//uint64_t wmap = win_map(p->x, p->filled);
-	uint64_t wmap = p->x_wmap;
+	//uint64_t wmap = p->x_wmap;
+	if(p->x_wmap == NO_WIN_MAP)
+		p->x_wmap = win_map(p->x, p->filled);
 	for(int i=0; i<7; i++)
 	{
 		uint64_t mb = move_bit(p, i);
-		if(mb & wmap)
+		if(mb & p->x_wmap)
 			return i;
 	}
 
 	//check if opp has a win we have to block on next move
 	//uint64_t opp = p->x ^ p->filled;
 	//uint64_t opp_wmap = win_map(opp, p->filled);
-	uint64_t opp_wmap = p->opp_wmap;
+	//uint64_t opp_wmap = p->opp_wmap;
+	if(p->opp_wmap == NO_WIN_MAP)
+		p->opp_wmap = win_map(p->x ^ p->filled, p->filled);
 	for(int i=0; i<7; i++)
 	{
 		uint64_t mb = move_bit(p, i);
-		if(mb & opp_wmap)
+		if(mb & p->opp_wmap)
 			return i;
 	}
 
@@ -840,8 +874,17 @@ void c4_draw_full(void *pos)
 	get_win_maps(p);
 	//get_win_map(&p->x_wmap, p->x, p->filled);
 	//get_win_map(&p->opp_wmap, p->x ^ p->filled, p->filled);
-	uint64_t rwm = p->x_wmap;
-	uint64_t ywm = p->opp_wmap;
+	uint64_t rwm, ywm;
+	if(c4_whosemove(p))
+	{
+		rwm = p->x_wmap;
+		ywm = p->opp_wmap;
+	}
+	else
+	{
+		ywm = p->x_wmap;
+		rwm = p->opp_wmap;
+	}
 	//uint64_t rwm = win_map(red, filled);
 	//uint64_t ywm = win_map(yel, filled);
 

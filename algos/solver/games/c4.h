@@ -11,7 +11,9 @@ typedef struct
 {
 	uint64_t x;
 	uint64_t filled;
+
 	uint64_t x_wmap, opp_wmap;
+	bool won;
 } c4_pos_t;
 
 extern solver_t C4_SOLVER;
