@@ -231,6 +231,8 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 
 		float asp_window_size[] = {solver->aspiration_default_width,
 								solver->aspiration_default_width};
+		(void)asp_window_size;
+		(void)last_iddfs_score;
 		while(1)
 		{
 
@@ -639,6 +641,8 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n,
 	//assert(n->child_ct == 0);
 
 	float alpha_init = alpha, beta_init = beta;
+	(void)alpha_init;
+	(void)beta_init;
 
 	result_t result;
 	float best = worst_score(depth);
@@ -849,6 +853,7 @@ int build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth)
 	trans_value_t *v = tt_get(n, depth);
 	int best = v? v->best_move : -1;
 	uint8_t *killers_ply = killers[depth];
+	(void)killers_ply;
 
 	//printf("killers are %d and %d\n", killers_ply[0], killers_ply[1]);
 

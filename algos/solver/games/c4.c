@@ -155,7 +155,7 @@ endstate_t c4_gameover(void *pos)
 	//assert(c4_ok(pos));
 	c4_pos_t *p = pos;
 
-	uint64_t x = p->x ^ p->filled;
+	//uint64_t x = p->x ^ p->filled;
 
 	int win = !c4_whosemove(p)? END_P1_WON : END_P2_WON;
 
@@ -199,7 +199,7 @@ float c4_estimate(void *pos)
 	uint64_t opp_wmap = p->opp_wmap;
 
 
-	//calculate est for the player whose turn it is
+	//calculate est for each player
 	float est = estimate_color(x, opp, p->filled, x_wmap, false);
 	est -= estimate_color(opp, x, p->filled, opp_wmap, false);
 
@@ -424,13 +424,15 @@ float estimate_color_count_middles(uint64_t x)
 	return est;
 }
 
-float estimate_color_count_wins(uint64_t x, uint64_t filled, bool verbose)
+float estimate_color_count_wins(uint64_t x, uint64_t filled,
+	uint64_t wmap, bool verbose)
 {
-	return __builtin_popcount(win_map(x, filled));
+	//return __builtin_popcount(win_map(x, filled));
+	return __builtin_popcount(wmap);
 
 	/////////////////////////////////////
 
-	uint64_t wmap = win_map(x, filled);
+	//uint64_t wmap = win_map(x, filled);
 	int wins = __builtin_popcount(wmap);
 
 	//parity
@@ -532,7 +534,7 @@ float estimate_color(uint64_t x, uint64_t opp, uint64_t filled,
 {
 	float est = 0;
 	est += estimate_color_count_middles(x);
-	est += 3*estimate_color_count_wins(x, filled, verbose);
+	est += 3*estimate_color_count_wins(x, filled, wmap, verbose);
 	//est += 3*(__builtin_popcount(wmap));
 	//est += estimate_color_count_open_threes(x, opp, verbose);
 	return est;
@@ -625,9 +627,10 @@ void c4_make_move(void *pos, int index, uint32_t *hash)
 	p->won = false;
 	if(p->x_wmap != NO_WIN_MAP)
 		if(p->x_wmap & b)
+		{
 			p->won = true;
-	//break;
-
+			//return;
+		}
 
 	//p->x |= b;
 	//p->filled |= b;
@@ -671,33 +674,17 @@ void c4_make_move(void *pos, int index, uint32_t *hash)
 	//assert(*hash == check_hash);
 }
 
-bool c4_move_loses(void *pos, int move)
+/*bool c4_move_loses(void *pos, int move)
 {
 	if(!c4_is_legal(pos, move))
 		return false;
 
 	c4_pos_t *p = pos;
-	c4_pos_t after = *p;
-	c4_make_move(&after, move, NULL);
 
-	bool losing = false;
-	c4_pos_t next;
-	for(int i=0; i<7; i++)
-	{
-		next = after;
-		if(!c4_is_legal(&next, i))
-			continue;
+	//check if opp has
 
-		c4_make_move(&next, i, NULL);
-		int state = c4_gameover(&next);
-		if(state==END_P1_WON || state==END_P2_WON)
-		{
-			losing = true;
-			break;
-		}
-	}
 	return losing;
-}
+}*/
 
 uint32_t c4_hash(void *key, size_t size)
 {
@@ -792,6 +779,21 @@ int c4_only_move(void *pos)
 
 	//get_win_maps(p);
 
+	uint64_t move_map = 0;
+	for(int i=0; i<7; i++)
+	{
+		move_map |= move_bit(p, i);
+	}
+	/*uint64_t alt_move_map = (p->filled<<1) & ~p->filled;
+	if(alt_move_map != move_map)
+	{
+		printf("%s\n", print64(p->filled));
+		printf("%s\n", print64(alt_move_map));
+		printf("%s\n", print64(move_map));
+		assert(0);
+	}*/
+
+
 	//get_win_map(&p->x_wmap, p->x, p->filled);
 	//get_win_map(&p->opp_wmap, p->x ^ p->filled, p->filled);
 
@@ -800,12 +802,13 @@ int c4_only_move(void *pos)
 	//uint64_t wmap = p->x_wmap;
 	if(p->x_wmap == NO_WIN_MAP)
 		p->x_wmap = win_map(p->x, p->filled);
-	for(int i=0; i<7; i++)
-	{
-		uint64_t mb = move_bit(p, i);
-		if(mb & p->x_wmap)
-			return i;
-	}
+	if(move_map & p->x_wmap)
+		for(int i=0; i<7; i++)
+		{
+			uint64_t mb = move_bit(p, i);
+			if(mb & p->x_wmap)
+				return i;
+		}
 
 	//check if opp has a win we have to block on next move
 	//uint64_t opp = p->x ^ p->filled;
@@ -813,12 +816,13 @@ int c4_only_move(void *pos)
 	//uint64_t opp_wmap = p->opp_wmap;
 	if(p->opp_wmap == NO_WIN_MAP)
 		p->opp_wmap = win_map(p->x ^ p->filled, p->filled);
-	for(int i=0; i<7; i++)
-	{
-		uint64_t mb = move_bit(p, i);
-		if(mb & p->opp_wmap)
-			return i;
-	}
+	if(move_map & p->opp_wmap)
+		for(int i=0; i<7; i++)
+		{
+			uint64_t mb = move_bit(p, i);
+			if(mb & p->opp_wmap)
+				return i;
+		}
 
 	return -1;
 }
@@ -857,16 +861,16 @@ void c4_draw_full(void *pos)
 	char indent[] = "\t\t\t\t\t\t\t";
 
 	//test
-	uint64_t red, yel;
+	uint64_t red;//, yel;
 	if(c4_whosemove(p))
 	{
-		yel = p->x ^ p->filled;
+		//yel = p->x ^ p->filled;
 		red = p->x;
 	}
 	else
 	{
 		red = p->x ^ p->filled;
-		yel = p->x;
+		//yel = p->x;
 	}
 
 	//uint64_t filled = p->filled;
