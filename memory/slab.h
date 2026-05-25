@@ -5,7 +5,7 @@
 
 #include <stdlib.h>
 
-#define MEMSIZE	(65536)
+#define MEMSIZE	(1<<20)
 #define SLAB_CT		(4)
 
 //

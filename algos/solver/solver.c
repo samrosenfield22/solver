@@ -151,9 +151,26 @@ void print_eval_bar(float score)
 
 bool asp_window_rerun = false;
 
+
+void solver_check(solver_t *s)
+{
+	if(!(s->initial_pos)) {printf("error: solver missing initial_pos\n"); exit(0);}
+	if(!(s->pos_size)) {printf("error: solver missing pos_size\n"); exit(0);}
+	if(!(s->possible_moves)) {printf("error: solver missing possible_moves\n"); exit(0);}
+	if(!(s->gameover)) {printf("error: solver missing gameover\n"); exit(0);}
+	if(!(s->is_legal)) {printf("error: solver missing is_legal\n"); exit(0);}
+	if(!(s->make_move)) {printf("error: solver missing make_move\n"); exit(0);}
+	if(!(s->hash)) {printf("error: solver missing hash\n"); exit(0);}
+	if(!(s->draw_full)) {printf("error: solver missing draw_full\n"); exit(0);}
+
+
+}
+
 float solve(solver_t *game_solver, void *pos, int init_depth,
 	int time_lim_ms, bool verbose)
 {
+	solver_check(game_solver);
+
 	solver = game_solver;
 
 	position_ct = 0;

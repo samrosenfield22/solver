@@ -5,6 +5,7 @@
 #include "games/nim.h"
 #include "games/ttt.h"
 #include "games/c4.h"
+#include "games/quoridor.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -57,6 +58,7 @@ void play_menu(void)
 		NIM_SOLVER,
 		TTT_SOLVER,
 		C4_SOLVER,
+		QUOR_SOLVER,
 	};
 	//bool game_selected = false;
 	solver_t *game = NULL;

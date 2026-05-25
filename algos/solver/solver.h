@@ -14,7 +14,7 @@
 //#define ASPIRATION_WINDOW
 //#define PRINCIPAL_VAR_SEARCH
 
-//#define FORCE_SEARCH_DEPTH	(42)
+#define FORCE_SEARCH_DEPTH	(4)
 
 #define VARIATION_LENGTH	(3)
 #define PRINCIPAL_VAR_CT	(7)
@@ -132,11 +132,14 @@ typedef struct
 	//bool (*move_loses)(void *pos, int move);
 
 	/*optional:
+	populates the sorter_t array with one or more only
+	moves that should be played, and returns the number
+	of moves.
 	if there is a move that wins immediately, return it
 	if not,
-	if there is a move that blocks opponent's immediate win,
-	play it
-	if not, returns -1*/
+	if there are only a few moves that block opponent's
+	immediate win, play it
+	if not, returns 0 (no only moves)*/
 	int (*only_moves)(sorter_t *onlies, void *pos);
 
 	/*required:
