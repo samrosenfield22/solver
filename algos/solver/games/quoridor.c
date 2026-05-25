@@ -47,7 +47,7 @@ enum
 	MOVE_RIGHT	= 3,
 };
 
-void print128(__int128 x)
+void print128_rec(__int128 x, const char sep, __int128 *delimits)
 {
 	if(x < 0)
 	{
@@ -56,13 +56,42 @@ void print128(__int128 x)
 	}
 	else if(x == 0)
 	{
-		//putchar('0');
+		putchar('0');
 		return;
 	}
 
-	print128(x>>4);
+	print128_rec(x>>4, sep, delimits);
+
+
+
+	for(int i=0; i<10; i++)
+	{
+		__int128 upper = delimits[i];
+		__int128 lower = (upper >> 4) - 1;
+		if(lower < x && x < upper)
+		{
+			putchar(sep);
+			break;
+		}
+	}
+
 	int c = x & 0xF;
 	putchar((c < 10)? '0'+c : 'A'+c-0xA);
+}
+
+void print128(__int128 x)
+{
+	const char sep = ' ';
+
+	__int128 delimits[10];
+	__int128 d = 0x1000;
+	for(int i=0; i<10; i++)
+	{
+		delimits[i] = d;
+		d <<= 4*3;
+	}
+
+	print128_rec(x, sep, delimits);
 }
 
 quor_player_t *current(quor_pos_t *p)
@@ -274,12 +303,27 @@ void quor_make_move(void *pos, int index, uint32_t *hash)
 	//assert(*hash == check_hash);
 }
 
+float estimate_player(quor_player_t *pl, bool whosemove)
+{
+	const float CLOSE_TO_EXIT_SCORE = 1.0;
+	const float GATES_LEFT_SCORE = 0.5;
+
+	float est = 0;
+
+	float close = whosemove? pl->y : 9-pl->y;
+	est += CLOSE_TO_EXIT_SCORE * close;
+
+	est += GATES_LEFT_SCORE * pl->gates;
+
+	return est;
+}
+
 float quor_estimate(void *pos)
 {
 	quor_pos_t *p = pos;
 
-	float est = p->p1.y;
-	est -= 8-(p->p2.y);
+	float est = estimate_player(&p->p1, true);
+	est -= estimate_player(&p->p2, false);
 
 	return est;
 }
@@ -333,6 +377,13 @@ int quor_only_moves(sorter_t *sorter, void *pos)
 	//get saving moves
 
 	return 0;
+}
+
+void print_player_info(quor_player_t *pl)
+{
+	printf("player @ %d,%d (", pl->x, pl->y);
+	print128(pl->token);
+	printf(")\n");
 }
 
 void quor_draw_full(void *pos)
@@ -430,6 +481,14 @@ void quor_draw_full(void *pos)
 	term_fg(TERM_BLUE);
 	printf("blue player: %d gates\n\n", p->p2.gates);
 	term_clear();
+
+	printf("\n\n");
+	print_player_info(&p->p1);
+	print_player_info(&p->p2);
+	printf("horiz: ");
+	print128(p->horiz);
+	printf("\nvert: ");
+	print128(p->vert);
 }
 
 int quor_human_to_iter(char *human)
