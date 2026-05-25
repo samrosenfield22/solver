@@ -48,6 +48,12 @@ typedef struct
 
 typedef struct
 {
+	int move;
+	float score;
+} sorter_t;
+
+typedef struct
+{
 	char *name;
 
 	/*required:
@@ -131,7 +137,7 @@ typedef struct
 	if there is a move that blocks opponent's immediate win,
 	play it
 	if not, returns -1*/
-	int (*only_move)(void *pos);
+	int (*only_moves)(sorter_t *onlies, void *pos);
 
 	/*required:
 	computes the hash. in updating hash systems like zobrist,

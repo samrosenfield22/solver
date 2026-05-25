@@ -42,45 +42,7 @@ char *print64(uint64_t n)
 	return buf;
 }
 
-/*#define ZOBRIST_LEN	(85)
 
-bool zobrist_computed = false;
-uint32_t zobrist_strings[ZOBRIST_LEN];
-
-void zobrist_init(void)
-{
-	assert(!zobrist_computed);
-	zobrist_computed = true;
-
-	//tried srand seeds from 0 through 50
-	//best: 17 (43 collisions at d=18)
-	//worst: 19 (122)
-	srand(9);
-	for(int i=0; i<ZOBRIST_LEN; i++)
-	{
-		zobrist_strings[i] = rand()<<16 | rand();
-	}
-}
-
-void zobrist_update(uint32_t *h, int n)
-{
-	*h ^= zobrist_strings[n];
-}*/
-
-/*void c4_zobrist_update(uint32_t *h, int c, int r, bool red_move)
-{
-	int index;
-	if(c == -1)
-		index = ZOBRIST_LEN-1;
-	else
-	{
-		index = c * 6 + r;
-		if(red_move)
-			index += 42;
-	}
-
-	zobrist_update(h, index);
-}*/
 
 //#define c4_ok(pos)	true
 /*bool c4_ok(c4_pos_t *p)
@@ -777,7 +739,7 @@ void c4_flip_horiz(void *to, void *from)
 	t->filled = flip_64(f->filled);
 }
 
-int c4_only_move(void *pos)
+int c4_only_moves(sorter_t *sorter, void *pos)
 {
 	c4_pos_t *p = pos;
 
@@ -811,7 +773,12 @@ int c4_only_move(void *pos)
 		{
 			uint64_t mb = move_bit(p, i);
 			if(mb & p->x_wmap)
-				return i;
+			{
+				if(sorter)
+					sorter[0].move = i;
+				return 1;
+			}
+			//	return i;
 		}
 
 	//check if opp has a win we have to block on next move
@@ -825,10 +792,15 @@ int c4_only_move(void *pos)
 		{
 			uint64_t mb = move_bit(p, i);
 			if(mb & p->opp_wmap)
-				return i;
+			{
+				if(sorter)
+					sorter[0].move = i;
+				return 1;
+			}
+				//return i;
 		}
 
-	return -1;
+	return 0;
 }
 
 /*void draw_color(uint8_t *cols, uint8_t *opp)
@@ -1035,7 +1007,7 @@ solver_t C4_SOLVER =
 	.make_move = c4_make_move,
 	.make_move_temp = c4_make_move_temp,
 	//.move_loses = c4_move_loses,
-	.only_move = c4_only_move,
+	.only_moves = c4_only_moves,
 
 	.print_pos = NULL,
 	.hash = c4_hash,

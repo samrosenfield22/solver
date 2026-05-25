@@ -15,11 +15,7 @@ enum
 	MIN_LAYER = false
 };
 
-typedef struct
-{
-	int move;
-	float score;
-} sorter_t;
+
 
 
 typedef struct
@@ -468,15 +464,17 @@ result_t eval(tree_t *gt, tnode_t *n, int depth,
 	//if there's only one move (that wins or loses),
 	//just play that
 	sorter_t order[solver->possible_moves];
-	int len;
-	int only = solver->only_move? solver->only_move(pos) : -1;
-	if(only != -1 && solver->is_legal(pos, only))
-	//if(0)
-	{
+	int len = 0;
+	//int only = 0;
+	if(solver->only_moves)
+		len = solver->only_moves(order, pos);
+	//if(only != -1 && solver->is_legal(pos, only))
+	if(!len)
+	/*{
 		order[0].move = only;
 		len = 1;
 	}
-	else
+	else*/
 	{
 		assert(n->child_ct == 0);
 		len = build_order(order, gt, n, depth);
@@ -761,8 +759,8 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n,
 		{
 			//update killers
 			assert(depth < MAX_PLY);
-			if(solver->only_move
-				&& solver->only_move(child)==-1)	//non forcing
+			if(solver->only_moves
+				&& solver->only_moves(NULL, child)==0)	//non forcing
 			{
 				uint8_t *killers_ply = killers[depth];
 				if(killers_ply[0] != move)
@@ -772,7 +770,8 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n,
 				}
 			}
 
-			break;
+			//if(!(depth==0 && i<PRINCIPAL_VAR_CT))
+				break;
 		}
 
 		#ifdef PRINCIPAL_VAR_SEARCH
@@ -973,7 +972,7 @@ int build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth)
 
 bool move_is_forcing(void *pos, int move)
 {
-	if((!solver->make_move_temp) || (!solver->only_move))
+	if((!solver->make_move_temp) || (!solver->only_moves))
 		return false;
 
 	//int only = solver->only_move(solver->make_move_temp(pos, move));
@@ -982,8 +981,8 @@ bool move_is_forcing(void *pos, int move)
 	//memcpy(after, pos, solver->pos_size);
 	//solver->make_move(after, move, NULL);
 	solver->make_move_temp(&after, pos, move, NULL);
-	int only = solver->only_move(after);
-	return (only != -1);
+	int len = solver->only_moves(NULL, after);
+	return (len > 0);
 }
 
 /*tnode_t *create_next_order_child(tree_t *gt, tnode_t *n, int index)

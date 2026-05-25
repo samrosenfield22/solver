@@ -168,7 +168,7 @@ int nim_human_to_iter(char *human)
 	return move;
 }
 
-int nim_only_move(void *pos)
+/*int nim_only_move(void *pos)
 {
 	nim_pos_t *p = pos;
 
@@ -208,7 +208,7 @@ int nim_only_move(void *pos)
 
 
 	return -1;
-}
+}*/
 
 solver_t NIM_SOLVER =
 {
@@ -226,7 +226,7 @@ solver_t NIM_SOLVER =
 	//.is_end = nim_is_end,
 	.is_legal = nim_is_legal,
 	.make_move = nim_make_move,
-	.only_move = nim_only_move,
+	.only_moves = NULL,
 	//.get_move = nim_get_move,
 	//.evaluate_leaf = nim_evaluate_leaf,
 
