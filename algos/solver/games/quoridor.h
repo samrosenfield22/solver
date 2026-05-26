@@ -14,7 +14,7 @@ typedef struct
 
 typedef struct
 {
-	uint64_t horiz, vert, gates;
+	__attribute__((aligned(16))) __int128 horiz, vert, gates;
 	bool whosemove;
 	quor_player_t p1, p2;
 

@@ -19,7 +19,7 @@ need aux structure for pathfinding (only changes when gates placed)
 #include "../../../utils.h"
 
 #define TOKEN_MOVES	(4)
-#define HORIZ_PLACEMENTS	(64 + TOKEN_MOVES)
+#define HORIZ_PLACEMENTS	(72 + TOKEN_MOVES)
 
 quor_pos_t QUOR_INIT_POS =
 {
@@ -138,12 +138,12 @@ endstate_t quor_gameover(void *pos)
 	return END_NOT_OVER;
 }
 
-uint64_t index_get_gate_bit(int index)
+__int128 index_get_gate_bit(int index)
 {
 	int gate_index = index - TOKEN_MOVES;
-	if(gate_index > 64)
-		gate_index -= 64;
-	uint64_t gate_bit = 1;
+	if(gate_index > 72)
+		gate_index -= 72;
+	__int128 gate_bit = 1;
 	gate_bit <<= gate_index;
 	return gate_bit;
 }
@@ -217,11 +217,12 @@ bool quor_is_legal(void *pos, int index)
 		if(me->gate_ct == 0)
 			return false;
 
-		if((index % 8)==1)
+		//no gates hanging off the edge
+		if(((index-4) % 9)==8)
 			return false;
 
 
-		uint64_t gate_bit = index_get_gate_bit(index);
+		__int128 gate_bit = index_get_gate_bit(index);
 		//if(gate_bit & (p->horiz | p->vert))
 		if(gate_bit & p->gates)
 			return false;
@@ -229,12 +230,12 @@ bool quor_is_legal(void *pos, int index)
 		//check overlapping w same kind
 		if(index < HORIZ_PLACEMENTS)
 		{
-			if(gate_bit & p->horiz)
+			if(gate_bit & (p->horiz | p->horiz>>1))
 				return false;
 		}
 		else	//vert
 		{
-			if(gate_bit & p->vert)
+			if(gate_bit & (p->vert | p->vert>>9))
 				return false;
 		}
 	}
@@ -248,9 +249,14 @@ void quor_make_move(void *pos, int index, uint32_t *hash)
 	quor_pos_t *p = pos;
 	quor_player_t *me = current(p);
 
+	int token_before, token_after;
+
 	//make the move
 	if(index < TOKEN_MOVES)
 	{
+		token_before = me->y*9 + me->x;
+		token_after = token_before;
+
 		//printf("moving from %d,%d w index %d\n",
 		//	me->x, me->y, index);
 
@@ -258,18 +264,22 @@ void quor_make_move(void *pos, int index, uint32_t *hash)
 		{
 			case MOVE_UP:
 				me->y++;
+				token_after += 9;
 				me->token <<= 9;
 				break;
 			case MOVE_DOWN:
 				me->y--;
+				token_after -= 9;
 				me->token >>= 9;
 				break;
 			case MOVE_RIGHT:
 				me->x++;
+				token_after++;
 				me->token <<= 1;
 				break;
 			case MOVE_LEFT:
 				me->x--;
+				token_after--;
 				me->token >>= 1;
 				break;
 		}
@@ -280,15 +290,22 @@ void quor_make_move(void *pos, int index, uint32_t *hash)
 	else
 	{
 		me->gate_ct--;
-		uint64_t gb = index_get_gate_bit(index);
+		__int128 gb = index_get_gate_bit(index);
 		p->gates |= gb;
 		if(index < HORIZ_PLACEMENTS)
 		{
-			p->horiz |= (gb | gb<<1);
+			//printbig(gb, "%x");
+			//printbig(gb<<1, "%x");
+			//printbig(p->horiz, "%x");
+
+			__int128 temp __attribute__((aligned(16))) = (gb | gb<<1);
+			p->horiz |= temp;
+			//p->horiz |= (gb | gb<<1);
 		}
 		else
 		{
-			p->vert |= (gb | gb<<9);
+			__int128 temp __attribute__((aligned(16))) = (gb | gb<<9);
+			p->vert |= temp;
 		}
 	}
 
@@ -298,12 +315,10 @@ void quor_make_move(void *pos, int index, uint32_t *hash)
 	if(!hash)
 		return;
 
-	//get zobrist index
 
 	if(index < TOKEN_MOVES)
 	{
-		//from, to
-		//	zobrist_move(hash, hi, from);
+		zobrist_move(hash, token_after, token_before);
 	}
 	else
 		zobrist_place(hash, index-TOKEN_MOVES);
@@ -394,7 +409,7 @@ void quor_draw_full(void *pos)
 {
 	quor_pos_t *p = pos;
 
-	char indent[] = "\t\t\t\t\t\t";
+	char indent[] = "\t\t\t\t\t\t\t";
 
 	__int128 b = 1;
 	b <<= 72;
@@ -507,10 +522,9 @@ void quor_draw_full(void *pos)
 
 int quor_human_to_iter(char *human)
 {
-	int iter = 0;
 	if(human[0] == '-' || human[0] == '|')
 	{
-		iter = (human[1]-'a');
+		int iter = (human[1]-'a');
 		iter += (human[2]-'0'-1)*9;
 		if(human[0] == '-')
 			iter += 4;
@@ -518,24 +532,47 @@ int quor_human_to_iter(char *human)
 			iter += HORIZ_PLACEMENTS;
 		return iter;
 	}
-	else if(human[0] == 'm')
+	else
 	{
-		switch(human[1])
+		switch(human[0])
 		{
-			case 'u': return MOVE_UP;
-			case 'd': return MOVE_DOWN;
-			case 'l': return MOVE_LEFT;
-			case 'r': return MOVE_RIGHT;
+			case '^': return MOVE_UP;
+			case 'v': return MOVE_DOWN;
+			case '<': return MOVE_LEFT;
+			case '>': return MOVE_RIGHT;
 			default:	return -1;
 		}
 	}
 	return -1;
 }
-/*
+
 char *quor_iter_to_human(int move)
 {
+	if(move < TOKEN_MOVES)
+	{
+		switch(move)
+		{
+			case MOVE_UP:	return "^";
+			case MOVE_DOWN:	return "v";
+			case MOVE_LEFT:	return "<";
+			case MOVE_RIGHT:	return ">";
+		}
+	}
+	else
+	{
+		int gate_index = move - TOKEN_MOVES;
+		if(gate_index > 72)
+			gate_index -= 72;
+		static char gmove[4];
+		gmove[0] = (move < HORIZ_PLACEMENTS)? '-':'|';
+		gmove[1] = (gate_index % 9) + 'a';
+		gmove[2] = (gate_index / 9) + '0';
+		gmove[3] = '\0';
+		return gmove;
+	}
+
 	return NULL;
-}*/
+}
 
 
 solver_t QUOR_SOLVER =
@@ -544,7 +581,7 @@ solver_t QUOR_SOLVER =
 
 	.initial_pos = &QUOR_INIT_POS,
 	.pos_size = sizeof(quor_pos_t),
-	.possible_moves = 132,
+	.possible_moves = 148,
 	.transtbl_buckets_ct = (1<<28),
 	.iddfs_increment = 2,
 	.aspiration_default_width = 1,
@@ -574,5 +611,5 @@ solver_t QUOR_SOLVER =
 	//.replace_transpose = quor_replace_transpose,
 
 	.human_to_iter = quor_human_to_iter,
-	.iter_to_human = NULL,
+	.iter_to_human = quor_iter_to_human,
 };

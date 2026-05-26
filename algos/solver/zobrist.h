@@ -7,5 +7,6 @@
 
 void zobrist_init(int zseed);
 void zobrist_place(uint32_t *h, int n);
+void zobrist_move(uint32_t *h, int to, int from);
 
 #endif	//ZOBRIST_H_
