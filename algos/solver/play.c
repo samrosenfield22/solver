@@ -196,7 +196,7 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 				move = solver->human_to_iter(buf);
 			else
 				move = strtol(buf, NULL, 10);
-			if(move >= solver->possible_moves
+			if(move < 0 || move >= solver->possible_moves
 				|| !solver->is_legal(pos, move))
 			{
 				printf("illegal move!\n");

@@ -8,13 +8,13 @@
 
 typedef struct
 {
-	uint8_t x, y, gates;
+	uint8_t x, y, gate_ct;
 	__int128 token;
 } quor_player_t;
 
 typedef struct
 {
-	uint64_t horiz, vert;
+	uint64_t horiz, vert, gates;
 	bool whosemove;
 	quor_player_t p1, p2;
 

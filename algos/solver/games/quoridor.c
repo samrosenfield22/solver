@@ -23,17 +23,17 @@ need aux structure for pathfinding (only changes when gates placed)
 
 quor_pos_t QUOR_INIT_POS =
 {
-	.horiz=0, .vert=0,
+	.horiz=0, .vert=0, .gates=0,
 	.p1=
 	{
 		.x=4, .y=0,
-		.gates=10,
+		.gate_ct=10,
 		.token=((__int128)1)<<4
 	},
 	.p2=
 	{
 		.x=4, .y=8,
-		.gates=10,
+		.gate_ct=10,
 		.token=((__int128)1)<<76
 	},
 	.whosemove = true,
@@ -173,8 +173,8 @@ bool quor_is_legal(void *pos, int index)
 		switch(index)
 		{
 			case MOVE_UP:
-				if(me->token & p->horiz
-					|| me->token & p->horiz<<1)
+				if(me->token & p->horiz)
+					//|| me->token & p->horiz<<1)
 					return false;
 				if(me->token > ((__int128)1)<<71)
 					return false;
@@ -182,8 +182,8 @@ bool quor_is_legal(void *pos, int index)
 				break;
 
 			case MOVE_DOWN:
-				if(me->token & p->horiz<<9
-					|| me->token & p->horiz<<10)
+				if(me->token & p->horiz<<9)
+					//|| me->token & p->horiz<<10)
 					return false;
 				if(me->token < ((__int128)1)<<9)
 					return false;
@@ -191,8 +191,8 @@ bool quor_is_legal(void *pos, int index)
 				break;
 
 			case MOVE_RIGHT:
-				if(me->token & p->vert
-					|| me->token & p->vert>>9)
+				if(me->token & p->vert)
+					//|| me->token & p->vert>>9)
 					return false;
 				if(me->x == 8)
 					return false;
@@ -200,8 +200,8 @@ bool quor_is_legal(void *pos, int index)
 				break;
 
 			case MOVE_LEFT:
-				if(me->token & p->vert<<1
-					|| me->token & p->vert>>8)
+				if(me->token & p->vert<<1)
+					//|| me->token & p->vert>>8)
 					return false;
 				if(me->x == 0)
 					return false;
@@ -214,13 +214,29 @@ bool quor_is_legal(void *pos, int index)
 	}
 	else	//placing a gate
 	{
-		if(me->gates == 0)
+		if(me->gate_ct == 0)
 			return false;
 
-		uint64_t gate_bit = index_get_gate_bit(index);
-		if(gate_bit & (p->horiz | p->vert))
+		if((index % 8)==1)
 			return false;
-		//check overlapping
+
+
+		uint64_t gate_bit = index_get_gate_bit(index);
+		//if(gate_bit & (p->horiz | p->vert))
+		if(gate_bit & p->gates)
+			return false;
+
+		//check overlapping w same kind
+		if(index < HORIZ_PLACEMENTS)
+		{
+			if(gate_bit & p->horiz)
+				return false;
+		}
+		else	//vert
+		{
+			if(gate_bit & p->vert)
+				return false;
+		}
 	}
 
 	return true;
@@ -263,11 +279,17 @@ void quor_make_move(void *pos, int index, uint32_t *hash)
 	}
 	else
 	{
-		me->gates--;
+		me->gate_ct--;
+		uint64_t gb = index_get_gate_bit(index);
+		p->gates |= gb;
 		if(index < HORIZ_PLACEMENTS)
-			p->horiz |= index_get_gate_bit(index);
+		{
+			p->horiz |= (gb | gb<<1);
+		}
 		else
-			p->vert |= index_get_gate_bit(index);
+		{
+			p->vert |= (gb | gb<<9);
+		}
 	}
 
 	p->whosemove = !p->whosemove;
@@ -301,7 +323,7 @@ float estimate_player(quor_player_t *pl, bool whosemove)
 	float close = whosemove? pl->y : 9-pl->y;
 	est += CLOSE_TO_EXIT_SCORE * close;
 
-	est += GATES_LEFT_SCORE * pl->gates;
+	est += GATES_LEFT_SCORE * pl->gate_ct;
 
 	return est;
 }
@@ -417,7 +439,7 @@ void quor_draw_full(void *pos)
 
 					color = TERM_NEUTRAL;
 					c = ':';
-					if(b & p->vert || b>>9 & p->vert)
+					if(b & p->vert)// || b>>9 & p->vert)
 					{
 						c = 186;
 						color = TERM_PURPLE;
@@ -433,9 +455,6 @@ void quor_draw_full(void *pos)
 			b >>= 9;
 		}
 
-
-
-
 		if(!y)
 			break;
 
@@ -447,7 +466,7 @@ void quor_draw_full(void *pos)
 		{
 			char color = TERM_NEUTRAL;
 			c = '.';
-			if(b & p->horiz || b>>1 & p->horiz)
+			if(b & p->horiz)// || b>>1 & p->horiz)
 			{
 				c = 205;
 				color = TERM_PURPLE;
@@ -471,9 +490,9 @@ void quor_draw_full(void *pos)
 
 	printf("\n\n\t\t\t\t\t");
 	term_fg(TERM_RED);
-	printf("red player: %d gates\t\t\t", p->p1.gates);
+	printf("red player: %d gates\t\t\t", p->p1.gate_ct);
 	term_fg(TERM_BLUE);
-	printf("blue player: %d gates\n\n", p->p2.gates);
+	printf("blue player: %d gates\n\n", p->p2.gate_ct);
 	term_clear();
 
 	printf("\n\n");
@@ -537,7 +556,6 @@ solver_t QUOR_SOLVER =
 	.whosemove = quor_whosemove,
 	.is_legal = quor_is_legal,
 	.make_move = quor_make_move,
-	//.make_move_temp = quor_make_move_temp,
 	//.only_moves = quor_only_moves,
 	.draw_full = quor_draw_full,
 
