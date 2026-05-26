@@ -48,6 +48,8 @@ enum
 };
 
 
+//
+void quor_draw_full(void *pos);
 
 
 
@@ -189,7 +191,8 @@ bool quor_is_legal(void *pos, int index)
 				break;
 
 			case MOVE_RIGHT:
-				if(me->token & p->vert)
+				if(me->token & p->vert
+					|| me->token & p->vert>>9)
 					return false;
 				if(me->x == 8)
 					return false;
@@ -197,7 +200,8 @@ bool quor_is_legal(void *pos, int index)
 				break;
 
 			case MOVE_LEFT:
-				if(me->token & p->vert<<1)
+				if(me->token & p->vert<<1
+					|| me->token & p->vert>>8)
 					return false;
 				if(me->x == 0)
 					return false;
@@ -336,14 +340,11 @@ uint32_t quor_hash(void *key, size_t size)
 	return h;
 }
 
-bool quor_keys_match(void *k1, void *k2)
+/*bool quor_keys_match(void *k1, void *k2)
 {
 	quor_pos_t *n1 = k1, *n2 = k2;
-
-
-
 	return true;
-}
+}*/
 
 /*void swap(uint8_t *a, uint8_t *b)
 {
@@ -352,16 +353,13 @@ bool quor_keys_match(void *k1, void *k2)
 	*b = temp;
 }*/
 
-int quor_only_moves(sorter_t *sorter, void *pos)
+/*int quor_only_moves(sorter_t *sorter, void *pos)
 {
 	quor_pos_t *p = pos;
-
 	//get win
-
 	//get saving moves
-
 	return 0;
-}
+}*/
 
 void print_player_info(quor_player_t *pl)
 {
@@ -381,57 +379,67 @@ void quor_draw_full(void *pos)
 
 
 
+	const int height = 2;
 	char c;
 	for(int y=8; y>=0; y--)
 	{
-		printf("\n\n%s    ", indent);
-
-		for(int x=0; x<9; x++)
+		for(int line=0; line<height; line++)
 		{
-			c = ' ';
-			int color = TERM_NEUTRAL;
-			//if(x==p->p1.x && y==p->p1.y)
-			if(b == p->p1.token)
-			{
-				color = TERM_RED;
-				c = 'O';
-			}
-			//else if(x==p->p2.x && y==p->p2.y)
-			else if(b == p->p2.token)
-			{
-				color = TERM_BLUE;
-				//c = ry? 'R':'Y';
-				c = 'O';
-			}
-			term_fg(color);
-			printf(" %c ", c);
-			term_clear();
+			printf("\n%s    ", indent);
 
-			//vert
-			if(x < 8)
+			for(int x=0; x<9; x++)
 			{
-
-				color = TERM_NEUTRAL;
-				c = ':';
-				if(b & p->vert)
+				c = ' ';
+				int color = TERM_NEUTRAL;
+				//if(x==p->p1.x && y==p->p1.y)
+				if(line==height-1)
 				{
-					c = '|';
-					color = TERM_PURPLE;
+					if(b == p->p1.token)
+					{
+						color = TERM_RED;
+						c = 'O';
+					}
+					//else if(x==p->p2.x && y==p->p2.y)
+					else if(b == p->p2.token)
+					{
+						color = TERM_BLUE;
+						//c = ry? 'R':'Y';
+						c = 'O';
+					}
 				}
 				term_fg(color);
-				printf("%c", c);
+				printf(" %c ", c);
 				term_clear();
+
+				//vert
+				if(x < 8)
+				{
+
+					color = TERM_NEUTRAL;
+					c = ':';
+					if(b & p->vert || b>>9 & p->vert)
+					{
+						c = 186;
+						color = TERM_PURPLE;
+					}
+					term_fg(color);
+					printf("%c", c);
+					term_clear();
+				}
+
+				b <<= 1;
 			}
 
-			b <<= 1;
+			b >>= 9;
 		}
+
 
 
 
 		if(!y)
 			break;
 
-		b >>= 18;
+		b >>= 9;
 
 		//separation/horiz gates
 		printf("\n%s  %d ", indent, y);
@@ -441,7 +449,7 @@ void quor_draw_full(void *pos)
 			c = '.';
 			if(b & p->horiz || b>>1 & p->horiz)
 			{
-				c = '=';
+				c = 205;
 				color = TERM_PURPLE;
 			}
 			term_fg(color);
