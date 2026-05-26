@@ -262,7 +262,9 @@ void *hashmap_key_get_value(hashmap_t *h, void *key, uint32_t *hash)
 //returns the load factor out of 100
 int hashmap_load(hashmap_t *h)
 {
-	printf("%d out of %d buckets filled\n", h->filled, h->len);
+	printbig(h->filled, "%d");
+	printf(" out of %s buckets filled\n",
+		sprintbig(h->len, "%d"));
 	return (h->filled * 100) / h->len;
 }
 

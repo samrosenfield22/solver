@@ -3,14 +3,11 @@
 #include "printnum.h"
 
 #include <stdio.h>
-#include <stdbool.h>
+#include <string.h>
 #include <assert.h>
 
 //
-void printbig(__int128 x, const char *fmt);
-void printbig_custom(__int128 x, int base, char sep,
-	int digits_per_sep, int leading_zeros, bool show_plus,
-	bool capital);
+
 
 /*void print128(__int128 x)
 {
@@ -25,7 +22,15 @@ b:		print binary
 0:		prepend w up to 9 leading zeros
 +:		prepend w + for positive
 */
-void printbig(__int128 x, const char *fmt)
+int printbig(__int128 x, const char *fmt)
+{
+	char *buf = sprintbig(x, fmt);
+	int len = strlen(buf);
+	printf("%s", buf);
+	return len;
+}
+
+char *sprintbig(__int128 x, const char *fmt)
 {
 	bool fmt_valid = true;
 
@@ -38,7 +43,7 @@ void printbig(__int128 x, const char *fmt)
 	bool capital = false;
 
 	if(!fmt)
-		return;
+		goto fmt_confirm;
 	if(*fmt != '%')
 	{
 		fmt_valid = false;
@@ -54,7 +59,7 @@ void printbig(__int128 x, const char *fmt)
 				//this doesnt handle more than 9 leadings
 				c++;
 				if(!('0' <= *c && *c <= '9'))
-					return;
+					goto fmt_confirm;
 				leading_zeros = *c - '0';
 				break;
 
@@ -101,28 +106,35 @@ void printbig(__int128 x, const char *fmt)
 		exit(0);
 	}
 
-	printbig_custom(x, base, sep, digits_per_sep,
+	return printbig_custom(x, base, sep, digits_per_sep,
 		leading_zeros, show_plus, capital);
 }
 
-void printbig_custom(__int128 x, int base, char sep,
+char *printbig_custom(__int128 x, int base, char sep,
 	int digits_per_sep, int leading_zeros, bool show_plus,
 	bool capital)
 {
+	static char buf[138] = "\0";
+	char *bc = buf;
+
 	if(x < 0)
 	{
-		putchar('-');
+		//putchar('-');
+		*bc++ = '-';
 		x = 0-x;
 	}
 	else if(show_plus)
 	{
-		putchar('+');
+		//putchar('+');
+		*bc++ = '+';
 	}
 
 	if(x == 0)
 	{
-		putchar('0');
-		return;
+		//putchar('0');
+		*bc++ = '0';
+		//return;
+		goto print_custom_end;
 	}
 
 	int max_dig;
@@ -146,21 +158,25 @@ void printbig_custom(__int128 x, int base, char sep,
 		{
 			if((i % digits_per_sep)==(digits_per_sep-1)
 				&& started)
-				putchar(sep);
+				//putchar(sep);
+				*bc++ = sep;
 			{
 				started = true;
 				for(int z=0; z<leading_zeros-i; z++)
-					putchar('0');
+					*bc++ = '0';
+					//putchar('0');
 			}
 
 			int digit = d % base;
 			if(digit < 10)
-				putchar('0'+digit);
+				*bc++ = '0'+digit;
+				//putchar('0'+digit);
 			else
 			{
 				char c = digit - 0xA;
 				c += capital? 'A' : 'a';
-				putchar(c);
+				*bc++ = c;
+				//putchar(c);
 			}
 		}
 
@@ -171,4 +187,7 @@ void printbig_custom(__int128 x, int base, char sep,
 
 	assert(!weight);
 
+	print_custom_end:
+	*bc = '\0';
+	return buf;
 }

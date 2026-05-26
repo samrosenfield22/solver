@@ -346,11 +346,11 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 		//printf("eval: %+.1f\n", gt->head->children[0]->score);
 		printf("\nposition solved in %d m, %d sec\n", min, sec);
 		printf("time per position: %.2f us\n", ((float)us)/position_ct);
-		printf("evaluated %u unique positions\n", position_ct);
+		printf("evaluated %s unique positions\n", sprintbig(position_ct, "%d"));
 		printf("greatest number of nodes stored in tree: %u\n", max_node_ct);
 		#ifdef USE_TRANSPOSITION_TABLE
 		printf("hashmap load factor = %d%%\n", hashmap_load(trans_tbl));
-		printf("number of collisions: %u\n", hashmap_collisions(trans_tbl));
+		printf("number of collisions: %s\n", sprintbig(hashmap_collisions(trans_tbl), "%d"));
 		#endif
 	}
 
