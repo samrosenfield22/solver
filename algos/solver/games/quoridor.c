@@ -56,11 +56,22 @@ quor_player_t *current(quor_pos_t *p)
 	return (p->whosemove)? &p->p1 : &p->p2;
 }
 
+quor_player_t *current_opp(quor_pos_t *p)
+{
+	return (p->whosemove)? &p->p2 : &p->p1;
+}
+
 bool quor_ok(quor_pos_t *p)
 {
 	assert(p->p1.token);
 	assert(p->p2.token);
-	assert(p->p1.token != p->p2.token);
+	//assert(p->p1.token != p->p2.token);
+	if(p->p1.token == p->p2.token)
+	{
+		quor_draw_full(p);
+		printf("tokens equal!\n");
+		assert(0);
+	}
 
 	assert(p->p1.x < 9);
 	assert(p->p1.y < 9);
@@ -145,7 +156,11 @@ bool quor_is_legal(void *pos, int index)
 {
 	assert(quor_ok(pos));
 	quor_pos_t *p = pos;
-	quor_player_t *me = current(p);
+	quor_player_t *me = current(p), *opp = current_opp(p);
+
+	int dst_x=me->x, dst_y = me->y;
+
+	//make token double bitmaps (vert + horiz)
 
 	//__int128 *me = p->whosemove?
 	//	&(p->me_token) : &(p->opp_token);
@@ -161,6 +176,7 @@ bool quor_is_legal(void *pos, int index)
 					return false;
 				if(me->token > ((__int128)1)<<71)
 					return false;
+				dst_y++;
 				break;
 
 			case MOVE_DOWN:
@@ -169,6 +185,7 @@ bool quor_is_legal(void *pos, int index)
 					return false;
 				if(me->token < ((__int128)1)<<9)
 					return false;
+				dst_y--;
 				break;
 
 			case MOVE_RIGHT:
@@ -176,15 +193,20 @@ bool quor_is_legal(void *pos, int index)
 					return false;
 				if(me->x == 8)
 					return false;
+				dst_x++;
 				break;
 
 			case MOVE_LEFT:
 				if(me->token & p->vert<<1)
 					return false;
-				if(me->token == 0)
+				if(me->x == 0)
 					return false;
+				dst_x--;
 				break;
 		}
+
+		if(dst_x == opp->x && dst_y == opp->y)
+			return false;	//for now (should attempt hop)
 	}
 	else	//placing a gate
 	{
@@ -206,10 +228,12 @@ void quor_make_move(void *pos, int index, uint32_t *hash)
 	quor_pos_t *p = pos;
 	quor_player_t *me = current(p);
 
-
 	//make the move
 	if(index < TOKEN_MOVES)
 	{
+		//printf("moving from %d,%d w index %d\n",
+		//	me->x, me->y, index);
+
 		switch(index)
 		{
 			case MOVE_UP:
@@ -229,6 +253,9 @@ void quor_make_move(void *pos, int index, uint32_t *hash)
 				me->token >>= 1;
 				break;
 		}
+
+		//printf("went to %d,%d\n",
+		//	me->x, me->y);
 	}
 	else
 	{
@@ -399,14 +426,15 @@ void quor_draw_full(void *pos)
 			b <<= 1;
 		}
 
-		b >>= 9;
+
 
 		if(!y)
 			break;
 
-		printf("\n%s  %d ", indent, y);
+		b >>= 18;
 
 		//separation/horiz gates
+		printf("\n%s  %d ", indent, y);
 		for(int x=0; x<9; x++)
 		{
 			char color = TERM_NEUTRAL;
@@ -423,8 +451,9 @@ void quor_draw_full(void *pos)
 
 			b <<= 1;
 		}
+		b >>= 9;
 
-		b >>= 18;
+
 	}
 
 	//footer
