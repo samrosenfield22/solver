@@ -9,6 +9,7 @@
 
 #include "misc/timing.h"
 #include "misc/winterm.h"
+#include "misc/printnum.h"
 
 #include "memory/slab.h"
 //#include "memory/block.h"

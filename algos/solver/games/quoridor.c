@@ -47,52 +47,9 @@ enum
 	MOVE_RIGHT	= 3,
 };
 
-void print128_rec(__int128 x, const char sep, __int128 *delimits)
-{
-	if(x < 0)
-	{
-		putchar('-');
-		x = 0-x;
-	}
-	else if(x == 0)
-	{
-		putchar('0');
-		return;
-	}
-
-	print128_rec(x>>4, sep, delimits);
 
 
 
-	for(int i=0; i<10; i++)
-	{
-		__int128 upper = delimits[i];
-		__int128 lower = (upper >> 4) - 1;
-		if(lower < x && x < upper)
-		{
-			putchar(sep);
-			break;
-		}
-	}
-
-	int c = x & 0xF;
-	putchar((c < 10)? '0'+c : 'A'+c-0xA);
-}
-
-void print128(__int128 x)
-{
-	const char sep = ' ';
-
-	__int128 delimits[10];
-	__int128 d = 0x1000;
-	for(int i=0; i<10; i++)
-	{
-		delimits[i] = d;
-		d <<= 4*3;
-	}
-
-	print128_rec(x, sep, delimits);
-}
 
 quor_player_t *current(quor_pos_t *p)
 {
@@ -120,9 +77,9 @@ bool quor_ok(quor_pos_t *p)
 	{
 		printf("on [%d,%d] (square %d):\n", me->x, me->y,
 			me->y*9 + me->x);
-		print128(bb);
+		printbig(bb, "%x");
 		printf("\n");
-		print128(me->token);
+		printbig(me->token, "%x");
 
 	}
 	assert(bb == me->token);
@@ -382,7 +339,7 @@ int quor_only_moves(sorter_t *sorter, void *pos)
 void print_player_info(quor_player_t *pl)
 {
 	printf("player @ %d,%d (", pl->x, pl->y);
-	print128(pl->token);
+	printbig(pl->token, "%x");
 	printf(")\n");
 }
 
@@ -486,9 +443,10 @@ void quor_draw_full(void *pos)
 	print_player_info(&p->p1);
 	print_player_info(&p->p2);
 	printf("horiz: ");
-	print128(p->horiz);
+	printbig(p->horiz, "%x");
 	printf("\nvert: ");
-	print128(p->vert);
+	printbig(p->vert, "%x");
+	//printbig(0b11011, "%b");
 }
 
 int quor_human_to_iter(char *human)
