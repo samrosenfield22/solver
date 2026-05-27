@@ -377,12 +377,12 @@ uint32_t quor_hash(void *key, size_t size)
 	{
 		if(p->horiz & b)
 		{
-			printf("horiz @ index %d\n", i + 2*81);
+			//printf("horiz @ index %d\n", i + 2*81);
 			zobrist_place(&h, i + 2*81);
 		}
 		else if(p->vert & b)
 		{
-			printf("vert @ index %d\n", i + 2*81+72);
+			//printf("vert @ index %d\n", i + 2*81+72);
 			zobrist_place(&h, i + 2*81+72);
 		}
 
@@ -414,6 +414,56 @@ bool quor_keys_match(void *k1, void *k2)
 	*a = *b;
 	*b = temp;
 }*/
+
+void flip_128(__int128 *to, __int128 *from)
+{
+	*to = 0;
+	__int128 end = 1;
+	end <<= 81;
+	int c = 0;
+	for(__int128 b=1; b<end; b<<=1)
+	{
+		if(*from & b)
+		{
+			__int128 rev = b;
+			if(c < 4)
+				rev <<= 2*(4-c);
+			else
+				rev >>= 2*(c-4);
+			*to |= rev;
+		}
+
+		c++;
+		if(c == 9)
+			c = 0;
+	}
+}
+
+void flip_player(quor_player_t *to, quor_player_t *from)
+{
+	//x, y, gate_ct, token
+	to->x = 8 - from->x;
+	to->y = from->y;
+	to->gate_ct = from->gate_ct;
+	to->token = 1;
+	to->token <<= to->y*9 + to->x;
+}
+
+void quor_flip(void *to, void *from)
+{
+	quor_pos_t *pt = to, *pf = from;
+
+
+	flip_128(&pt->horiz, &pf->horiz);
+	flip_128(&pt->vert, &pf->vert);
+	flip_128(&pt->gates, &pf->gates);
+	pt->whosemove = pf->whosemove;
+
+	flip_player(&pt->p1, &pf->p1);
+	flip_player(&pt->p2, &pf->p2);
+
+	assert(quor_ok(to));
+}
 
 /*int quor_only_moves(sorter_t *sorter, void *pos)
 {
@@ -627,11 +677,9 @@ solver_t QUOR_SOLVER =
 	.print_pos = NULL,
 	.hash = quor_hash,
 	.uses_zobrist = true,
-	//.hash = NULL,
 	.keys_match = quor_keys_match,
-	//.keys_match = NULL,
 	//.normalize_position = quor_normalize,
-	//.flip = quor_flip_horiz,
+	//.flip = quor_flip,
 	//.normalize_position = NULL,
 	//.replace_transpose = quor_replace_transpose,
 

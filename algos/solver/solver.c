@@ -337,7 +337,11 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 
 	}
 
-	printf("best move: \t\t%d\n\n\n", best_move);
+	printf("best move: \t\t");
+	if(solver->iter_to_human)
+		printf("%s\n\n\n", solver->iter_to_human(best_move));
+	else
+		printf("%d\n\n\n", best_move);
 	print_eval_bar(gt->head->children[0]->score);
 	printf("\n\n");
 
@@ -910,6 +914,7 @@ int build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth)
 		ct++;
 	}
 
+	//must have found at least 1 legal move
 	assert(ct);
 
 	//sort
