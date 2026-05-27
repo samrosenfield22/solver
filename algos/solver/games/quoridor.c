@@ -21,6 +21,8 @@ need aux structure for pathfinding (only changes when gates placed)
 #define TOKEN_MOVES	(4)
 #define HORIZ_PLACEMENTS	(72 + TOKEN_MOVES)
 
+#define QUOR_Z_LEN	(2*81+2*72)
+
 quor_pos_t QUOR_INIT_POS =
 {
 	.horiz=0, .vert=0, .gates=0,
@@ -50,6 +52,7 @@ enum
 
 //
 void quor_draw_full(void *pos);
+uint32_t quor_hash(void *key, size_t size);
 
 
 
@@ -141,8 +144,9 @@ endstate_t quor_gameover(void *pos)
 __int128 index_get_gate_bit(int index)
 {
 	int gate_index = index - TOKEN_MOVES;
-	if(gate_index > 72)
+	if(gate_index >= 72)
 		gate_index -= 72;
+	assert(gate_index < 72);
 	__int128 gate_bit = 1;
 	gate_bit <<= gate_index;
 	return gate_bit;
@@ -255,6 +259,8 @@ void quor_make_move(void *pos, int index, uint32_t *hash)
 	if(index < TOKEN_MOVES)
 	{
 		token_before = me->y*9 + me->x;
+		if(!quor_whosemove(p))
+			token_before += 81;
 		token_after = token_before;
 
 		//printf("moving from %d,%d w index %d\n",
@@ -321,7 +327,10 @@ void quor_make_move(void *pos, int index, uint32_t *hash)
 		zobrist_move(hash, token_after, token_before);
 	}
 	else
-		zobrist_place(hash, index-TOKEN_MOVES);
+	{
+		int g_index = index - TOKEN_MOVES + 2*81;
+		zobrist_place(hash, g_index);
+	}
 
 	//test
 	//uint32_t check_hash = quor_hash(pos, 0);
@@ -357,31 +366,47 @@ uint32_t quor_hash(void *key, size_t size)
 {
 	quor_pos_t *p = key;
 	uint32_t h = 0;
-	zobrist_init(148, 0);
+	zobrist_init(QUOR_Z_LEN, 0);
 
 	zobrist_place(&h, p->p1.y*9 + p->p1.x);
-	zobrist_place(&h, p->p2.y*9 + p->p2.x);
+	zobrist_place(&h, 81 + p->p2.y*9 + p->p2.x);
 
 
 	int i=0;
-	for(uint64_t b=1; b; b<<=1)
+	for(__int128 b=1; b; b<<=1)
 	{
 		if(p->horiz & b)
-			zobrist_place(&h, i);
+		{
+			printf("horiz @ index %d\n", i + 2*81);
+			zobrist_place(&h, i + 2*81);
+		}
 		else if(p->vert & b)
-			zobrist_place(&h, i+64);
+		{
+			printf("vert @ index %d\n", i + 2*81+72);
+			zobrist_place(&h, i + 2*81+72);
+		}
 
 		i++;
+		//if(i > 72)
+		//	break;
 	}
 
 	return h;
 }
 
-/*bool quor_keys_match(void *k1, void *k2)
+bool quor_keys_match(void *k1, void *k2)
 {
-	quor_pos_t *n1 = k1, *n2 = k2;
+	quor_pos_t *pos1 = k1, *pos2 = k2;
+	if(pos1->horiz != pos2->horiz)	return false;
+	if(pos1->vert != pos2->vert)	return false;
+	if(pos1->gates != pos2->gates)	return false;
+	if(pos1->p1.token != pos2->p1.token)	return false;
+	if(pos1->p2.token != pos2->p2.token)	return false;
+	if(pos1->p1.gate_ct != pos2->p1.gate_ct)	return false;
+	if(pos1->p2.gate_ct != pos2->p2.gate_ct)	return false;
+
 	return true;
-}*/
+}
 
 /*void swap(uint8_t *a, uint8_t *b)
 {
@@ -603,7 +628,7 @@ solver_t QUOR_SOLVER =
 	.hash = quor_hash,
 	.uses_zobrist = true,
 	//.hash = NULL,
-	//.keys_match = quor_keys_match,
+	.keys_match = quor_keys_match,
 	//.keys_match = NULL,
 	//.normalize_position = quor_normalize,
 	//.flip = quor_flip_horiz,
