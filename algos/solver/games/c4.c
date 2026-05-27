@@ -662,7 +662,7 @@ uint32_t c4_hash(void *key, size_t size)
 
 	//generate bitstrings
 	//if(!zobrist_computed)
-	zobrist_init(ZOBRIST_SEED);
+	zobrist_init(85, ZOBRIST_SEED);
 
 	//compute hash
 	int r=0, i=0;

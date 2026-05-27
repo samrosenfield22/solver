@@ -357,6 +357,7 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 	//tree_clear(gt);
 	tree_destroy(gt);
 	hashmap_destroy(trans_tbl);
+	zobrist_free();
 	trans_tbl = NULL;
 
 	return best_move;

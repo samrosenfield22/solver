@@ -357,7 +357,7 @@ uint32_t quor_hash(void *key, size_t size)
 {
 	quor_pos_t *p = key;
 	uint32_t h = 0;
-	zobrist_init(0);
+	zobrist_init(148, 0);
 
 	zobrist_place(&h, p->p1.y*9 + p->p1.x);
 	zobrist_place(&h, p->p2.y*9 + p->p2.x);
