@@ -21,7 +21,7 @@ need aux structure for pathfinding (only changes when gates placed)
 #define TOKEN_MOVES	(4)
 #define HORIZ_PLACEMENTS	(72 + TOKEN_MOVES)
 
-#define QUOR_Z_LEN	(2*81+2*72)
+#define QUOR_Z_LEN	(2*81+2*72+1)
 
 quor_pos_t QUOR_INIT_POS =
 {
@@ -591,7 +591,7 @@ char *quor_iter_to_human(int move)
 		static char gmove[4];
 		gmove[0] = (move < HORIZ_PLACEMENTS)? '-':'|';
 		gmove[1] = (gate_index % 9) + 'a';
-		gmove[2] = (gate_index / 9) + '0';
+		gmove[2] = (gate_index / 9) + '0' + 1;
 		gmove[3] = '\0';
 		return gmove;
 	}
