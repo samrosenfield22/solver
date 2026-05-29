@@ -387,10 +387,11 @@ void quor_make_move(void *pos, int index, uint32_t *hash)
 		if(gnindex >= 72)
 			gnindex -= 72;
 		int next_to_gate[4] = {gnindex, gnindex+1, gnindex+9, gnindex+10};
-		for(int gn=0; gn<4; gn++)
-			p->map[next_to_gate[gn]].status = CELL_BAD;
-		//update_dists(p->map, int *next_to_gate,
-		//	p->horiz, p->vert);
+		//for(int gn=0; gn<4; gn++)
+		//	p->map[next_to_gate[gn]].status = CELL_BAD;
+		//p->map[0].status = CELL_WAVE_END;
+		update_dists(p->map, next_to_gate,
+			p->horiz, p->vert);
 	}
 
 	p->whosemove = !p->whosemove;

@@ -69,6 +69,7 @@ void spread_wave(cell_t *n)
 	{
 		n->status = CELL_WAVE_END;
 		list_enq(wave_ends_queue, n);
+		return;
 	}
 
 	n->status = CELL_BAD;
@@ -132,13 +133,15 @@ bool is_good(cell_t *n)
 	{
 		if(nei[i]->status != CELL_BAD)
 		{
-			cell_t *neinei[4];
+			if(n->dist-1 == nei[i]->dist)
+				return true;
+			/*cell_t *neinei[4];
 			int neinei_len = get_neighbors(map, nei[i], neinei);
 			for(int j=0; j<neinei_len; j++)
 			{
 				if(nei[i]->dist-1 == neinei[j]->dist)
 					return true;
-			}
+			}*/
 		}
 	}
 
