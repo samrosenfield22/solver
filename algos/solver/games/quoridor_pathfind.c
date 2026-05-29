@@ -126,6 +126,13 @@ void propagate_dists(cell_t *n)
 				list_enq(wave_ends_queue, &nei[i]);
 			}
 		}
+		else if(nei[i]->status == CELL_WAVE_END)
+		{
+			if(nei[i]->dist > n->dist+1)
+			{
+				nei[i]->dist = n->dist+1;
+			}
+		}
 	}
 
 	//n->status = CELL_UNCHECKED;
