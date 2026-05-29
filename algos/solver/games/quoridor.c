@@ -158,13 +158,23 @@ bool quor_whosemove(void *pos)
 	return p->whosemove;
 }
 
+void move_player_token(quor_player_t *me, int x, int y, int dist)
+{
+	me->x += x;
+	me->y += y;
+	if(dist > 0)
+		me->token <<= dist;
+	else
+		me->token >>= (0-dist);
+}
+
 bool quor_is_legal(void *pos, int index)
 {
-	assert(quor_ok(pos));
+	//assert(quor_ok(pos));
 	quor_pos_t *p = pos;
 	quor_player_t *me = current(p), *opp = current_opp(p);
 
-	int dst_x=me->x, dst_y = me->y;
+	int dist_x=0, dist_y = 0;
 
 	//make token double bitmaps (vert + horiz)
 
@@ -182,7 +192,7 @@ bool quor_is_legal(void *pos, int index)
 					return false;
 				if(me->token > ((__int128)1)<<71)
 					return false;
-				dst_y++;
+				dist_y++;
 				break;
 
 			case MOVE_DOWN:
@@ -191,7 +201,7 @@ bool quor_is_legal(void *pos, int index)
 					return false;
 				if(me->token < ((__int128)1)<<9)
 					return false;
-				dst_y--;
+				dist_y--;
 				break;
 
 			case MOVE_RIGHT:
@@ -200,7 +210,7 @@ bool quor_is_legal(void *pos, int index)
 					return false;
 				if(me->x == 8)
 					return false;
-				dst_x++;
+				dist_x++;
 				break;
 
 			case MOVE_LEFT:
@@ -209,12 +219,27 @@ bool quor_is_legal(void *pos, int index)
 					return false;
 				if(me->x == 0)
 					return false;
-				dst_x--;
+				dist_x--;
 				break;
 		}
 
-		if(dst_x == opp->x && dst_y == opp->y)
-			return false;	//for now (should attempt hop)
+		if(me->x+dist_x == opp->x && me->y+dist_y == opp->y)
+		{
+			uint8_t saved_x=me->x, saved_y=me->y;
+			__int128 saved_token=me->token;
+
+			int dist = 9*dist_y + dist_x;
+			move_player_token(me, dist_x, dist_y, dist);
+			bool jump_legal = quor_is_legal(pos, index);
+
+			//restore
+			me->x = saved_x;
+			me->y = saved_y;
+			me->token = saved_token;
+
+			return jump_legal;
+		}
+		//	return false;	//for now (should attempt hop)
 	}
 	else	//placing a gate
 	{
@@ -252,6 +277,7 @@ void quor_make_move(void *pos, int index, uint32_t *hash)
 	//assert(quor_ok(pos));
 	quor_pos_t *p = pos;
 	quor_player_t *me = current(p);
+	quor_player_t *opp = current_opp(p);
 
 	int token_before, token_after;
 
@@ -265,29 +291,44 @@ void quor_make_move(void *pos, int index, uint32_t *hash)
 
 		//printf("moving from %d,%d w index %d\n",
 		//	me->x, me->y, index);
-
+		int move_x=0, move_y=0;
 		switch(index)
 		{
 			case MOVE_UP:
-				me->y++;
+				move_y = 1;
+				/*me->y++;
 				token_after += 9;
-				me->token <<= 9;
+				me->token <<= 9;*/
 				break;
 			case MOVE_DOWN:
-				me->y--;
+				move_y = -1;
+				/*me->y--;
 				token_after -= 9;
-				me->token >>= 9;
+				me->token >>= 9;*/
 				break;
 			case MOVE_RIGHT:
-				me->x++;
+				move_x = 1;
+				/*me->x++;
 				token_after++;
-				me->token <<= 1;
+				me->token <<= 1;*/
 				break;
 			case MOVE_LEFT:
-				me->x--;
+				move_x = -1;
+				/*me->x--;
 				token_after--;
-				me->token >>= 1;
+				me->token >>= 1;*/
 				break;
+
+			default: assert(0);
+		}
+
+		int d = 9*move_y + move_x;
+		move_player_token(me, move_x, move_y, d);
+		token_after += d;
+		if(me->token == opp->token)
+		{
+			move_player_token(me, move_x, move_y, d);
+			token_after += d;
 		}
 
 		//printf("went to %d,%d\n",
