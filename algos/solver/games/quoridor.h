@@ -6,6 +6,23 @@
 #include "../solver.h"
 
 
+
+
+typedef enum
+{
+	CELL_UNCHECKED,
+	CELL_BAD,
+	CELL_WAVE_END,
+} cell_status_t;
+
+typedef struct
+{
+	uint8_t dist;
+	uint8_t status;
+} cell_t;
+
+
+
 typedef struct
 {
 	uint8_t x, y, gate_ct;
@@ -20,6 +37,7 @@ typedef struct
 
 	///// aux
 	//me_aux, opp_aux
+	//cell_t map[81];
 }  quor_pos_t;
 
 extern solver_t QUOR_SOLVER;

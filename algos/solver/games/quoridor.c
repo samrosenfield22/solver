@@ -168,6 +168,28 @@ void move_player_token(quor_player_t *me, int x, int y, int dist)
 		me->token >>= (0-dist);
 }
 
+bool blocked_up(__int128 b, __int128 gates)
+{
+	return (b & gates);
+}
+
+bool blocked_down(__int128 b, __int128 gates)
+{
+	return (b & gates<<9);
+}
+
+bool blocked_left(__int128 b, __int128 gates)
+{
+	return (b & gates<<1);
+}
+
+bool blocked_right(__int128 b, __int128 gates)
+{
+	return (b & gates);
+}
+
+
+
 bool quor_is_legal(void *pos, int index)
 {
 	//assert(quor_ok(pos));
@@ -187,7 +209,8 @@ bool quor_is_legal(void *pos, int index)
 		switch(index)
 		{
 			case MOVE_UP:
-				if(me->token & p->horiz)
+				//if(me->token & p->horiz)
+				if(blocked_up(me->token, p->horiz))
 					//|| me->token & p->horiz<<1)
 					return false;
 				if(me->token > ((__int128)1)<<71)
@@ -196,7 +219,8 @@ bool quor_is_legal(void *pos, int index)
 				break;
 
 			case MOVE_DOWN:
-				if(me->token & p->horiz<<9)
+				//if(me->token & p->horiz<<9)
+				if(blocked_down(me->token, p->horiz))
 					//|| me->token & p->horiz<<10)
 					return false;
 				if(me->token < ((__int128)1)<<9)
@@ -205,7 +229,8 @@ bool quor_is_legal(void *pos, int index)
 				break;
 
 			case MOVE_RIGHT:
-				if(me->token & p->vert)
+				//if(me->token & p->vert)
+				if(blocked_right(me->token, p->vert))
 					//|| me->token & p->vert>>9)
 					return false;
 				if(me->x == 8)
@@ -214,7 +239,8 @@ bool quor_is_legal(void *pos, int index)
 				break;
 
 			case MOVE_LEFT:
-				if(me->token & p->vert<<1)
+				//if(me->token & p->vert<<1)
+				if(blocked_left(me->token, p->vert))
 					//|| me->token & p->vert>>8)
 					return false;
 				if(me->x == 0)

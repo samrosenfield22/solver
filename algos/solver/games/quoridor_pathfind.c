@@ -1,24 +1,25 @@
 
-typedef struct
-{
-	uint8_t dist;
-	cell_status_t status;
-} cell_t;
 
-cell_t map[81];
+#include "../../utils.h"
+#include "quoridor_pathfind.h"
+
+//
+void spread_wave(cell_t *n);
+void propagate_dists(cell_t *n);
+bool is_good(cell_t *n);
 
 void map_init(cell_t *map)
 {
 	for(int i=0; i<81; i++)
 	{
 		map[i].dist = i/9;
-		map[i].status = UNCHECKED;
+		map[i].status = CELL_UNCHECKED;
 	}
 }
 
 list_t all_wave_ends = NULL;
 
-update_dists(cell_t *map, int *next_to_gate)
+void update_dists(cell_t *map, int *next_to_gate)
 {
 	//init list
 	if(!all_wave_ends)
@@ -26,7 +27,7 @@ update_dists(cell_t *map, int *next_to_gate)
 
 	//mark every cell as good
 	for(int i=0; i<81; i++)
-		map[i].status = UNCHECKED;
+		map[i].status = CELL_UNCHECKED;
 
 	//for each n next to gate, spread_wave
 	for(int i=0; i<4; i++)
@@ -38,11 +39,11 @@ update_dists(cell_t *map, int *next_to_gate)
 	}
 
 	//backprop dists from wave ends
-	while(list_len(all_wave_ends))
+	/*while(list_len(all_wave_ends))
 	{
 		cell_t *n = list_dequeue(all_wave_ends);
 		propagate_dists(n);
-	}
+	}*/
 
 	list_destroy(all_wave_ends);
 	all_wave_ends = NULL;
@@ -52,28 +53,30 @@ void spread_wave(cell_t *n)
 {
 	//if n marked as bad, we already spread the wave from it
 	//if(n->status == CELL_BAD)
-	if(n->status != UNCHECKED)
+	if(n->status != CELL_UNCHECKED)
 		return;
 
 	if(is_good(n))
 	{
-		n->status = WAVE_END;
+		n->status = CELL_WAVE_END;
 		list_enqueue(n);
 	}
 
 	n->status = CELL_BAD;
-	for(each neighbor nei)
-		spread_wave(nei)
+	cell_t neighbors[4];
+	int nei_len = get_neighbors(map, n, neighbors);
+	for(int i=0; i<nei_len; i++)
+		spread_wave(neighbors[i]);
 
 	/*
 	//if n has a good neighbor, it's a wave end
 	for(each neighbor)
 	{
-		if(nei.status == WAVE_END)
+		if(nei.status == CELL_WAVE_END)
 			continue;	//already checked
-		if(nei->status == UNCHECKED)
+		if(nei->status == CELL_UNCHECKED)
 		{
-			nei.status = WAVE_END;
+			nei.status = CELL_WAVE_END;
 			list_enqueue(nei);
 		}
 		else
@@ -92,7 +95,7 @@ void spread_wave(cell_t *n)
 	*/
 }
 
-void propagate_dists(n)
+void propagate_dists(cell_t *n)
 {
 	for(each neighbor nei)
 	{
@@ -142,4 +145,46 @@ bool is_good(cell_t *n)
 		return true
 	return false
 	*/
+}
+
+int get_neighbors(cell_t *map, cell_t *n, cell_t *nei)
+{
+	int len = 0;
+
+	//
+	int index = n - map;
+	int x = index%9;
+	int y = index/9;
+	__int128 b = 1;
+	b <<= index;
+
+	//left
+	if(!(x == 0 || blocked_left(b, vert))
+	{
+		nei[len] = n-1;
+		len++;
+	}
+
+	//right
+	if(!(x == 8 || blocked_right(b, vert))
+	{
+		nei[len] = n+1;
+		len++;
+	}
+
+	//up
+	if(!(y == 8 || blocked_up(b, horiz))
+	{
+		nei[len] = n+9;
+		len++;
+	}
+
+	//down
+	if(!(y == 0 || blocked_down(b, horiz))
+	{
+		nei[len] = n-9;
+		len++;
+	}
+
+	return len;
 }
