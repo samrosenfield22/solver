@@ -3,6 +3,8 @@
 #include "../../../utils.h"
 #include "quoridor_pathfind.h"
 
+#include <assert.h>
+
 //
 void spread_wave(cell_t *n);
 void propagate_dists(cell_t *n);
@@ -32,7 +34,7 @@ void update_dists(cell_t *m, int *next_to_gate,
 
 	//init list
 	if(!wave_ends_queue)
-		wave_ends_queue = list(cell_t);
+		wave_ends_queue = list(cell_t *);
 
 	//mark every cell as good
 	for(int i=0; i<81; i++)
@@ -48,11 +50,11 @@ void update_dists(cell_t *m, int *next_to_gate,
 	}
 
 	//backprop dists from wave ends
-	/*while(list_len(wave_ends_queue))
+	while(list_len(wave_ends_queue))
 	{
-		cell_t *n = list_dequeue(wave_ends_queue);
+		cell_t *n = *(cell_t **)list_deq(wave_ends_queue);
 		propagate_dists(n);
-	}*/
+	}
 
 	list_destroy(wave_ends_queue);
 	wave_ends_queue = NULL;
@@ -68,7 +70,7 @@ void spread_wave(cell_t *n)
 	if(is_good(n))
 	{
 		n->status = CELL_WAVE_END;
-		list_enq(wave_ends_queue, n);
+		list_enq(wave_ends_queue, &n);
 		return;
 	}
 
@@ -105,20 +107,29 @@ void spread_wave(cell_t *n)
 	*/
 }
 
-/*void propagate_dists(cell_t *n)
+void propagate_dists(cell_t *n)
 {
-	for(each neighbor nei)
+	assert(n);
+	//assert(n->dist < 20);
+
+	//for(each neighbor nei)
+	cell_t *nei[4];
+	int nei_len = get_neighbors(map, n, nei);
+	for(int i=0; i<nei_len; i++)
 	{
-		if(nei->status == CELL_BAD)
+		if(nei[i]->status == CELL_BAD)
 		{
-			if(nei->score > n->score-1)
+			if(nei[i]->dist < n->dist+1)
 			{
-				nei.score = n->score-1;
-				list_enqueue(nei);
+				nei[i]->dist = n->dist+1;
+				nei[i]->status = CELL_WAVE_END;	//sus
+				list_enq(wave_ends_queue, &nei[i]);
 			}
 		}
 	}
-}*/
+
+	//n->status = CELL_UNCHECKED;
+}
 
 bool is_good(cell_t *n)
 {
