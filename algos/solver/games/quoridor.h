@@ -37,9 +37,14 @@ typedef struct
 
 	///// aux
 	//me_aux, opp_aux
-	//cell_t map[81];
+	cell_t map[81];
 }  quor_pos_t;
 
 extern solver_t QUOR_SOLVER;
+
+bool blocked_up(__int128 b, __int128 gates);
+bool blocked_down(__int128 b, __int128 gates);
+bool blocked_left(__int128 b, __int128 gates);
+bool blocked_right(__int128 b, __int128 gates);
 
 #endif	//QUORIDOR_H_

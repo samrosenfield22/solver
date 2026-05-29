@@ -8,6 +8,7 @@ need aux structure for pathfinding (only changes when gates placed)
 */
 
 #include "quoridor.h"
+#include "quoridor_pathfind.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -380,6 +381,16 @@ void quor_make_move(void *pos, int index, uint32_t *hash)
 			__int128 temp __attribute__((aligned(16))) = (gb | gb<<9);
 			p->vert |= temp;
 		}
+
+		map_init(p->map);
+		int gnindex = index - TOKEN_MOVES;
+		if(gnindex >= 72)
+			gnindex -= 72;
+		int next_to_gate[4] = {gnindex, gnindex+1, gnindex+9, gnindex+10};
+		for(int gn=0; gn<4; gn++)
+			p->map[next_to_gate[gn]].status = CELL_BAD;
+		//update_dists(p->map, int *next_to_gate,
+		//	p->horiz, p->vert);
 	}
 
 	p->whosemove = !p->whosemove;
@@ -553,6 +564,8 @@ void quor_draw_full(void *pos)
 
 	char indent[] = "\t\t\t\t\t\t\t";
 
+	//map_init(p->map);
+
 	__int128 b = 1;
 	b <<= 72;
 
@@ -585,10 +598,27 @@ void quor_draw_full(void *pos)
 						//c = ry? 'R':'Y';
 						c = 'O';
 					}
+
+					term_fg(color);
+					printf(" %c ", c);
+					term_clear();
 				}
-				term_fg(color);
-				printf(" %c ", c);
-				term_clear();
+				else
+				{
+					int index = 9*y+x;
+					cell_t *path = &p->map[index];
+					int path_colors[] =
+					{
+						[CELL_UNCHECKED] =	TERM_NEUTRAL,
+						[CELL_BAD] =		TERM_RED,
+						[CELL_WAVE_END] =	TERM_GREEN,
+					};
+					color = path_colors[path->status];
+					term_fg(color);
+					printf("%d  ", path->dist);
+					term_clear();
+				}
+
 
 				//vert
 				if(x < 8)
