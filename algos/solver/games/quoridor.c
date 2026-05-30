@@ -22,7 +22,7 @@ need aux structure for pathfinding (only changes when gates placed)
 #define TOKEN_MOVES	(4)
 #define HORIZ_PLACEMENTS	(72 + TOKEN_MOVES)
 
-#define QUOR_Z_LEN	(2*81+2*72+1)
+#define QUOR_Z_LEN	(2*81+2*81)
 
 quor_pos_t QUOR_INIT_POS =
 {
