@@ -40,6 +40,7 @@ quor_pos_t QUOR_INIT_POS =
 		.token=((__int128)1)<<76
 	},
 	.whosemove = true,
+	.map_initialized = false,
 };
 
 enum
@@ -382,7 +383,12 @@ void quor_make_move(void *pos, int index, uint32_t *hash)
 			p->vert |= temp;
 		}
 
-		map_init(p->map);
+		if(!p->map_initialized)
+		{
+			map_init(p->map);
+			p->map_initialized = true;
+		}
+
 		int gnindex = index - TOKEN_MOVES;
 		if(gnindex >= 72)
 			gnindex -= 72;
@@ -613,10 +619,13 @@ void quor_draw_full(void *pos)
 						[CELL_UNCHECKED] =	TERM_NEUTRAL,
 						[CELL_BAD] =		TERM_RED,
 						[CELL_WAVE_END] =	TERM_GREEN,
+						[CELL_WAVE_OK] =	TERM_PURPLE,
 					};
 					color = path_colors[path->status];
 					term_fg(color);
-					printf("%d  ", path->dist);
+					int num_chars = printf("%d", path->dist);
+					for(int i=0; i<3-num_chars; i++)
+						putchar(' ');
 					term_clear();
 				}
 

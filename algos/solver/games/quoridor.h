@@ -13,6 +13,7 @@ typedef enum
 	CELL_UNCHECKED,
 	CELL_BAD,
 	CELL_WAVE_END,
+	CELL_WAVE_OK,
 } cell_status_t;
 
 typedef struct
@@ -38,6 +39,7 @@ typedef struct
 	///// aux
 	//me_aux, opp_aux
 	cell_t map[81];
+	bool map_initialized;
 }  quor_pos_t;
 
 extern solver_t QUOR_SOLVER;

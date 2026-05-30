@@ -23,7 +23,7 @@ void map_init(cell_t *m)
 	}
 }
 
-list_t *wave_ends_queue = NULL;
+list_t *wave_queue = NULL, *wave_ends_queue = NULL;
 
 void update_dists(cell_t *m, int *next_to_gate,
 	__int128 h, __int128 v)
@@ -32,7 +32,9 @@ void update_dists(cell_t *m, int *next_to_gate,
 	horiz = h;
 	vert = v;
 
-	//init list
+	//init lists
+	if(!wave_queue)
+		wave_queue = list(cell_t *);
 	if(!wave_ends_queue)
 		wave_ends_queue = list(cell_t *);
 
@@ -45,9 +47,21 @@ void update_dists(cell_t *m, int *next_to_gate,
 	{
 		int index = next_to_gate[i];
 		cell_t *n = &map[index];
-		//if n is_good(), mark it, don't spread?
+		n->status = CELL_WAVE_OK;
+		list_enq(wave_queue, &n);
+	}
+	while(list_len(wave_queue))
+	{
+		cell_t *n = *(cell_t **)list_deq(wave_queue);
 		spread_wave(n);
 	}
+	/*for(int i=0; i<4; i++)
+	{
+		int index = next_to_gate[i];
+		cell_t *n = &map[index];
+		//if n is_good(), mark it, don't spread?
+		spread_wave(n);
+	}*/
 
 	//backprop dists from wave ends
 	while(list_len(wave_ends_queue))
@@ -56,7 +70,9 @@ void update_dists(cell_t *m, int *next_to_gate,
 		propagate_dists(n);
 	}
 
+	list_destroy(wave_queue);
 	list_destroy(wave_ends_queue);
+	wave_queue = NULL;
 	wave_ends_queue = NULL;
 }
 
@@ -64,9 +80,9 @@ void spread_wave(cell_t *n)
 {
 	//if n marked as bad, we already spread the wave from it
 	//if(n->status == CELL_BAD)
-	if(n->status != CELL_UNCHECKED)
+	if(n->status != CELL_UNCHECKED && n->status != CELL_WAVE_OK)
 		return;
-
+	n->status = CELL_WAVE_OK;
 	if(is_good(n))
 	{
 		n->status = CELL_WAVE_END;
@@ -78,7 +94,8 @@ void spread_wave(cell_t *n)
 	cell_t *neighbors[4];
 	int nei_len = get_neighbors(map, n, neighbors);
 	for(int i=0; i<nei_len; i++)
-		spread_wave(neighbors[i]);
+		list_enq(wave_queue, &neighbors[i]);
+		//spread_wave(neighbors[i]);
 
 	/*
 	//if n has a good neighbor, it's a wave end
@@ -122,11 +139,11 @@ void propagate_dists(cell_t *n)
 			if(nei[i]->dist < n->dist+1)
 			{
 				nei[i]->dist = n->dist+1;
-				nei[i]->status = CELL_WAVE_END;	//sus
+				nei[i]->status = CELL_WAVE_OK;
 				list_enq(wave_ends_queue, &nei[i]);
 			}
 		}
-		else if(nei[i]->status == CELL_WAVE_END)
+		else if(nei[i]->status == CELL_WAVE_OK)
 		{
 			if(nei[i]->dist > n->dist+1)
 			{
@@ -149,7 +166,8 @@ bool is_good(cell_t *n)
 	int nei_len = get_neighbors(map, n, nei);
 	for(int i=0; i<nei_len; i++)
 	{
-		if(nei[i]->status != CELL_BAD)
+		if(nei[i]->status != CELL_BAD
+			&& nei[i]->status != CELL_WAVE_OK)
 		{
 			if(n->dist-1 == nei[i]->dist)
 				return true;
