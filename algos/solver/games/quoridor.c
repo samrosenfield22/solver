@@ -309,6 +309,13 @@ void quor_make_move(void *pos, int index, uint32_t *hash)
 
 	int token_before, token_after;
 
+	if(!p->map_initialized)
+	{
+		map_init(p->p1_map, true);
+		map_init(p->p2_map, false);
+		p->map_initialized = true;
+	}
+
 	//make the move
 	if(index < TOKEN_MOVES)
 	{
@@ -383,12 +390,6 @@ void quor_make_move(void *pos, int index, uint32_t *hash)
 			p->vert |= temp;
 		}
 
-		if(!p->map_initialized)
-		{
-			map_init(p->map);
-			p->map_initialized = true;
-		}
-
 		int gnindex = index - TOKEN_MOVES;
 		if(gnindex >= 72)
 			gnindex -= 72;
@@ -396,7 +397,9 @@ void quor_make_move(void *pos, int index, uint32_t *hash)
 		//for(int gn=0; gn<4; gn++)
 		//	p->map[next_to_gate[gn]].status = CELL_BAD;
 		//p->map[0].status = CELL_WAVE_END;
-		update_dists(p->map, next_to_gate,
+		update_dists(p->p1_map, next_to_gate,
+			p->horiz, p->vert);
+		update_dists(p->p2_map, next_to_gate,
 			p->horiz, p->vert);
 	}
 
@@ -441,8 +444,19 @@ float quor_estimate(void *pos)
 {
 	quor_pos_t *p = pos;
 
-	float est = estimate_player(&p->p1, true);
-	est -= estimate_player(&p->p2, false);
+	int p1index = 9*p->p1.y + p->p1.x;
+	int p1dist = p->p1_map[p1index].dist;
+
+	int p2index = 9*p->p2.y + p->p2.x;
+	int p2dist = p->p2_map[p2index].dist;
+
+	float est = p2dist - p1dist;
+	est += 2 * p->p1.gate_ct;
+	est -= 2 * p->p2.gate_ct;
+
+
+	//float est = estimate_player(&p->p1, true);
+	//est -= estimate_player(&p->p2, false);
 
 	return est;
 }
@@ -560,9 +574,13 @@ void quor_flip(void *to, void *from)
 
 void print_player_info(quor_player_t *pl)
 {
-	printf("player @ %d,%d (", pl->x, pl->y);
+	/*printf("player @ %d,%d (", pl->x, pl->y);
 	printbig(pl->token, "%x");
-	printf(")\n");
+	printf(")\n");*/
+	printf("player @ %d,%d (%s)\n",
+		pl->x, pl->y, sprintbig(pl->token, "%x"));
+
+	//
 }
 
 void quor_draw_full(void *pos)
@@ -613,7 +631,7 @@ void quor_draw_full(void *pos)
 				else
 				{
 					int index = 9*y+x;
-					cell_t *path = &p->map[index];
+					cell_t *path = &p->p2_map[index];
 					int path_colors[] =
 					{
 						[CELL_UNCHECKED] =	TERM_NEUTRAL,
@@ -748,7 +766,7 @@ char *quor_iter_to_human(int move)
 		static char gmove[4];
 		gmove[0] = (move < HORIZ_PLACEMENTS)? '-':'|';
 		gmove[1] = (gate_index % 9) + 'a';
-		gmove[2] = (gate_index / 9) + '0' + 1;
+		gmove[2] = (gate_index / 9) + '1';
 		gmove[3] = '\0';
 		return gmove;
 	}

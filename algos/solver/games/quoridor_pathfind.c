@@ -14,19 +14,19 @@ int get_neighbors(cell_t *map, cell_t *n, cell_t **nei);
 cell_t *map = NULL;
 __int128 horiz, vert;
 
-#define CELL_Q_LEN	(400)
+#define CELL_Q_LEN	(300)
 
 typedef struct
 {
 	cell_t *queue[CELL_Q_LEN];
-	int next, last;
+	cell_t **next, **last;
 } cell_queue_t;
 
 
 void cell_queue_init(cell_queue_t *q)
 {
-	q->next = 0;
-	q->last = 0;
+	q->next = q->queue;
+	q->last = q->queue;
 }
 
 bool cell_queue_isempty(cell_queue_t *q)
@@ -37,9 +37,10 @@ bool cell_queue_isempty(cell_queue_t *q)
 
 void cell_queue_enq(cell_queue_t *q, cell_t *n)
 {
-	q->queue[q->last] = n;
+	//q->queue[q->last] = n;
+	*(q->last) = n;
 	q->last++;
-	assert(q->last < CELL_Q_LEN);
+	//assert(q->last < q->queue + CELL_Q_LEN);
 }
 
 cell_t *cell_queue_deq(cell_queue_t *q)
@@ -47,17 +48,19 @@ cell_t *cell_queue_deq(cell_queue_t *q)
 	if(cell_queue_isempty(q))
 		return NULL;
 
-	cell_t *n = q->queue[q->next];
+	//cell_t *n = q->queue[q->next];
+	cell_t *n = *(q->next);
 	q->next++;
 	return n;
 }
 //void cell_queue_(cell_queue_t *q)
 
-void map_init(cell_t *m)
+void map_init(cell_t *m, bool whosemove)
 {
+	//bool whosemove = true;
 	for(int i=0; i<81; i++)
 	{
-		m[i].dist = i/9;
+		m[i].dist = whosemove? 8-i/9: i/9;
 		m[i].status = CELL_UNCHECKED;
 	}
 }
@@ -84,7 +87,7 @@ void update_dists(cell_t *m, int *next_to_gate,
 	for(int i=0; i<81; i++)
 		map[i].status = CELL_UNCHECKED;
 
-	//for each n next to gate, spread_wave
+	//add all cells adjacent to the gate
 	for(int i=0; i<4; i++)
 	{
 		int index = next_to_gate[i];
@@ -93,7 +96,16 @@ void update_dists(cell_t *m, int *next_to_gate,
 		//list_enq(wave_queue, &n);
 		cell_queue_enq(&wave_queue, n);
 	}
+	/*for(int i=0; i<4; i++)
+	{
+		int index = next_to_gate[i];
+		cell_t *n = &map[index];
+		if(!is_good(n))
+			cell_queue_enq(&wave_queue, n);
+	}*/
 
+	//send the wave out until we've marked all cells that
+	//need to update
 	//while(list_len(wave_queue))
 	while(!cell_queue_isempty(&wave_queue))
 	{
@@ -132,7 +144,7 @@ void spread_wave(cell_t *n)
 	//if(n->status == CELL_BAD)
 	if(n->status != CELL_UNCHECKED && n->status != CELL_WAVE_OK)
 		return;
-	n->status = CELL_WAVE_OK;
+	//n->status = CELL_WAVE_OK;
 	if(is_good(n))
 	{
 		n->status = CELL_WAVE_END;
@@ -198,13 +210,6 @@ bool is_good(cell_t *n)
 		{
 			if(n->dist-1 == nei[i]->dist)
 				return true;
-			/*cell_t *neinei[4];
-			int neinei_len = get_neighbors(map, nei[i], neinei);
-			for(int j=0; j<neinei_len; j++)
-			{
-				if(nei[i]->dist-1 == neinei[j]->dist)
-					return true;
-			}*/
 		}
 	}
 
@@ -232,30 +237,38 @@ int get_neighbors(cell_t *map, cell_t *n, cell_t **nei)
 	b <<= index;
 
 	//left
+	//if(n->pred != NEIGHBOR_LEFT)
 	if(!(x == 0 || blocked_left(b, vert)))
 	{
 		nei[len] = n-1;
+	//	nei[len]->pred = NEIGHBOR_RIGHT;
 		len++;
 	}
 
 	//right
+	//if(n->pred != NEIGHBOR_RIGHT)
 	if(!(x == 8 || blocked_right(b, vert)))
 	{
 		nei[len] = n+1;
+	//	nei[len]->pred = NEIGHBOR_LEFT;
 		len++;
 	}
 
 	//up
+	//if(n->pred != NEIGHBOR_UP)
 	if(!(y == 8 || blocked_up(b, horiz)))
 	{
 		nei[len] = n+9;
+	//	nei[len]->pred = NEIGHBOR_DOWN;
 		len++;
 	}
 
 	//down
+	//if(n->pred != NEIGHBOR_DOWN)
 	if(!(y == 0 || blocked_down(b, horiz)))
 	{
 		nei[len] = n-9;
+	//	nei[len]->pred = NEIGHBOR_UP;
 		len++;
 	}
 

@@ -16,10 +16,19 @@ typedef enum
 	CELL_WAVE_OK,
 } cell_status_t;
 
+enum
+{
+	NEIGHBOR_UP,
+	NEIGHBOR_DOWN,
+	NEIGHBOR_LEFT,
+	NEIGHBOR_RIGHT,
+};
+
 typedef struct
 {
 	uint8_t dist;
 	uint8_t status;
+	//uint8_t pred;
 } cell_t;
 
 
@@ -38,7 +47,7 @@ typedef struct
 
 	///// aux
 	//me_aux, opp_aux
-	cell_t map[81];
+	cell_t p1_map[81], p2_map[81];
 	bool map_initialized;
 }  quor_pos_t;
 
