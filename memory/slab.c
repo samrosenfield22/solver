@@ -75,7 +75,7 @@ void sl_free(void *chunk)
 {
 	if(!chunk)
 		return;
-	
+
 	assert(SLABS <= (uint8_t *)chunk
 		&& (uint8_t *)chunk <= SLABS_END);
 
@@ -102,8 +102,8 @@ void carve_slab(slabman_t *mgr, int index, size_t size)
 	mgr->head = nth_slab(index);
 
 	int chunk_ct = SLAB_SIZE / size;
-	printf("carving slab %d into %d chunks of size %d\n",
-		index, chunk_ct, (int)size);
+	//printf("carving slab %d into %d chunks of size %d\n",
+	//	index, chunk_ct, (int)size);
 	uint8_t *ch = mgr->head;
 	for(int i=0; i<chunk_ct; i++)
 	{

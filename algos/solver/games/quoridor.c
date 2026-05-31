@@ -715,14 +715,14 @@ void quor_draw_full(void *pos)
 	printf("%sblue player: %d gates%s\n\n", TERM_BLUE, p->p2.gate_ct, TERM_CLEAR);
 	//term_clear();
 
-	printf("\n\n");
+	/*printf("\n\n");
 	print_player_info(&p->p1);
 	print_player_info(&p->p2);
 	printf("horiz: ");
 	printbig(p->horiz, "%x");
 	printf("\nvert: ");
 	printbig(p->vert, "%x");
-	//printbig(0b11011, "%b");
+	//printbig(0b11011, "%b");*/
 }
 
 int quor_human_to_iter(char *human)

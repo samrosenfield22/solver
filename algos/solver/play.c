@@ -1,6 +1,7 @@
 
 
 #include "play.h"
+#include "../../utils.h"
 
 #include "games/nim.h"
 #include "games/ttt.h"
@@ -133,8 +134,13 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 	//	pos = solver->initial_pos;
 
 	bool turn = !(seq_ct & 0b1);
+	term_clear();
 	while(1)
 	{
+		term_move_cursor(0, 15);
+		solver->draw_full(pos);
+		print_sequence(solver, seq, stdout);
+
 		bool player = turn? p1 : p2;
 		if(player == HUMAN_PLAYER)
 		{
@@ -143,8 +149,8 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 			prompt for move, wait until given
 			make move, update pos
 			*/
-			solver->draw_full(pos);
-			print_sequence(solver, seq, stdout);
+			//solver->draw_full(pos);
+			//print_sequence(solver, seq, stdout);
 			printf("\n\nenter your move, [b]ack, [f]orward, [s]ave, [q]uit game, or e[x]it:\n> ");
 			char buf[80];
 			fgets(buf, 79, stdin);
@@ -204,8 +210,8 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 			}
 			solver->make_move(pos, move, NULL);
 
-			/*solver->draw_full(pos);
-			printf("enter to continue   ");
+
+			/*printf("enter to continue   ");
 			getchar();*/
 		}
 		else	//COMPUTER_PLAYER

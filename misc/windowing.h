@@ -8,10 +8,15 @@
 #define DEFAULT_WIN_W	(32)
 #define DEFAULT_WIN_H	(16)
 
+//#define printf(fmt, ...)	window_printf(fmt, ##__VA_ARGS__)
+
 int window(int x, int y);
 int window_wh(int x, int y, int w, int h);
-void window_resize(int hdl, int w, int h);
-void window_set_colors(int hdl, char *fg, char *bg);
-void window_printf(int hdl, const char *fmt, ...);
+void window_resize(int w, int h);
+void window_set_colors(char *fg, char *bg);
+int window_printf(const char *fmt, ...);
+void window_clear(void);
+void window_cursor_set(int y);
+void window_focus(int hdl);
 
 #endif	//WINDOWING_H_

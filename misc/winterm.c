@@ -9,6 +9,8 @@
 #define ENABLE_VIRTUAL_TERMINAL_PROCESSING 0x0004
 #endif
 
+int init = 0;
+
 //HANDLE hConsole = NULL;
 
 //int tfg = TERM_NEUTRAL, tbg = TERM_BLACK;
@@ -58,6 +60,7 @@ void term_clear(void)
 
 void term_move_cursor(int x, int y)
 {
+	winterm_init_ansi();
 	char buf[15];
 	snprintf(buf, 15, "\033[%d;%dH", y, x);
 	printf(buf);
@@ -65,14 +68,18 @@ void term_move_cursor(int x, int y)
 
 void term_clear(void)
 {
-	printf("\033[2J");
+	winterm_init_ansi();
+	printf("\033[H");	//home
+	printf("\033[2J");	//clear
 
 }
 
 void winterm_init_ansi(void)
 {
-	//if(hConsole)
-	//	return;
+	if(init)
+		return;
+
+
 	// Get the standard output handle
     HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
     if (hConsole == INVALID_HANDLE_VALUE) return;
@@ -84,4 +91,6 @@ void winterm_init_ansi(void)
     // Enable the virtual terminal processing flag
     dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
     SetConsoleMode(hConsole, dwMode);
+
+	init = 1;
 }

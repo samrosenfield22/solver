@@ -15,7 +15,7 @@ enum
 	MIN_LAYER = false
 };
 
-
+#define printf(fmt, ...)	window_printf(fmt, ##__VA_ARGS__)
 
 
 typedef struct
@@ -81,22 +81,30 @@ size_t gdata_size, gdata_hash_size;
 #define NUM_KILLERS	(2)
 uint8_t killers[MAX_PLY][NUM_KILLERS] = {0};
 
+int main_hdl = -1, eval_hdl = -1;
+
 //uint32_t passed=0, checked=0;
 
 void print_eval_bar(float score)
 {
-	int len = 40;
-	char *indent = "\t\t\t\t\t\t";
 
-	printf(indent);
+
+	window_focus(eval_hdl);
+	//window_clear();
+	window_cursor_set(0);
+
+	int len = 40;
+	//char *indent = "\t\t\t\t\t\t";
+
+	//printf(indent);
 	for(int i=0; i<len/2-1; i++)
-		printf(" ");
+		window_printf(" ");
 	//printf("%.1f\n", score);
 	print_score(score);
-	printf("\n");
+	window_printf("\n");
 
-	printf(indent);
-	printf("[");
+	//printf(indent);
+	window_printf("[");
 	int maxd = 20;
 	float dist = (score+maxd)/(2*maxd);
 	if(dist > maxd) dist = maxd;
@@ -106,16 +114,18 @@ void print_eval_bar(float score)
 	for(int i=0; i<len; i++)
 	{
 		if(i < (int)dist)
-			printf("%c", 219);
+			window_printf("%c", 219);
 		else
-			printf(" ");
+			window_printf(" ");
 	}
-	printf("]\n");
+	window_printf("]\n");
 
-	printf(indent);
+	//printf(indent);
 	for(int i=0; i<len/2; i++)
-		printf(" ");
-	printf("^\n");
+		window_printf(" ");
+	window_printf("^\n");
+
+	window_focus(main_hdl);
 }
 
 /*void *construct_pos(solver_t *game_solver, char *seq)
@@ -200,6 +210,15 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 	tree_add(gt, th);
 	mem_free(th);
 
+	//term_clear();
+	if(main_hdl == -1)
+		main_hdl = window_wh(117, 3, 48, 69);
+	if(eval_hdl == -1)
+		eval_hdl = window_wh(52, 4, 46, 4);
+	window_focus(eval_hdl);
+	printf("\n\n\n\n");
+	window_focus(main_hdl);
+	window_clear();
 
 
 	who_goes_first = solver->whosemove(pos);
@@ -278,9 +297,14 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 		//print info
 		if(verbose)
 		{
+			window_focus(eval_hdl);
+			window_cursor_set(0);
+			print_eval_bar(result.score);
+			window_focus(eval_hdl);
 			if(iddfs >= 1)
 			{
-				printf("%+.2f (depth: %d)  \t", result.score, iddfs);
+				//window_cursor_set(4);
+				printf("%+.2f (depth: %d)  ", result.score, iddfs);
 				tnode_t *n = gt->head->children[0];
 				for(int i=0; i<2*VARIATION_LENGTH; i++)
 				{
@@ -296,10 +320,11 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 				}
 
 				uint32_t now = toc_ms();
-				printf("\n\ttook %u ms\n", now-last);
+				//printf("\n\ttook %u ms\n", now-last);
 				last = now;
 			}
 		}
+		window_focus(main_hdl);
 
 		//conditions for ending the search
 		if(result.full)
@@ -332,8 +357,8 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 	if(verbose)
 	{
 		//output
-		printf("\n\n");
-		tree_draw(gt, VARIATION_LENGTH*2);
+		//printf("\n\n");
+		//tree_draw(gt, VARIATION_LENGTH*2);
 
 		printf("\n--- search ran to depth = %d%s ---\n", iddfs,
 			result.full? " (full solve)":"");
@@ -345,7 +370,7 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 		printf("%s\n\n\n", solver->iter_to_human(best_move));
 	else
 		printf("%d\n\n\n", best_move);
-	print_eval_bar(gt->head->children[0]->score);
+	//print_eval_bar(gt->head->children[0]->score);
 	printf("\n\n");
 
 	if(verbose)
@@ -366,6 +391,8 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 	hashmap_destroy(trans_tbl);
 	zobrist_free();
 	trans_tbl = NULL;
+
+	term_move_cursor(0, 15);
 
 	return best_move;
 }
@@ -1239,12 +1266,12 @@ float abs_f(float a)
 void print_score(float score)
 {
 	if(abs_f(score) < MATE_LIMIT)
-		printf("%.1f", score);
+		window_printf("%.1f  ", score);
 	else
 	{
 		int dif = WIN_SCORE - abs_f(score);
 		//int m = dif/2;
-		printf("M%d", dif);
+		window_printf("M%d  ", dif);
 	}
 }
 

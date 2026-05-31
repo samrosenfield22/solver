@@ -20,11 +20,13 @@ typedef struct
 
 
 
+
 char DEFAULT_BORDER_STYLE[6] = {205, 186, 201, 187, 200, 188};
+char NO_BORDER_STYLE[6] = {0, 0, 0, 0, 0, 0};
+
 
 //
 text_window_t *window_from_hdl(int hdl);
-void window_focus(text_window_t *win);
 void window_draw(text_window_t *win);
 void window_home(text_window_t *win);
 void window_add_char(text_window_t *win, char c);
@@ -36,6 +38,8 @@ void window_newline(text_window_t *win);
 #define MAX_WINDOWS		(16)
 text_window_t ALL_WINDOWS[MAX_WINDOWS];
 int WIN_CT = 0;
+
+text_window_t *CURRENT_WINDOW = NULL;
 
 int window(int x, int y)
 {
@@ -63,14 +67,16 @@ int window_wh(int x, int y, int w, int h)
 
 	window_draw(win);
 
+	CURRENT_WINDOW = win;
+
 	int hdl = WIN_CT;
 	WIN_CT++;
 	return hdl;
 }
 
-void window_resize(int hdl, int w, int h)
+void window_resize(int w, int h)
 {
-	text_window_t *win = window_from_hdl(hdl);
+	text_window_t *win = CURRENT_WINDOW;
 
 	win->w = w;
 	win->h = h;
@@ -80,9 +86,9 @@ void window_resize(int hdl, int w, int h)
 	window_draw(win);
 }
 
-void window_set_colors(int hdl, char *fg, char *bg)
+void window_set_colors(char *fg, char *bg)
 {
-	text_window_t *win = window_from_hdl(hdl);
+	text_window_t *win = CURRENT_WINDOW;
 
 	win->fg = fg;
 	win->bg = bg;
@@ -91,9 +97,20 @@ void window_set_colors(int hdl, char *fg, char *bg)
 }
 
 
-void window_printf(int hdl, const char *fmt, ...)
+int window_printf(const char *fmt, ...)
 {
-	text_window_t *win = window_from_hdl(hdl);
+	//passthrough
+	if(!CURRENT_WINDOW)
+	{
+		va_list args;
+		va_start(args, fmt);
+		int n = vprintf(fmt, args);
+		va_end(args);
+		return n;
+	}
+
+
+	text_window_t *win = CURRENT_WINDOW;
 
 	term_move_cursor(win->x+win->cursor_x, win->y+win->cursor_y);
 	printf("%s%s", win->fg, win->bg);
@@ -102,7 +119,7 @@ void window_printf(int hdl, const char *fmt, ...)
 	char buf[321];
 	va_list args;
 	va_start(args, fmt);
-	vsnprintf(buf, 320, fmt, args);
+	int n = vsnprintf(buf, 320, fmt, args);
 	va_end(args);
 
 	for(char *p=buf; *p; p++)
@@ -111,8 +128,56 @@ void window_printf(int hdl, const char *fmt, ...)
 	}
 
 	printf(TERM_CLEAR);
+	return n;
 }
 
+void window_clear(void)
+{
+	text_window_t *win = CURRENT_WINDOW;
+
+	win->cursor_x = 0;
+	win->cursor_y = 0;
+	win->wp = win->buf;
+	*win->wp = '\0';
+
+	window_draw(win);
+}
+
+void window_cursor_set(int y)
+{
+	text_window_t *win = CURRENT_WINDOW;
+	window_home(win);
+
+	for(int i=0; i<y; i++)
+	{
+		for(int x=0; x<win->w; x++)
+		{
+			if(*win->wp == '\n')
+			{
+				//x = win->w;
+				win->wp++;
+				break;
+			}
+			else if(*win->wp == '\0')
+				return;
+
+			win->wp++;
+			win->cursor_x++;
+		}
+
+		win->cursor_x = 0;
+		win->cursor_y++;
+	}
+}
+
+void window_focus(int hdl)
+{
+	text_window_t *win = window_from_hdl(hdl);
+
+	term_move_cursor(win->x+win->cursor_x, win->y+win->cursor_y);
+	printf("%s%s", win->fg, win->bg);
+	CURRENT_WINDOW = win;
+}
 
 
 //////////////////////////////////////////////////////
@@ -198,15 +263,11 @@ void window_home(text_window_t *win)
 {
 	win->cursor_x = 0;
 	win->cursor_y = 0;
-	//rp = 0?
-	window_focus(win);
+	win->wp = win->buf;
+	//window_focus(win);
 }
 
-void window_focus(text_window_t *win)
-{
-	term_move_cursor(win->x+win->cursor_x, win->y+win->cursor_y);
-	printf("%s%s", win->fg, win->bg);
-}
+
 
 void window_add_char(text_window_t *win, char c)
 {
@@ -255,10 +316,6 @@ void window_fit(text_window_t *win)
 	window_draw(win);
 }
 
-void window_cursor_end(text_window_t *win)
-{
-	//win->cursor_x =
-}
 
 void window_newline(text_window_t *win)
 {
