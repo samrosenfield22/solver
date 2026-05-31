@@ -56,11 +56,17 @@ void term_clear(void)
 	//printf("%s", buf);
 }*/
 
-void move_cursor(int x, int y)
+void term_move_cursor(int x, int y)
 {
 	char buf[15];
 	snprintf(buf, 15, "\033[%d;%dH", y, x);
 	printf(buf);
+}
+
+void term_clear(void)
+{
+	printf("\033[2J");
+
 }
 
 void winterm_init_ansi(void)

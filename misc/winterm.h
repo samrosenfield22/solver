@@ -58,7 +58,7 @@
 void term_bg(int bg);
 void term_clear(void);*/
 void winterm_init_ansi(void);
-void move_cursor(int x, int y);
-
+void term_move_cursor(int x, int y);
+void term_clear(void);
 
 #endif	//WINTERM_H_
