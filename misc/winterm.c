@@ -66,6 +66,11 @@ void term_move_cursor(int x, int y)
 	printf(buf);
 }
 
+void term_bottom(void)
+{
+	term_move_cursor(0, 120);
+}
+
 void term_clear(void)
 {
 	winterm_init_ansi();

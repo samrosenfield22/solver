@@ -14,9 +14,12 @@
 
 #include <windows.h>
 
+
+
 int main(void)
 {
-	winterm_init_ansi();
+	atexit(term_bottom);
+	//winterm_init_ansi();
 
 	/*term_clear();
 	int mywin = window(20, 20);

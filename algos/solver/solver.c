@@ -94,17 +94,16 @@ void print_eval_bar(float score)
 	window_cursor_set(0);
 
 	int len = 40;
-	//char *indent = "\t\t\t\t\t\t";
+	char *indent = "  ";
 
-	//printf(indent);
+	printf(indent);
 	for(int i=0; i<len/2-1; i++)
-		window_printf(" ");
-	//printf("%.1f\n", score);
+		printf(" ");
 	print_score(score);
-	window_printf("\n");
+	printf("\n");
 
-	//printf(indent);
-	window_printf("[");
+	printf(indent);
+	printf("[");
 	int maxd = 20;
 	float dist = (score+maxd)/(2*maxd);
 	if(dist > maxd) dist = maxd;
@@ -114,16 +113,16 @@ void print_eval_bar(float score)
 	for(int i=0; i<len; i++)
 	{
 		if(i < (int)dist)
-			window_printf("%c", 219);
+			printf("%c", 219);
 		else
-			window_printf(" ");
+			printf(" ");
 	}
-	window_printf("]\n");
+	printf("]\n");
 
-	//printf(indent);
+	printf(indent);
 	for(int i=0; i<len/2; i++)
-		window_printf(" ");
-	window_printf("^\n");
+		printf(" ");
+	printf("^\n");
 
 	window_focus(main_hdl);
 }
@@ -216,7 +215,7 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 	if(eval_hdl == -1)
 		eval_hdl = window_wh(52, 4, 46, 4);
 	window_focus(eval_hdl);
-	printf("\n\n\n\n");
+	//printf("\n\n\n\n");
 	window_focus(main_hdl);
 	window_clear();
 
@@ -1266,12 +1265,12 @@ float abs_f(float a)
 void print_score(float score)
 {
 	if(abs_f(score) < MATE_LIMIT)
-		window_printf("%.1f  ", score);
+		printf("%.1f  ", score);
 	else
 	{
 		int dif = WIN_SCORE - abs_f(score);
 		//int m = dif/2;
-		window_printf("M%d  ", dif);
+		printf("M%d  ", dif);
 	}
 }
 

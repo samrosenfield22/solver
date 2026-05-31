@@ -21,6 +21,7 @@
 //#define DEV_MODE	(false)
 
 void print_sequence(solver_t *solver, int8_t *seq, FILE *stream);
+void print_sequence_fancy(solver_t *solver, int8_t *seq, FILE *stream);
 bool load_pgn(solver_t *solver, void *pos, char *in);
 void save_pgn(solver_t *solver, char *path);
 bool read_pgn_file(solver_t *solver, char *name);
@@ -139,7 +140,7 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 	{
 		term_move_cursor(0, 15);
 		solver->draw_full(pos);
-		print_sequence(solver, seq, stdout);
+		print_sequence_fancy(solver, seq, stdout);
 
 		bool player = turn? p1 : p2;
 		if(player == HUMAN_PLAYER)
@@ -398,6 +399,44 @@ void print_sequence(solver_t *solver, int8_t *seq, FILE *stream)
 		}
 		else
 			fprintf(stream, ", ");
+
+	}
+
+	if(to_term)
+		printf("\n");
+}
+
+void print_sequence_fancy(solver_t *solver, int8_t *seq, FILE *stream)
+{
+	bool to_term = (stream == stdout);
+	bool partial = (seq_entire != seq_ct);
+
+	//for(int8_t *move = seq; *move!=-1; move++)
+	for(int i=0; i<seq_entire; i++)
+	{
+		if(to_term && partial && i==seq_ct)
+			printf("(");
+
+		int chars;
+		if(!(i&0b1))
+		{
+			chars = printf("\n%d.", i/2+1);
+			for(int n=0; n<4-chars; n++)
+				printf(" ");
+		}
+
+		if(solver->iter_to_human)
+			chars = fprintf(stream, "%s", solver->iter_to_human(seq[i]));
+		else
+			chars = fprintf(stream, "%d", seq[i]);
+		for(int n=0; n<3-chars; n++)
+			printf(" ");
+
+		if(i==seq_entire-1)
+		{
+			if(to_term && partial)
+				printf(")");
+		}
 
 	}
 
