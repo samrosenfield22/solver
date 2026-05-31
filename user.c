@@ -16,6 +16,20 @@
 
 int main(void)
 {
+	winterm_init_ansi();
+
+	/*move_cursor(20, 30);
+	printf("20, 30");
+	move_cursor(20, 50);
+	printf("20, 50");*/
+
+	int w = window(20, 30);
+	return 0;
+	/*char *col = TERM_RED;
+	printf("%sayyy%s\n", col, TERM_CLEAR);
+	return 0;
+*/
+
 	play_menu();
 	if(mem_check())
 		printf("\nmemory good!\n");

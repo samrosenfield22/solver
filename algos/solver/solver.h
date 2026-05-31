@@ -14,7 +14,7 @@
 //#define ASPIRATION_WINDOW
 //#define PRINCIPAL_VAR_SEARCH
 
-//#define FORCE_SEARCH_DEPTH	(6)
+//#define FORCE_SEARCH_DEPTH	(4)
 
 #define VARIATION_LENGTH	(3)
 #define PRINCIPAL_VAR_CT	(7)
@@ -64,6 +64,8 @@ typedef struct
 	number of bytes of the position structure
 	sizeof(my_initial_pos)*/
 	size_t pos_size;
+
+	size_t hash_size;
 
 	/*required:
 	maximum value for move iteration

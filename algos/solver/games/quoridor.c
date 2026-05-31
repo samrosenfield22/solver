@@ -607,7 +607,7 @@ void quor_draw_full(void *pos)
 			for(int x=0; x<9; x++)
 			{
 				c = ' ';
-				int color = TERM_NEUTRAL;
+				char *color = TERM_WHITE;
 				//if(x==p->p1.x && y==p->p1.y)
 				if(line==height-1)
 				{
@@ -624,27 +624,29 @@ void quor_draw_full(void *pos)
 						c = 'O';
 					}
 
-					term_fg(color);
+					/*term_fg(color);
 					printf(" %c ", c);
-					term_clear();
+					term_clear();*/
+					printf(" %s%c%s ", color, c, TERM_CLEAR);
 				}
 				else
 				{
 					int index = 9*y+x;
 					cell_t *path = &p->p2_map[index];
-					int path_colors[] =
+					char *path_colors[] =
 					{
-						[CELL_UNCHECKED] =	TERM_NEUTRAL,
+						[CELL_UNCHECKED] =	TERM_WHITE,
 						[CELL_BAD] =		TERM_RED,
 						[CELL_WAVE_END] =	TERM_GREEN,
 						[CELL_WAVE_OK] =	TERM_PURPLE,
 					};
 					color = path_colors[path->status];
-					term_fg(color);
-					int num_chars = printf("%d", path->dist);
+					//term_fg(color);
+					int num_chars = printf("%s%d%s", color,
+						path->dist, TERM_CLEAR) - 9;
 					for(int i=0; i<3-num_chars; i++)
 						putchar(' ');
-					term_clear();
+					//term_clear();
 				}
 
 
@@ -652,16 +654,17 @@ void quor_draw_full(void *pos)
 				if(x < 8)
 				{
 
-					color = TERM_NEUTRAL;
+					color = TERM_WHITE;
 					c = ':';
 					if(b & p->vert)// || b>>9 & p->vert)
 					{
 						c = 186;
 						color = TERM_PURPLE;
 					}
-					term_fg(color);
+					/*term_fg(color);
 					printf("%c", c);
-					term_clear();
+					term_clear();*/
+					printf("%s%c%s", color, c, TERM_CLEAR);
 				}
 
 				b <<= 1;
@@ -679,17 +682,19 @@ void quor_draw_full(void *pos)
 		printf("\n%s  %d ", indent, y);
 		for(int x=0; x<9; x++)
 		{
-			char color = TERM_NEUTRAL;
+			char *color = TERM_WHITE;
 			c = '.';
 			if(b & p->horiz)// || b>>1 & p->horiz)
 			{
 				c = 205;
 				color = TERM_PURPLE;
 			}
-			term_fg(color);
+			//term_fg(color);
+			printf("%s", color);
 			for(int i=0; i<4; i++)
 				putchar(c);
-			term_clear();
+			printf("%s", TERM_CLEAR);
+			//term_clear();
 
 			b <<= 1;
 		}
@@ -704,11 +709,11 @@ void quor_draw_full(void *pos)
 		printf("%c   ", 'A'+x);
 
 	printf("\n\n\t\t\t\t\t");
-	term_fg(TERM_RED);
-	printf("red player: %d gates\t\t\t", p->p1.gate_ct);
-	term_fg(TERM_BLUE);
-	printf("blue player: %d gates\n\n", p->p2.gate_ct);
-	term_clear();
+	//term_fg(TERM_RED);
+	printf("%sred player: %d gates\t\t\t", TERM_RED, p->p1.gate_ct);
+	//term_fg(TERM_BLUE);
+	printf("%sblue player: %d gates%s\n\n", TERM_BLUE, p->p2.gate_ct, TERM_CLEAR);
+	//term_clear();
 
 	printf("\n\n");
 	print_player_info(&p->p1);
@@ -781,6 +786,7 @@ solver_t QUOR_SOLVER =
 
 	.initial_pos = &QUOR_INIT_POS,
 	.pos_size = sizeof(quor_pos_t),
+	.hash_size = (uint8_t*)&QUOR_INIT_POS.p1_map - (uint8_t*)&QUOR_INIT_POS,
 	.possible_moves = 148,
 	.transtbl_buckets_ct = (1<<28),
 	.iddfs_increment = 2,

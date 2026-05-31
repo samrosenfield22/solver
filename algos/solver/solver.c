@@ -75,7 +75,7 @@ typedef struct
 	uint32_t hash;
 	uint8_t pos[];
 } gdata_t;
-size_t gdata_size;
+size_t gdata_size, gdata_hash_size;
 
 #define MAX_PLY	(42)
 #define NUM_KILLERS	(2)
@@ -172,6 +172,9 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 	solver_check(game_solver);
 
 	solver = game_solver;
+
+	if(!solver->hash_size)
+		solver->hash_size = solver->pos_size;
 
 	position_ct = 0;
 	max_node_ct = 0;
@@ -1074,8 +1077,12 @@ int get_next_order_move(tnode_t *n, int index)
 
 void tt_create(void)
 {
+
+	//gdata_hash_size = sizeof(gdata_t) + solver->hash_size;
+
 	//create the table
-	trans_tbl = hashmap_create(gdata_size, sizeof(trans_value_t),
+	trans_tbl = hashmap_create(solver->hash_size,
+		sizeof(trans_value_t),
 		solver->transtbl_buckets_ct);
 	if(!trans_tbl)
 	{

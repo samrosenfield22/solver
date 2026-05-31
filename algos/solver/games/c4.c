@@ -883,7 +883,7 @@ void c4_draw_full(void *pos)
 		for(int col=0; col<7; col++)
 		{
 			char c = '_';
-			int color = TERM_NEUTRAL;
+			char *color = TERM_WHITE;
 			uint64_t bit_m = row_m << (7*col);
 			if(p->filled & bit_m)
 			{
@@ -901,13 +901,13 @@ void c4_draw_full(void *pos)
 			else if((rwm | ywm) & bit_m)
 			{
 				c = '!';
-				color = 0;
-				if(rwm & bit_m)	color |= TERM_RED;
-				if(ywm & bit_m)	color |= TERM_YELLOW;
+				//color = 0;
+				if(rwm & bit_m)	color = TERM_RED;
+				if(ywm & bit_m)	color = TERM_YELLOW;
 			}
-			term_fg(color);
-			printf("%c   ", c);
-			term_clear();
+			//term_fg(color);
+			printf("%s%c%s   ", color, c, TERM_CLEAR);
+			//term_clear();
 		}
 	}
 	putchar('\n');
@@ -991,6 +991,7 @@ solver_t C4_SOLVER =
 
 	.initial_pos = &C4_INIT_POS,
 	.pos_size = sizeof(c4_pos_t),
+	.hash_size = (uint8_t*)&C4_INIT_POS.x_wmap - (uint8_t*)&C4_INIT_POS,
 	.possible_moves = 7,
 	//.transtbl_buckets_ct = 180000001,
 	.transtbl_buckets_ct = (1<<28),
