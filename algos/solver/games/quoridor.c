@@ -587,13 +587,16 @@ void quor_draw_full(void *pos)
 {
 	quor_pos_t *p = pos;
 
-	char indent[] = "\t\t\t\t\t\t\t";
+	char indent[] = "\t\t\t\t\t\t    ";
 
 	//map_init(p->map);
 
 	__int128 b = 1;
 	b <<= 72;
 
+	printf("%s    %s", indent, TERM_WHITE);
+	for(int x=0; x<9; x++)
+		printf("....");
 
 
 	const int height = 2;
@@ -602,7 +605,7 @@ void quor_draw_full(void *pos)
 	{
 		for(int line=0; line<height; line++)
 		{
-			printf("\n%s    ", indent);
+			printf("\n%s    :", indent);
 
 			for(int x=0; x<9; x++)
 			{
@@ -627,7 +630,7 @@ void quor_draw_full(void *pos)
 					/*term_fg(color);
 					printf(" %c ", c);
 					term_clear();*/
-					printf(" %s%c%s ", color, c, TERM_CLEAR);
+					printf(" %s%c%s ", color, c, TERM_RESET);
 				}
 				else
 				{
@@ -643,7 +646,7 @@ void quor_draw_full(void *pos)
 					color = path_colors[path->status];
 					//term_fg(color);
 					int num_chars = printf("%s%d%s", color,
-						path->dist, TERM_CLEAR) - 9;
+						path->dist, TERM_RESET) - 9;
 					for(int i=0; i<3-num_chars; i++)
 						putchar(' ');
 					//term_clear();
@@ -651,7 +654,8 @@ void quor_draw_full(void *pos)
 
 
 				//vert
-				if(x < 8)
+				//if(x < 8)
+				if(1)
 				{
 
 					color = TERM_WHITE;
@@ -664,7 +668,7 @@ void quor_draw_full(void *pos)
 					/*term_fg(color);
 					printf("%c", c);
 					term_clear();*/
-					printf("%s%c%s", color, c, TERM_CLEAR);
+					printf("%s%c%s", color, c, TERM_RESET);
 				}
 
 				b <<= 1;
@@ -693,26 +697,31 @@ void quor_draw_full(void *pos)
 			printf("%s", color);
 			for(int i=0; i<4; i++)
 				putchar(c);
-			printf("%s", TERM_CLEAR);
+			printf("%s", TERM_RESET);
 			//term_clear();
 
 			b <<= 1;
 		}
+		putchar(':');
 		b >>= 9;
 
 
 	}
+
+	printf("\n%s    %s", indent, TERM_WHITE);
+	for(int x=0; x<9; x++)
+		printf("....");
 
 	//footer
 	printf("\n%s       ", indent);
 	for(int x=0; x<8; x++)
 		printf("%c   ", 'A'+x);
 
-	printf("\n\n\t\t\t\t\t");
+	printf("\n\n%s\b\b\b\b\b", indent);
 	//term_fg(TERM_RED);
-	printf("%sred player: %d gates\t\t\t", TERM_RED, p->p1.gate_ct);
+	printf("%sred player: %d gates             ", TERM_RED, p->p1.gate_ct);
 	//term_fg(TERM_BLUE);
-	printf("%sblue player: %d gates%s\n\n", TERM_BLUE, p->p2.gate_ct, TERM_CLEAR);
+	printf("%sblue player: %d gates %s\n\n", TERM_BLUE, p->p2.gate_ct, TERM_RESET);
 	//term_clear();
 
 	/*printf("\n\n");

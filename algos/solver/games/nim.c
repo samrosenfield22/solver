@@ -136,9 +136,11 @@ void nim_draw_full(void *pos)
 {
 	nim_pos_t *p = pos;
 
-	char indent[] = "\t\t\t\t\t\t\t\t";
+	char indent[] = "\t\t\t\t\t\t\t";
 	char space[] = "    ";
 	int max[3] = {3, 5, 7};
+
+	printf("\n\n\n\n\n\n");
 	for(int i=0; i<3; i++)
 	{
 		printf("%s%c    ", indent, 'A'+i);

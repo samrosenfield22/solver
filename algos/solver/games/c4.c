@@ -834,7 +834,7 @@ void c4_draw_full(void *pos)
 {
 	c4_pos_t *p = pos;
 
-	char indent[] = "\t\t\t\t\t\t\t";
+	char indent[] = "\t\t\t\t\t\t\t    ";
 
 	//test
 	uint64_t red;//, yel;
@@ -870,6 +870,7 @@ void c4_draw_full(void *pos)
 
 
 	//header
+	printf("\n\n\n\n\n");
 	printf(indent);
 	for(int c=0; c<7; c++)
 		printf("%d   ", c);
@@ -906,7 +907,7 @@ void c4_draw_full(void *pos)
 				if(ywm & bit_m)	color = TERM_YELLOW;
 			}
 			//term_fg(color);
-			printf("%s%c%s   ", color, c, TERM_CLEAR);
+			printf("%s%c%s   ", color, c, TERM_RESET);
 			//term_clear();
 		}
 	}

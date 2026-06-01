@@ -13,7 +13,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <signal.h>
 
 #define PGN_DIR	"algos/solver/pgns"
 
@@ -34,25 +33,12 @@ void seq_add(int move);
 int8_t seq[200] = {-1};
 int seq_ct = 0, seq_entire = 0;
 
-void on_exit(void)
-{
-	term_bottom();
-}
-
-void on_sigint(int n)
-{
-	(void)n;
-	on_exit();
-	exit(0);
-}
+#define printf(fmt, ...)	window_printf(fmt, ##__VA_ARGS__)
 
 
 void play_menu(void)
 {
 	srand(time(NULL));
-
-	atexit(on_exit);
-	signal(SIGINT, on_sigint);
 
 	/*bool mode_selected = false;
 	bool playing;
@@ -158,12 +144,16 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 	//	pos = solver->initial_pos;
 
 	bool turn = !(seq_ct & 0b1);
-	term_clear();
+	window_term_clear();
 	while(1)
 	{
-		term_move_cursor(0, 15);
+		term_move_cursor(0, 12);
 		solver->draw_full(pos);
 		print_sequence_fancy(solver, seq, stdout);
+		window_focus(analysis_hdl);
+		//term_move_cursor(0, 35);
+		//printf(TERM_RESET);
+
 
 		bool player = turn? p1 : p2;
 		if(player == HUMAN_PLAYER)
@@ -240,15 +230,8 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 		}
 		else	//COMPUTER_PLAYER
 		{
-			/*
-			solve()
-			print which move was played
-			*/
-
 			move = solve(solver, pos, seq_ct, COMP_TIME, DEV_MODE);
 			solver->make_move(pos, move, NULL);
-			//printf("i played: %s\n", solver->iter_to_human(move));
-			//
 		}
 
 		endstate_t game_end_state = solver->gameover(pos);
@@ -431,7 +414,8 @@ void print_sequence(solver_t *solver, int8_t *seq, FILE *stream)
 
 void print_sequence_fancy(solver_t *solver, int8_t *seq, FILE *stream)
 {
-	//window_focus(notation_win_hdl);
+	window_focus(notation_win_hdl);
+	window_clear();
 
 	bool to_term = (stream == stdout);
 	bool partial = (seq_entire != seq_ct);
@@ -445,16 +429,21 @@ void print_sequence_fancy(solver_t *solver, int8_t *seq, FILE *stream)
 		int chars;
 		if(!(i&0b1))
 		{
-			chars = printf("\n%d.", i/2+1);
-			for(int n=0; n<4-chars; n++)
+			if(i)	printf("\n");
+			chars = printf("%d.", i/2+1);
+			for(int n=0; n<5-chars; n++)
 				printf(" ");
+		}
+		else
+		{
+			printf("|   ");
 		}
 
 		if(solver->iter_to_human)
-			chars = fprintf(stream, "%s", solver->iter_to_human(seq[i]));
+			chars = printf("%s", solver->iter_to_human(seq[i]));
 		else
-			chars = fprintf(stream, "%d", seq[i]);
-		for(int n=0; n<3-chars; n++)
+			chars = printf("%d", seq[i]);
+		for(int n=0; n<4-chars; n++)
 			printf(" ");
 
 		if(i==seq_entire-1)

@@ -14,7 +14,10 @@ void init_play_windows(void)
 
 	if(notation_win_hdl == -1)
 	{
-		notation_win_hdl = window_wh(2, 2, 20, 20);
+		notation_win_hdl = window_wh(18, 3, 20, 20);
 		window_set_colors(TERM_CYAN, TERM_BLACK_BG);
 	}
+
+	//default window
+	window_focus(analysis_hdl);
 }

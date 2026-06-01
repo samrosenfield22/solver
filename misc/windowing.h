@@ -16,6 +16,7 @@ void window_resize(int w, int h);
 void window_set_colors(char *fg, char *bg);
 int window_printf(const char *fmt, ...);
 void window_clear(void);
+void window_term_clear(void);
 void window_cursor_set(int y);
 void window_focus(int hdl);
 

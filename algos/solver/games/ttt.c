@@ -162,6 +162,7 @@ void ttt_draw_full(void *pos)
 	ttt_pos_t *p = pos;
 
 	char indent[] = "\t\t\t\t\t\t\t\t";
+	printf("\n\n\n\n\n");
 	printf("%s   A   B   C\n\n", indent);
 	for(int r=0; r<3; r++)
 	{

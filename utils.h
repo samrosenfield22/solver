@@ -15,3 +15,5 @@
 #include "memory/slab.h"
 //#include "memory/block.h"
 #include "memory/alloc.h"
+
+//#define printf(fmt, ...)	window_printf(fmt, ##__VA_ARGS__)

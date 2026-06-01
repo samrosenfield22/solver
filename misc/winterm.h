@@ -40,7 +40,7 @@
 //#define TERM_BG(COL)	("\033[" #COL+10 "m")
 
 //#define TERM_RED		("\033[0m")
-#define TERM_CLEAR		("\033[0m")
+#define TERM_RESET		("\033[0m")
 
 /*enum
 {

@@ -239,7 +239,7 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 	printf("(time limit %d ms)", time_lim_ms);
 	#endif
 
-	printf("\n\n");
+	printf("\n");
 
 	tic();
 
@@ -276,7 +276,7 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 		while(1)
 		{
 
-			printf("iddfs=%d in window [%.1f,%.1f]\n",
+			printf("\niddfs=%d in window [%.1f,%.1f] ",
 				iddfs, asp_window[0], asp_window[1]);
 			result = eval(gt, gt->head, 0,
 				asp_window[0], asp_window[1],
@@ -303,6 +303,7 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 		if(verbose)
 		{
 			window_focus(eval_hdl);
+			window_clear();
 			window_cursor_set(0);
 			print_eval_bar(result.score);
 			window_focus(eval_hdl);
@@ -333,7 +334,9 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 				}
 
 				uint32_t now = toc_ms();
-				//printf("\n\ttook %u ms\n", now-last);
+				window_focus(analysis_hdl);
+				printf("(%u ms)", now-last);
+				window_focus(eval_hdl);
 				last = now;
 			}
 		}
@@ -373,23 +376,23 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 		//printf("\n\n");
 		//tree_draw(gt, VARIATION_LENGTH*2);
 
-		printf("\n--- search ran to depth = %d%s ---\n", iddfs,
+		printf("\n\n--- search ran to depth = %d%s ---\n", iddfs,
 			result.full? " (full solve)":"");
 
 	}
 
 	printf("best move: \t\t");
 	if(solver->iter_to_human)
-		printf("%s\n\n\n", solver->iter_to_human(best_move));
+		printf("%s\n", solver->iter_to_human(best_move));
 	else
-		printf("%d\n\n\n", best_move);
+		printf("%d\n", best_move);
 	//print_eval_bar(gt->head->children[0]->score);
-	printf("\n\n");
+	//printf("\n\n");
 
 	if(verbose)
 	{
 		//printf("eval: %+.1f\n", gt->head->children[0]->score);
-		printf("\nposition solved in %d m, %d sec\n", min, sec);
+		printf("\n\n\n\n\nposition solved in %d m, %d sec\n", min, sec);
 		printf("time per position: %.2f us\n", ((float)us)/position_ct);
 		printf("evaluated %s unique positions\n", sprintbig(position_ct, "%d"));
 		printf("greatest number of nodes stored in tree: %u\n", max_node_ct);

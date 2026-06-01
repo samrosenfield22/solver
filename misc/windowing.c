@@ -1,12 +1,15 @@
 
 
 #include "windowing.h"
-
-#include "../utils.h"
+#include "winterm.h"
+//#include "../utils.h"
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <string.h>
+#include <assert.h>
+#include <signal.h>
 
 typedef struct
 {
@@ -32,7 +35,7 @@ void window_home(text_window_t *win);
 void window_add_char(text_window_t *win, char c);
 void window_fit(text_window_t *win);
 void window_newline(text_window_t *win);
-
+void window_sys_init(void);
 
 
 #define MAX_WINDOWS		(16)
@@ -40,6 +43,8 @@ text_window_t ALL_WINDOWS[MAX_WINDOWS];
 int WIN_CT = 0;
 
 text_window_t *CURRENT_WINDOW = NULL;
+bool WINDOW_INITIALIZED = false;
+
 
 int window(int x, int y)
 {
@@ -48,6 +53,11 @@ int window(int x, int y)
 
 int window_wh(int x, int y, int w, int h)
 {
+	if(!WINDOW_INITIALIZED)
+	{
+		window_sys_init();
+	}
+
 	if(WIN_CT >= MAX_WINDOWS)
 		return -1;
 
@@ -112,6 +122,9 @@ int window_printf(const char *fmt, ...)
 
 	text_window_t *win = CURRENT_WINDOW;
 
+	assert(win->cursor_x >= 0);
+	assert(win->cursor_y >= 0);
+
 	term_move_cursor(win->x+win->cursor_x, win->y+win->cursor_y);
 	printf("%s%s", win->fg, win->bg);
 
@@ -127,7 +140,7 @@ int window_printf(const char *fmt, ...)
 		window_add_char(win, *p);
 	}
 
-	printf(TERM_CLEAR);
+	printf(TERM_RESET);
 	return n;
 }
 
@@ -141,6 +154,16 @@ void window_clear(void)
 	*win->wp = '\0';
 
 	window_draw(win);
+}
+
+void window_term_clear(void)
+{
+	term_clear();
+	for(int i=0; i<WIN_CT; i++)
+	{
+		text_window_t *win = &ALL_WINDOWS[i];
+		window_draw(win);
+	}
 }
 
 void window_cursor_set(int y)
@@ -159,7 +182,16 @@ void window_cursor_set(int y)
 				break;
 			}
 			else if(*win->wp == '\0')
+			{
+				/*int addl_lines = y - i;
+				for(int a=0; a<addl_lines; a++)
+					*win->wp++ = '\n';
+				*win->wp = '\0';
+				win->wp -= addl_lines;
+				break;*/
 				return;
+			}
+
 
 			win->wp++;
 			win->cursor_x++;
@@ -173,6 +205,9 @@ void window_cursor_set(int y)
 void window_focus(int hdl)
 {
 	text_window_t *win = window_from_hdl(hdl);
+
+	//printf("focusing on window %d (cursor to %d,%d)\n",
+	//	hdl, win->x+win->cursor_x, win->y+win->cursor_y);
 
 	term_move_cursor(win->x+win->cursor_x, win->y+win->cursor_y);
 	printf("%s%s", win->fg, win->bg);
@@ -247,7 +282,7 @@ void window_draw(text_window_t *win)
 			}
 			else if(*rp=='\0')
 			{
-				printf(TERM_CLEAR);
+				printf(TERM_RESET);
 				return;
 			}
 			else
@@ -256,7 +291,7 @@ void window_draw(text_window_t *win)
 	}
 
 	//win->cursor_y = 0;
-	printf(TERM_CLEAR);
+	printf(TERM_RESET);
 }
 
 void window_home(text_window_t *win)
@@ -319,9 +354,32 @@ void window_fit(text_window_t *win)
 
 void window_newline(text_window_t *win)
 {
-	printf("%s", TERM_CLEAR);
+	//printf("%s", TERM_RESET);
 	win->cursor_x = 0;
 	win->cursor_y++;
 	term_move_cursor(win->x+win->cursor_x, win->y+win->cursor_y);
-	printf("%s%s", win->fg, win->bg);
+	//printf("%s%s", win->fg, win->bg);
+}
+
+void on_exit(void)
+{
+	printf(TERM_RESET);
+	term_bottom();
+}
+
+void on_sigint(int n)
+{
+	(void)n;
+	on_exit();
+	exit(0);
+}
+
+void window_sys_init(void)
+{
+	winterm_init_ansi();
+
+	atexit(on_exit);
+	signal(SIGINT, on_sigint);
+
+	WINDOW_INITIALIZED = true;
 }
