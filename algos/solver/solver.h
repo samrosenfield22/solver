@@ -14,9 +14,9 @@
 //#define ASPIRATION_WINDOW
 //#define PRINCIPAL_VAR_SEARCH
 
-//#define FORCE_SEARCH_DEPTH	(4)
+#define FORCE_SEARCH_DEPTH	(24)
 
-#define VARIATION_LENGTH	(3)
+#define VARIATION_LENGTH	(4)
 #define PRINCIPAL_VAR_CT	(7)
 #define INNER_VAR_CT		(1)
 

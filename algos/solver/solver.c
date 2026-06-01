@@ -4,6 +4,8 @@
 
 #include "../../utils.h"
 
+#include "play_windows.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -81,7 +83,7 @@ size_t gdata_size, gdata_hash_size;
 #define NUM_KILLERS	(2)
 uint8_t killers[MAX_PLY][NUM_KILLERS] = {0};
 
-int main_hdl = -1, eval_hdl = -1;
+
 
 //uint32_t passed=0, checked=0;
 
@@ -124,7 +126,7 @@ void print_eval_bar(float score)
 		printf(" ");
 	printf("^\n");
 
-	window_focus(main_hdl);
+	window_focus(analysis_hdl);
 }
 
 /*void *construct_pos(solver_t *game_solver, char *seq)
@@ -210,13 +212,10 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 	mem_free(th);
 
 	//term_clear();
-	if(main_hdl == -1)
-		main_hdl = window_wh(117, 3, 48, 69);
-	if(eval_hdl == -1)
-		eval_hdl = window_wh(52, 4, 46, 4);
-	window_focus(eval_hdl);
+
+	//window_focus(eval_hdl);
 	//printf("\n\n\n\n");
-	window_focus(main_hdl);
+	window_focus(analysis_hdl);
 	window_clear();
 
 
@@ -230,9 +229,16 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 	{
 		printf("solving game position: ");
 		solver->print_pos(node_get_pos(gt->head));
+		printf("\n");
 	}
 	else
-		printf("solving...");
+		printf("solving ");
+	#ifdef FORCE_SEARCH_DEPTH
+	printf("(force search depth %d)", FORCE_SEARCH_DEPTH);
+	#else
+	printf("(time limit %d ms)", time_lim_ms);
+	#endif
+
 	printf("\n\n");
 
 	tic();
@@ -303,15 +309,23 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 			if(iddfs >= 1)
 			{
 				//window_cursor_set(4);
-				printf("%+.2f (depth: %d)  ", result.score, iddfs);
+				printf("\t\t   (depth: %d)\n\n", iddfs);
+				printf("  %+.2f   ", result.score);
 				tnode_t *n = gt->head->children[0];
 				for(int i=0; i<2*VARIATION_LENGTH; i++)
 				{
+					if(i)
+						printf(", ");
 					if(i >= iddfs)
 						break;
 					if(!n)
 						break;
-					printf("%d, ", n->move_index);
+
+					if(solver->iter_to_human)
+						printf(solver->iter_to_human(n->move_index));
+					else
+						printf("%d", n->move_index);
+
 					if(!n->child_ct)
 						break;
 					//assert(n->child_ct);
@@ -323,7 +337,7 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 				last = now;
 			}
 		}
-		window_focus(main_hdl);
+		window_focus(analysis_hdl);
 
 		//conditions for ending the search
 		if(result.full)
@@ -756,10 +770,14 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n,
 			result.score -= is_max? 1: -1;
 			n->score = result.score;
 			tree_get(gt, n);
+			best = result.score;
+			best_index = n->child_ct-1;
+			best_full = true;
 			//minimax(gt, depth);
-			if(n->child_ct-1)
-				tree_swap_children(gt, 0, n->child_ct-1);
-			return result;
+			//if(n->child_ct-1)
+			//	tree_swap_children(gt, 0, n->child_ct-1);
+			//return result;
+			goto analyze_end;
 		}
 		#endif	//RETURN_FIRST_WIN_FOUND
 
@@ -842,9 +860,16 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n,
 	//(void)best_move;
 	assert(best_index != -1);
 	assert(best_index < n->child_ct);
+
+	analyze_end:
 	tree_get(gt, n);
-	//minimax(gt, depth);
-	tree_swap_children(gt, 0, best_index);
+	//if(depth)
+		tree_swap_children(gt, 0, best_index);
+	/*else
+	{
+		printf("minimax!\n");
+		minimax(gt, depth);
+	}*/
 
 	//no legal moves??
 	assert(n->child_ct);

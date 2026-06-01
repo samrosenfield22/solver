@@ -18,7 +18,7 @@
 
 int main(void)
 {
-	atexit(term_bottom);
+	
 	//winterm_init_ansi();
 
 	/*term_clear();

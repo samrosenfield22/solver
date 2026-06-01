@@ -68,7 +68,7 @@ void term_move_cursor(int x, int y)
 
 void term_bottom(void)
 {
-	term_move_cursor(0, 120);
+	term_move_cursor(0, 160);
 }
 
 void term_clear(void)

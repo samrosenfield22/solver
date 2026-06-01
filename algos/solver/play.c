@@ -1,6 +1,7 @@
 
 
 #include "play.h"
+#include "play_windows.h"
 #include "../../utils.h"
 
 #include "games/nim.h"
@@ -12,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <signal.h>
 
 #define PGN_DIR	"algos/solver/pgns"
 
@@ -32,9 +34,25 @@ void seq_add(int move);
 int8_t seq[200] = {-1};
 int seq_ct = 0, seq_entire = 0;
 
+void on_exit(void)
+{
+	term_bottom();
+}
+
+void on_sigint(int n)
+{
+	(void)n;
+	on_exit();
+	exit(0);
+}
+
+
 void play_menu(void)
 {
 	srand(time(NULL));
+
+	atexit(on_exit);
+	signal(SIGINT, on_sigint);
 
 	/*bool mode_selected = false;
 	bool playing;
@@ -53,6 +71,8 @@ void play_menu(void)
 		if(mode_selected)
 			break;
 	}*/
+
+
 
 
 	solver_t gamelist[] =
@@ -99,6 +119,9 @@ void play_menu(void)
 		bool valid = load_pgn(game, pos, pgn);
 		if(!valid)
 			return;
+
+
+		init_play_windows();
 
 		if(DEV_MODE)
 			play(game, pos, COMPUTER_PLAYER, HUMAN_PLAYER);
@@ -408,6 +431,8 @@ void print_sequence(solver_t *solver, int8_t *seq, FILE *stream)
 
 void print_sequence_fancy(solver_t *solver, int8_t *seq, FILE *stream)
 {
+	//window_focus(notation_win_hdl);
+
 	bool to_term = (stream == stdout);
 	bool partial = (seq_entire != seq_ct);
 
