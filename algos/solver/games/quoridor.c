@@ -564,13 +564,58 @@ void quor_flip(void *to, void *from)
 	assert(quor_ok(to));
 }
 
-/*int quor_only_moves(sorter_t *sorter, void *pos)
+int quor_only_moves(sorter_t *sorter, void *pos)
 {
 	quor_pos_t *p = pos;
+
+	bool p1_almost = (p->p1.y == 7 && !blocked_up(p->p1.token, p->horiz));
+	bool p2_almost = (p->p2.y == 1 && !blocked_down(p->p2.token, p->horiz));
+
 	//get win
+	if(quor_whosemove(p) && p1_almost)
+	{
+		sorter[0].move = MOVE_UP;
+		return 1;
+	}
+	else if (!quor_whosemove(p) && p2_almost)
+	{
+		sorter[0].move = MOVE_DOWN;
+		return 1;
+	}
+
 	//get saving moves
+	int x_block = 0, y_block = 0;
+	if(quor_whosemove(p) && p2_almost)
+	{
+		x_block = p->p2.x;
+		y_block = 0;
+		int save_gate = 9*y_block + x_block + TOKEN_MOVES;
+		sorter[0].move = save_gate;
+		int saves = 1;
+		if(x_block)
+		{
+			sorter[1].move = save_gate-1;
+			saves++;
+		}
+		return saves;
+	}
+	if(!quor_whosemove(p) && p1_almost)
+	{
+		x_block = p->p1.x;
+		y_block = 7;
+		int save_gate = 9*y_block + x_block + TOKEN_MOVES;
+		sorter[0].move = save_gate;
+		int saves = 1;
+		if(x_block)
+		{
+			sorter[1].move = save_gate-1;
+			saves++;
+		}
+		return saves;
+	}
+
 	return 0;
-}*/
+}
 
 void print_player_info(quor_player_t *pl)
 {

@@ -243,11 +243,6 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 
 	tic();
 
-
-
-	//dfs
-	//eval(gt, gt->head, 0, -INF, INF);
-
 	result_t result;
 	float asp_window[] = {-WIN_SCORE, WIN_SCORE};
 	float last_iddfs_score = 0;
@@ -303,7 +298,7 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 		if(verbose)
 		{
 			window_focus(eval_hdl);
-			window_clear();
+			//window_clear();
 			window_cursor_set(0);
 			print_eval_bar(result.score);
 			window_focus(eval_hdl);
@@ -742,11 +737,11 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n,
 				continue;
 			assert(0 <= move && move < solver->possible_moves);
 			tnode_t *child = node_make_new_move(gt, n, move);
-			assert(child);
+			//assert(child);	//if false, the move wasn't legal
 			if(!child)
 			{
 				assert(len != 1);
-				assert(i);
+				//assert(i);
 				continue;
 			}
 		//}
@@ -830,7 +825,7 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n,
 		if(alpha >= beta)
 		{
 			//update killers
-			assert(depth < MAX_PLY);
+			/*assert(depth < MAX_PLY);
 			if(solver->only_moves
 				&& solver->only_moves(NULL, child)==0)	//non forcing
 			{
@@ -840,7 +835,7 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n,
 					killers_ply[1] = killers_ply[0];
 					killers_ply[0] = move;
 				}
-			}
+			}*/
 
 			//if(!(depth==0 && i<PRINCIPAL_VAR_CT))
 				break;
