@@ -79,6 +79,9 @@ typedef struct
 } gdata_t;
 size_t gdata_size, gdata_hash_size;
 
+int *HISTORY_VALS;
+uint8_t HISTORY_BEST[2] = {-1, -1};
+
 #define MAX_PLY	(42)
 #define NUM_KILLERS	(2)
 uint8_t killers[MAX_PLY][NUM_KILLERS] = {0};
@@ -242,6 +245,13 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 	printf("\n");
 
 	tic();
+
+	#ifdef USE_HISTORY_HEURISTIC
+	int history_scores[solver->possible_placements];
+	for(int i=0; i<solver->possible_placements; i++)
+		history_scores[i] = 0;
+	HISTORY_VALS = history_scores;
+	#endif
 
 	result_t result;
 	float asp_window[] = {-WIN_SCORE, WIN_SCORE};
@@ -824,6 +834,24 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n,
 
 		if(alpha >= beta)
 		{
+			//update history
+			#ifdef USE_HISTORY_HEURISTIC
+			int placement = solver->get_placement(node_get_pos(n), i);
+			HISTORY_VALS[placement] += i;
+			//printf("placment %d (move %d) set to %d\n",
+			//	placement, move, HISTORY_VALS[placement]);
+			for(int h=0; h<i; h++)
+			{
+				int bad_move = solver->get_placement(node_get_pos(n), h);
+				HISTORY_VALS[bad_move]--;
+
+				/*if(HISTORY_VALS[move] >= HISTORY_THRESH)
+				{
+
+				}*/
+			}
+			#endif
+
 			//update killers
 			/*assert(depth < MAX_PLY);
 			if(solver->only_moves
@@ -925,8 +953,45 @@ int build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth)
 	//(void)pos;
 	trans_value_t *v = tt_get(n, depth);
 	int best = v? v->best_move : -1;
+
 	uint8_t *killers_ply = killers[depth];
 	(void)killers_ply;
+
+	int history_best, history_second, history_thresh=-100;
+	bool history_set = false;
+	for(int i=0; i<solver->possible_moves; i++)
+	{
+		int placement = solver->get_placement(node_get_pos(n), i);
+		if(placement == -1)
+			continue;
+		if(HISTORY_VALS[placement])
+		{
+			history_set = true;
+		}
+		if(HISTORY_VALS[placement] >= history_thresh)
+		{
+			history_best = i;
+			history_thresh = HISTORY_VALS[placement];
+		}
+	}
+	if(!history_set)
+		history_best = -1;
+	/*history_thresh = -100;
+	for(int i=0; i<solver->possible_moves; i++)
+	{
+		if(i == history_best)
+			continue;
+		int placement = solver->get_placement(node_get_pos(n), i);
+		if(HISTORY_VALS[placement] >= history_thresh)
+		{
+			history_second = i;
+			history_thresh = HISTORY_VALS[placement];
+		}
+	}*/
+
+	//if(history_best != -1)
+	//	printf("best history val is %d\n", history_best);
+
 
 	//printf("killers are %d and %d\n", killers_ply[0], killers_ply[1]);
 
@@ -954,6 +1019,10 @@ int build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth)
 		//heuristic bonuses
 		if(move == best)	//hash move
 			order[ct].score += 10000;
+		//else if(move == history_best)
+		//	order[ct].score += 700;
+		//else if(move == history_second)
+		//	order[ct].score += 600;
 		else if(move_is_forcing(pos, move))
 			order[ct].score += 500;
 		//else if(move == killers_ply[0]

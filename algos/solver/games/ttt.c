@@ -187,7 +187,6 @@ void ttt_draw_full(void *pos)
 
 int ttt_human_to_iter(char *human)
 {
-	printf("move str %s\n", human);
 	if(human[0] >= 'a')
 		human[0] -= ('a'-'A');
 	int c = human[0]-'A';

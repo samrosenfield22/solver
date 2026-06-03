@@ -251,7 +251,7 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 				case END_DRAW:		printf("draw!\n");	break;
 				case END_NOT_OVER:	break;
 			}
-			solver->draw_full(pos);
+			//solver->draw_full(pos);
 			print_sequence(solver, seq, stdout);
 			break;
 		}

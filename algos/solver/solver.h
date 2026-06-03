@@ -11,10 +11,11 @@
 #define USE_TRANSPOSITION_TABLE
 #define CLEAR_SUB_NODES
 #define RETURN_FIRST_WIN_FOUND
+#define USE_HISTORY_HEURISTIC
 //#define ASPIRATION_WINDOW
 //#define PRINCIPAL_VAR_SEARCH
 
-//#define FORCE_SEARCH_DEPTH	(24)
+#define FORCE_SEARCH_DEPTH	(20)
 
 #define VARIATION_LENGTH	(4)
 #define PRINCIPAL_VAR_CT	(7)
@@ -72,6 +73,8 @@ typedef struct
 	maximum value for move iteration
 	i.e. 9 for tictactoe, 7 for connect 4*/
 	int possible_moves;
+
+	int possible_placements;
 
 	/*optional (but not really):
 	size of the transposition table hashmap, if using one.
@@ -131,6 +134,8 @@ typedef struct
 	void (*make_move)(void *pos, int index, uint32_t *hash);
 
 	void (*make_move_temp)(void *made, void *pos, int index, uint32_t *hash);
+
+	int (*get_placement)(void *pos, int index);
 
 	//bool (*move_loses)(void *pos, int move);
 
