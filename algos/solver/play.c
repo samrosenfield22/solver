@@ -111,7 +111,7 @@ void play_menu(void)
 			//exit(0);
 			fclose(fp);
 		}
-		else
+		else if(pgn[0] != '\n')
 		{
 			FILE *fp = fopen(LAST_PGN_DIR, "w");
 			if(!fp)
