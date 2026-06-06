@@ -19,5 +19,6 @@ void window_clear(void);
 void window_term_clear(void);
 void window_cursor_set(int y);
 void window_focus(int hdl);
+void window_unfocus(void);
 
 #endif	//WINDOWING_H_

@@ -214,6 +214,11 @@ void window_focus(int hdl)
 	CURRENT_WINDOW = win;
 }
 
+void window_unfocus(void)
+{
+	CURRENT_WINDOW = NULL;
+}
+
 
 //////////////////////////////////////////////////////
 

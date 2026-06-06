@@ -579,17 +579,35 @@ void c4_make_move_temp(void *made, void *pos, int index, uint32_t *hash)
 
 int c4_get_placement(void *pos, int index)
 {
+	assert(index < 7);
+
 	c4_pos_t *p = pos;
 
 	uint64_t col = get_col(p->filled, index);
 	//uint64_t b = col<<(7*index);
 
-	int placement = __builtin_popcount(col) + 6*index;
+	int placement = __builtin_popcount(col);
+	assert(placement < 6);
+	placement += 6*index;
+	assert(placement < 42);
+
+	int player_place = placement;
 	if(!c4_whosemove(p))
-		placement += 42;
-	if(placement >= 2*42)	//illegal
-		return -1;
-	return placement;
+		player_place += 42;
+	assert(player_place < 2*42);	//illegal
+
+	//test
+	uint64_t b = 1;
+	for(int i=0; i<placement; i++)
+	{
+		b<<=1;
+		if(!(i % 6))
+			b<<=1;
+	}
+	//printf("%s\n", sprintbig(b, "%b"));
+	assert(!(b & p->filled));
+
+	return player_place;
 }
 
 void c4_make_move(void *pos, int index, uint32_t *hash)
@@ -1013,7 +1031,7 @@ solver_t C4_SOLVER =
 	//.transtbl_buckets_ct = 180000001,
 	.transtbl_buckets_ct = (1<<28),
 	.iddfs_increment = 4,
-	.aspiration_default_width = 1,
+	.aspiration_default_width = 2,
 	.default_order = (uint8_t[]){3, 2, 4, 1, 5, 0, 6},
 	.flip_depth = 16,
 

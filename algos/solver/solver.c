@@ -359,7 +359,10 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 				break;
 		#endif
 
-
+		#ifdef USE_HISTORY_HEURISTIC
+		for(int i=0; i<solver->possible_placements; i++)
+			HISTORY_VALS[i] /= 2;
+		#endif
 
 		//clear the tree
 		tnode_t *h = tree_get(gt, gt->head);
@@ -414,6 +417,36 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 	trans_tbl = NULL;
 
 	term_move_cursor(0, 15);
+
+	#ifdef USE_HISTORY_HEURISTIC
+	window_unfocus();
+	term_move_cursor(0, 36);
+	for(int c=5; c>=0; c--)
+	{
+		for(int r=0; r<7; r++)
+		{
+			int place = 6*r + c;
+			int space = printf("%d:%d   ",
+				place, HISTORY_VALS[place]);
+			for(int i=0; i<10-space; i++)
+				putchar(' ');
+		}
+		printf("\n");
+	}
+	printf("\n\n");
+	for(int c=5; c>=0; c--)
+	{
+		for(int r=0; r<7; r++)
+		{
+			int place = 6*r + c + 42;
+			int space = printf("%d:%d   ",
+				place, HISTORY_VALS[place]);
+			for(int i=0; i<10-space; i++)
+				putchar(' ');
+		}
+		printf("\n");
+	}
+	#endif	//USE_HISTORY_HEURISTIC
 
 	return best_move;
 }
@@ -498,7 +531,9 @@ result_t eval(tree_t *gt, tnode_t *n, int depth,
 			return (result_t){n->score, true};
 		}
 		if(val->iddfs >= iddfs_depth && !asp_window_rerun)
-		//if(val->iddfs == iddfs_depth && val->exact)
+		//if(val->iddfs >= iddfs_depth && val->exact)
+		//if(val->iddfs >= iddfs_depth
+		//	&& !(asp_window_rerun && !val->exact))
 			return (result_t){n->score, false};
 	}
 	#endif
@@ -705,6 +740,45 @@ float sort_score(tree_t *gt, tnode_t *parent, tnode_t *n,
 	return score;
 }
 
+/*void history_bonus(void *pos, int move, int depth)
+{
+	int sdq = (iddfs_depth - depth) * (iddfs_depth - depth);
+	int placement = solver->get_placement(pos, move);
+	if(placement != -1)
+		HISTORY_VALS[placement] += sdq;
+	if(placement == 18)
+		printf("incrementing 3cent by %d (d=%d)\n", sdq, depth);
+}*/
+
+void update_history(tnode_t *n, int index,
+	sorter_t *order, int len, int depth, bool was_cutoff)
+{
+	void *pos = node_get_pos(n);
+	//int move = order[index].move;
+	int sdq = (iddfs_depth - depth) * (iddfs_depth - depth);
+
+	for(int i=0; i<len; i++)
+	{
+		int placement = solver->get_placement(pos, order[i].move);
+		if(placement == -1)
+			continue;
+
+		if(i == index)
+		{
+			HISTORY_VALS[placement] += sdq;
+			if(was_cutoff)
+				break;
+		}
+		else
+			HISTORY_VALS[placement] -= sdq;
+
+		/*if(HISTORY_VALS[move] >= HISTORY_THRESH)
+		{
+
+		}*/
+	}
+}
+
 result_t analyze_all_children(tree_t *gt, tnode_t *n,
 	sorter_t *order, int len, int depth, float alpha, float beta,
 	bool is_pv)
@@ -785,6 +859,9 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n,
 			//if(n->child_ct-1)
 			//	tree_swap_children(gt, 0, n->child_ct-1);
 			//return result;
+			#ifdef USE_HISTORY_HEURISTIC
+			update_history(n, i, order, len, depth, true);
+			#endif
 			goto analyze_end;
 		}
 		#endif	//RETURN_FIRST_WIN_FOUND
@@ -836,20 +913,7 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n,
 		{
 			//update history
 			#ifdef USE_HISTORY_HEURISTIC
-			int placement = solver->get_placement(node_get_pos(n), i);
-			HISTORY_VALS[placement] += i;
-			//printf("placment %d (move %d) set to %d\n",
-			//	placement, move, HISTORY_VALS[placement]);
-			for(int h=0; h<i; h++)
-			{
-				int bad_move = solver->get_placement(node_get_pos(n), h);
-				HISTORY_VALS[bad_move]--;
-
-				/*if(HISTORY_VALS[move] >= HISTORY_THRESH)
-				{
-
-				}*/
-			}
+			update_history(n, i, order, len, depth, true);
 			#endif
 
 			//update killers
@@ -881,6 +945,13 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n,
 		#endif	//PRINCIPAL_VAR_SEARCH
 		#endif	//USE_ALPHABETA_PRUNING
 
+	}
+
+	if(alpha < beta)
+	{
+		#ifdef USE_HISTORY_HEURISTIC
+		update_history(n, best_index, order, len, depth, false);
+		#endif
 	}
 
 	//(void)best_move;
@@ -957,11 +1028,13 @@ int build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth)
 	uint8_t *killers_ply = killers[depth];
 	(void)killers_ply;
 
+
+	#ifdef USE_HISTORY_HEURISTIC
 	int history_best, history_second, history_thresh=-100;
 	bool history_set = false;
 	for(int i=0; i<solver->possible_moves; i++)
 	{
-		int placement = solver->get_placement(node_get_pos(n), i);
+		int placement = solver->get_placement(n, i);
 		if(placement == -1)
 			continue;
 		if(HISTORY_VALS[placement])
@@ -976,18 +1049,21 @@ int build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth)
 	}
 	if(!history_set)
 		history_best = -1;
-	/*history_thresh = -100;
+	history_thresh = -100;
 	for(int i=0; i<solver->possible_moves; i++)
 	{
 		if(i == history_best)
 			continue;
-		int placement = solver->get_placement(node_get_pos(n), i);
+		int placement = solver->get_placement(n, i);
 		if(HISTORY_VALS[placement] >= history_thresh)
 		{
 			history_second = i;
 			history_thresh = HISTORY_VALS[placement];
 		}
-	}*/
+	}
+
+	#endif	//USE_HISTORY_HEURISTIC
+
 
 	//if(history_best != -1)
 	//	printf("best history val is %d\n", history_best);
@@ -1019,12 +1095,14 @@ int build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth)
 		//heuristic bonuses
 		if(move == best)	//hash move
 			order[ct].score += 10000;
-		//else if(move == history_best)
-		//	order[ct].score += 700;
+		#ifdef USE_HISTORY_HEURISTIC
+		else if(move == history_best)
+			order[ct].score += 700;
 		//else if(move == history_second)
 		//	order[ct].score += 600;
+		#endif	//USE_HISTORY_HEURISTIC
 		else if(move_is_forcing(pos, move))
-			order[ct].score += 500;
+			order[ct].score += 800;
 		//else if(move == killers_ply[0]
 		//	|| move == killers_ply[1])
 		//	order[ct].score = 400;

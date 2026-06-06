@@ -150,7 +150,16 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 		term_move_cursor(0, 12);
 		solver->draw_full(pos);
 		print_sequence_fancy(solver, seq, stdout);
+
+		
+		//for(int i=0; i<solver->possible_moves; i++)
+		//	printf("move %d has placement %d\n", i, solver->get_placement(pos, i));
+
 		window_focus(analysis_hdl);
+
+
+
+
 		//term_move_cursor(0, 35);
 		//printf(TERM_RESET);
 
