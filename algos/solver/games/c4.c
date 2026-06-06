@@ -129,7 +129,7 @@ endstate_t c4_gameover(void *pos)
 	if(p->won)
 		return win;
 
-	//if(is_win(x))
+	//if(is_win(p->x))
 	//	return win;
 
 	//check draw
@@ -587,7 +587,8 @@ int c4_get_placement(void *pos, int index)
 	//uint64_t b = col<<(7*index);
 
 	int placement = __builtin_popcount(col);
-	assert(placement < 6);
+	if(placement >= 6)
+		return -1;
 	placement += 6*index;
 	assert(placement < 42);
 
@@ -596,7 +597,7 @@ int c4_get_placement(void *pos, int index)
 		player_place += 42;
 	assert(player_place < 2*42);	//illegal
 
-	//test
+	//make sure the placement slot is empty
 	uint64_t b = 1;
 	for(int i=0; i<placement; i++)
 	{
@@ -604,7 +605,6 @@ int c4_get_placement(void *pos, int index)
 		if(!(i % 6))
 			b<<=1;
 	}
-	//printf("%s\n", sprintbig(b, "%b"));
 	assert(!(b & p->filled));
 
 	return player_place;
@@ -796,10 +796,28 @@ int c4_only_moves(sorter_t *sorter, void *pos)
 	//get_win_maps(p);
 
 	uint64_t move_map = 0;
+	bool only_middle = true;
 	for(int i=0; i<7; i++)
 	{
-		move_map |= move_bit(p, i);
+		//move_map |= move_bit(p, i);
+
+		uint64_t b = move_bit(p, i);
+		move_map |= b;
+
+		//terrible opening table
+		/*uint8_t col = get_col(p->filled, i);
+		if(i==3 && col == 0b111111)
+			only_middle = false;
+		else if(col && (i!=3))
+			only_middle = false;*/
 	}
+
+	/*if(only_middle)
+	{
+		sorter[0].move = 3;
+		return 1;
+	}*/
+
 	/*uint64_t alt_move_map = (p->filled<<1) & ~p->filled;
 	if(alt_move_map != move_map)
 	{
@@ -1048,7 +1066,7 @@ solver_t C4_SOLVER =
 	//.transtbl_buckets_ct = 180000001,
 	.transtbl_buckets_ct = (1<<28),
 	.iddfs_increment = 4,
-	.aspiration_default_width = 2,
+	.aspiration_default_width = 1,
 	.default_order = (uint8_t[]){2, 4, 6, 7, 5, 3, 1},
 	.flip_depth = 16,
 

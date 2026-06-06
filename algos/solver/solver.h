@@ -15,7 +15,7 @@
 //#define ASPIRATION_WINDOW
 //#define PRINCIPAL_VAR_SEARCH
 
-//#define FORCE_SEARCH_DEPTH	(20)
+//#define FORCE_SEARCH_DEPTH	(36)
 
 #define VARIATION_LENGTH	(4)
 #define PRINCIPAL_VAR_CT	(7)
@@ -37,6 +37,13 @@ typedef enum
 //#define INF			(10000.0)
 //#define INF		(100.0)
 
+enum
+{
+	BOUND_EXACT,
+	BOUND_UPPER,
+	BOUND_LOWER,
+};
+
 typedef struct
 {
 	float score;
@@ -44,7 +51,7 @@ typedef struct
 	uint8_t iddfs;
 	uint8_t depth;
 	bool full;
-	bool exact;
+	int bound;
 	int8_t best_move;
 } trans_value_t;
 
