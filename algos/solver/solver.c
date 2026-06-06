@@ -1089,27 +1089,10 @@ void sort_movelist(sorter_t *order, int len, tree_t *gt, tnode_t *n, int depth)
 
 	for(int i=0; i<len; i++)
 	{
-		//get move, going in default order
-		/*int move = solver->default_order?
-		 	solver->default_order[i] : i;
-		if(!solver->is_legal(pos, move))
-			continue;
-		order[ct].move = move;
-		order[ct].score = 0;*/
+		//get move
 		int move = order[i].move;
 		assert(move < solver->possible_moves);
 		assert(order[i].score == 0);
-
-
-		/*tnode_t *after = node_make_new_move(gt, n, move);
-		v = tt_get(after, depth);
-		if(v)
-		{
-			order[ct].score = v->score;
-			if(max_or_min(depth)==MIN_LAYER)
-				order[ct].score *= -1;
-		}*/
-
 
 		//heuristic bonuses
 		if(move == best)	//hash move
@@ -1128,7 +1111,10 @@ void sort_movelist(sorter_t *order, int len, tree_t *gt, tnode_t *n, int depth)
 
 		//add default move ordering
 		//order[ct].score -= (float)i/100;
-		order[i].score += solver->default_order[move];
+
+		if(solver->default_order)
+			order[i].score += solver->default_order[move];
+
 
 		//ct++;
 	}
