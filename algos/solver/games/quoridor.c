@@ -287,12 +287,14 @@ bool quor_is_legal(void *pos, int index)
 		//check overlapping w same kind
 		if(index < HORIZ_PLACEMENTS)
 		{
-			if(gate_bit & (p->horiz | p->horiz>>1))
+			//if(gate_bit & (p->horiz | p->horiz>>1))
+			if(gate_bit & p->horiz)
 				return false;
 		}
 		else	//vert
 		{
-			if(gate_bit & (p->vert | p->vert>>9))
+			//if(gate_bit & (p->vert | p->vert>>9))
+			if(gate_bit & p->vert)
 				return false;
 		}
 	}
@@ -562,6 +564,64 @@ void quor_flip(void *to, void *from)
 	flip_player(&pt->p2, &pf->p2);
 
 	assert(quor_ok(to));
+}
+
+int quor_make_movelist(sorter_t *sorter, void *pos)
+{
+	quor_pos_t *p = pos;
+	int ct = 0;
+	bool has_gates = current(p)->gate_ct > 0;
+
+	__int128 gates, b=1;
+	int col = 0;
+	for(int i=0; i<QUOR_SOLVER.possible_moves; i++)
+	{
+		if(i < TOKEN_MOVES)
+		{
+			if(quor_is_legal(p, i))
+			{
+				sorter[ct].move = i;
+				sorter[ct].score = 0;
+				ct++;
+			}
+			continue;
+		}
+
+		if(i == TOKEN_MOVES)
+		{
+			if(!has_gates)
+				return ct;
+
+			gates = p->horiz | p->gates;
+			col = 0;
+		}
+		else if(i == TOKEN_MOVES + 72)
+		{
+			gates = p->vert | p->gates;
+			b = 1;
+			col = 0;
+		}
+
+		if(!(b & gates) && col != 8)
+		{
+			/*if(!quor_is_legal(p, i))
+			{
+				printf("illegal move %d in move list\n", i);
+				exit(0);
+			}*/
+			sorter[ct].move = i;
+			sorter[ct].score = 0;
+			ct++;
+		}
+
+
+		b <<= 1;
+		col++;
+		if(col == 9)
+			col = 0;
+	}
+
+	return ct;
 }
 
 int quor_only_moves(sorter_t *sorter, void *pos)
@@ -853,6 +913,7 @@ solver_t QUOR_SOLVER =
 	.whosemove = quor_whosemove,
 	.is_legal = quor_is_legal,
 	.make_move = quor_make_move,
+	.make_movelist = quor_make_movelist,
 	//.only_moves = quor_only_moves,
 	.draw_full = quor_draw_full,
 

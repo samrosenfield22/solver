@@ -572,20 +572,22 @@ result_t eval(tree_t *gt, tnode_t *n, int depth,
 	//make move order
 	//if there's only one move (that wins or loses),
 	//just play that
-	sorter_t order[solver->possible_moves];
+	sorter_t movelist[solver->possible_moves];
 	int len = 0;
 
 	if(solver->only_moves)
-		len = solver->only_moves(order, pos);
+		len = solver->only_moves(movelist, pos);
 
-	//else if(solver->mave_movelist)
-	//	len = solver->make_movelist(order, pos);
-	//else
 	if(!len)
 	{
 		assert(n->child_ct == 0);
-		len = build_movelist(order, node_get_pos(n));
-		sort_movelist(order, len, gt, n, depth);
+
+		if(solver->make_movelist)
+			len = solver->make_movelist(movelist, pos);
+		else
+			len = build_movelist(movelist, pos);
+
+		sort_movelist(movelist, len, gt, n, depth);
 		//len = build_order(order, gt, n, depth);
 		assert(n->child_ct == 0);
 
@@ -597,7 +599,7 @@ result_t eval(tree_t *gt, tnode_t *n, int depth,
 	}
 
 	//main analysis -- recursive tree search
-	result_t result = analyze_all_children(gt, n, order, len,
+	result_t result = analyze_all_children(gt, n, movelist, len,
 		depth, alpha, beta, is_pv);
 
 	assert(n->child_ct);
@@ -1050,7 +1052,7 @@ void sort_movelist(sorter_t *order, int len, tree_t *gt, tnode_t *n, int depth)
 	bool history_set = false;
 	for(int i=0; i<solver->possible_moves; i++)
 	{
-		int placement = solver->get_placement(n, i);
+		int placement = solver->get_placement(pos, i);
 		if(placement == -1)
 			continue;
 		if(HISTORY_VALS[placement])
@@ -1070,7 +1072,7 @@ void sort_movelist(sorter_t *order, int len, tree_t *gt, tnode_t *n, int depth)
 	{
 		if(i == history_best)
 			continue;
-		int placement = solver->get_placement(n, i);
+		int placement = solver->get_placement(pos, i);
 		if(HISTORY_VALS[placement] >= history_thresh)
 		{
 			history_second = i;
@@ -1512,7 +1514,8 @@ void clear_suboptimal_nodes(tree_t *gt, tnode_t *n, int depth, int var_length)
 tnode_t *node_make_new_move(tree_t *gt, tnode_t *n, int move)
 {
 	tnode_t *child = NULL;
-	if(solver->is_legal(node_get_pos(n), move))
+	//if(solver->is_legal(node_get_pos(n), move))
+	if(1)
 	{
 		tree_get(gt, n);
 		tree_add_copies(gt, 1);

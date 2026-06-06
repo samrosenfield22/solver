@@ -151,7 +151,7 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 		solver->draw_full(pos);
 		print_sequence_fancy(solver, seq, stdout);
 
-		
+
 		//for(int i=0; i<solver->possible_moves; i++)
 		//	printf("move %d has placement %d\n", i, solver->get_placement(pos, i));
 
@@ -260,7 +260,8 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 				case END_DRAW:		printf("draw!\n");	break;
 				case END_NOT_OVER:	break;
 			}
-			//solver->draw_full(pos);
+			term_move_cursor(0, 12);
+			solver->draw_full(pos);
 			print_sequence(solver, seq, stdout);
 			break;
 		}

@@ -135,7 +135,11 @@ typedef struct
 
 	void (*make_move_temp)(void *made, void *pos, int index, uint32_t *hash);
 
+	//optional, for history heuristic
 	int (*get_placement)(void *pos, int index);
+
+	//optional
+	int (*make_movelist)(sorter_t *sorter, void *pos);
 
 	//bool (*move_loses)(void *pos, int move);
 

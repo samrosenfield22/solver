@@ -15,6 +15,7 @@ NNUE?????
 keyboard control for game playing
 annotation (!, ?, ?!, !!)
 ranger-style file selector
+native engine support for bitboards (no move indexes??)
 
 c4:
 endgame estimate

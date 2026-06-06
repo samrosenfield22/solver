@@ -772,6 +772,23 @@ void c4_flip_horiz(void *to, void *from)
 	t->filled = flip_64(f->filled);
 }
 
+int c4_make_movelist(sorter_t *sorter, void *pos)
+{
+	c4_pos_t *p = pos;
+	int ct = 0;
+	for(int i=0; i<7; i++)
+	{
+		if(get_col(p->filled, i) != 0b111111)
+		{
+			sorter[ct].move = i;
+			sorter[ct].score = 0;
+			ct++;
+		}
+	}
+
+	return ct;
+}
+
 int c4_only_moves(sorter_t *sorter, void *pos)
 {
 	c4_pos_t *p = pos;
@@ -1044,6 +1061,7 @@ solver_t C4_SOLVER =
 	.make_move_temp = c4_make_move_temp,
 	.get_placement = c4_get_placement,
 	//.move_loses = c4_move_loses,
+	.make_movelist = c4_make_movelist,
 	.only_moves = c4_only_moves,
 
 	.print_pos = NULL,
