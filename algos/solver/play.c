@@ -15,6 +15,7 @@
 #include <time.h>
 
 #define PGN_DIR	"algos/solver/pgns"
+#define LAST_PGN_DIR	"algos/solver/pgns/repeat.txt"
 
 
 #define COMP_TIME	(1 * 1000)
@@ -96,15 +97,37 @@ void play_menu(void)
 
 	while(1)
 	{
-		printf("enter pgn, or press enter for a new game:\n");
+		printf("enter pgn, (r) for repeat, or press enter for a new game:\n");
 		char pgn[640];
 		fgets(pgn, 639, stdin);
+
+		if(strcmp(pgn, "r\n")==0)	//pgn repeat
+		{
+			FILE *fp = fopen(LAST_PGN_DIR, "r");
+			if(!fp)
+				return;
+			fgets(pgn, 639, fp);
+			//printf("pgn repeat: %s\n", pgn);
+			//exit(0);
+			fclose(fp);
+		}
+		else
+		{
+			FILE *fp = fopen(LAST_PGN_DIR, "w");
+			if(!fp)
+				return;
+			fputs(pgn, fp);
+			fclose(fp);
+		}
 
 		uint8_t pos[game->pos_size];
 		memcpy(pos, game->initial_pos, game->pos_size);
 		bool valid = load_pgn(game, pos, pgn);
 		if(!valid)
 			return;
+
+
+
 
 
 		init_play_windows();
@@ -173,10 +196,10 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 			make move, update pos
 			*/
 			//solver->draw_full(pos);
-			//print_sequence(solver, seq, stdout);
+			print_sequence(solver, seq, stdout);
 			printf("\n\nenter your move, [b]ack, [f]orward, [s]ave, [q]uit game, or e[x]it:\n> ");
-			char buf[80];
-			fgets(buf, 79, stdin);
+			char buf[160];
+			fgets(buf, 159, stdin);
 			char *end = &buf[strlen(buf)-1];
 			if(*end == '\n')
 				*end = '\0';
@@ -202,11 +225,17 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 			}
 			else if(strcmp(buf, "s")==0 || strcmp(buf, "save")==0)
 			{
-				printf("enter save path:  \n");
-				fgets(buf, 79, stdin);
-				char *end = &buf[strlen(buf)-1];
-				if(*end == '\n')
-					*end = '\0';
+				printf("enter save path (or enter for repeat):  \n");
+				fgets(buf, 159, stdin);
+				if(buf[0] == '\n')
+					strncpy(buf, "repeat.txt", 159);
+				else
+				{
+					char *end = &buf[strlen(buf)-1];
+					if(*end == '\n')
+						*end = '\0';
+				}
+
 				save_pgn(solver, buf);
 				continue;
 			}

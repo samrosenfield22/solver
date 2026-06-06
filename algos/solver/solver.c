@@ -404,7 +404,7 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 	if(verbose)
 	{
 		//printf("eval: %+.1f\n", gt->head->children[0]->score);
-		printf("\n\n\n\n\nposition solved in %d m, %d sec\n", min, sec);
+		printf("\n\nposition solved in %d m, %d sec\n", min, sec);
 		printf("time per position: %.2f us\n", ((float)us)/position_ct);
 		printf("evaluated %s unique positions\n", sprintbig(position_ct, "%d"));
 		printf("greatest number of nodes stored in tree: %u\n", max_node_ct);
@@ -476,7 +476,7 @@ bool set_aspiration_window(float *asp_window,
 		//asp_window[1] = WIN_SCORE;
 		//return false;
 
-		printf("\n--- score %.1f out of window\n", score);
+		printf("\n--- score %.1f out of window ---", score);
 		/*if(score <= asp_window[0])
 			asp_window_size[0] *= 2;
 		else if(score >= asp_window[1])
