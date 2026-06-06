@@ -34,7 +34,10 @@ bool set_aspiration_window(float *asp_window,
 	float *asp_window_size, float *last_score, float score);
 result_t eval(tree_t *gt, tnode_t *n, int depth,
 	float alpha, float beta, bool is_pv);
-int build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth);
+//int build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth);
+int build_movelist(sorter_t *order, void *pos);
+void sort_movelist(sorter_t *order, int len,
+	tree_t *gt, tnode_t *n, int depth);
 bool move_is_forcing(void *pos, int move);
 void add_all_new_moves(tree_t *gt, tnode_t *n, int depth);
 void order_children(tree_t *gt, tnode_t *n, int depth);
@@ -503,8 +506,6 @@ result_t eval(tree_t *gt, tnode_t *n, int depth,
 	//if(is_pv)
 	//	printf("\tpv node at d=%d w [%.1f,%.1f]\n",
 	//	depth, alpha, beta);
-	//if(depth == 0)
-	//	assert(max_or_min(depth) == MAX_LAYER);
 	assert(n);
 	//assert(n->child_ct == 0);
 	if(depth > 1000)
@@ -573,19 +574,19 @@ result_t eval(tree_t *gt, tnode_t *n, int depth,
 	//just play that
 	sorter_t order[solver->possible_moves];
 	int len = 0;
-	//int only = 0;
+
 	if(solver->only_moves)
 		len = solver->only_moves(order, pos);
-	//if(only != -1 && solver->is_legal(pos, only))
+
+	//else if(solver->mave_movelist)
+	//	len = solver->make_movelist(order, pos);
+	//else
 	if(!len)
-	/*{
-		order[0].move = only;
-		len = 1;
-	}
-	else*/
 	{
 		assert(n->child_ct == 0);
-		len = build_order(order, gt, n, depth);
+		len = build_movelist(order, node_get_pos(n));
+		sort_movelist(order, len, gt, n, depth);
+		//len = build_order(order, gt, n, depth);
 		assert(n->child_ct == 0);
 
 		//add_all_new_moves(gt, n, depth);
@@ -807,29 +808,20 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n,
 
 
 		tree_get(gt, n);
-		/*tnode_t *child;
-		if(n->child_ct >= i+1)
+
+		int move = order[i].move;
+		assert(move != -1);
+		if(move == -1)
+			continue;
+		assert(0 <= move && move < solver->possible_moves);
+		tnode_t *child = node_make_new_move(gt, n, move);
+		//assert(child);	//if false, the move wasn't legal
+		if(!child)
 		{
-			child = n->children[i];
-			assert(n->children[i]->move_index == order[i].move);
-		}*/
-		//else
-		//{
-			int move = order[i].move;
-			assert(move != -1);
-			if(move == -1)
-				continue;
-			assert(0 <= move && move < solver->possible_moves);
-			tnode_t *child = node_make_new_move(gt, n, move);
-			//assert(child);	//if false, the move wasn't legal
-			if(!child)
-			{
-				assert(len != 1);
-				//assert(i);
-				continue;
-			}
-		//}
-		//
+			assert(len != 1);
+			//assert(i);
+			continue;
+		}
 
 		/*if(is_pv && i)
 		{
@@ -1017,9 +1009,33 @@ int order_compare(const void *aa, const void *bb)
 	return (a->score > b->score)? -1 : 1;
 }
 
-int build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth)
+int build_movelist(sorter_t *order, void *pos)
 {
 	int ct = 0;
+	//void *pos = node_get_pos(n);
+
+	for(int i=0; i<solver->possible_moves; i++)
+	{
+		//get move, going in default order
+		//int move = solver->default_order?
+		 //	solver->default_order[i] : i;
+		if(!solver->is_legal(pos, i))
+			continue;
+		order[ct].move = i;
+		order[ct].score = 0;
+
+		ct++;
+	}
+
+	//must have found at least 1 legal move
+	assert(ct);
+	return ct;
+}
+
+//int build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth)
+void sort_movelist(sorter_t *order, int len, tree_t *gt, tnode_t *n, int depth)
+{
+	//int ct = 0;
 	void *pos = node_get_pos(n);
 	//(void)pos;
 	trans_value_t *v = tt_get(n, depth);
@@ -1071,15 +1087,18 @@ int build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth)
 
 	//printf("killers are %d and %d\n", killers_ply[0], killers_ply[1]);
 
-	for(int i=0; i<solver->possible_moves; i++)
+	for(int i=0; i<len; i++)
 	{
 		//get move, going in default order
-		int move = solver->default_order?
+		/*int move = solver->default_order?
 		 	solver->default_order[i] : i;
 		if(!solver->is_legal(pos, move))
 			continue;
 		order[ct].move = move;
-		order[ct].score = 0;
+		order[ct].score = 0;*/
+		int move = order[i].move;
+		assert(move < solver->possible_moves);
+		assert(order[i].score == 0);
 
 
 		/*tnode_t *after = node_make_new_move(gt, n, move);
@@ -1094,36 +1113,37 @@ int build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth)
 
 		//heuristic bonuses
 		if(move == best)	//hash move
-			order[ct].score += 10000;
+			order[i].score += 10000;
 		#ifdef USE_HISTORY_HEURISTIC
 		else if(move == history_best)
-			order[ct].score += 700;
+			order[i].score += 700;
 		//else if(move == history_second)
 		//	order[ct].score += 600;
 		#endif	//USE_HISTORY_HEURISTIC
 		else if(move_is_forcing(pos, move))
-			order[ct].score += 800;
+			order[i].score += 800;
 		//else if(move == killers_ply[0]
 		//	|| move == killers_ply[1])
 		//	order[ct].score = 400;
 
 		//add default move ordering
-		order[ct].score -= (float)i/100;
+		//order[ct].score -= (float)i/100;
+		order[i].score += solver->default_order[move];
 
-		ct++;
+		//ct++;
 	}
 
 	//must have found at least 1 legal move
-	assert(ct);
+	//assert(ct);
 
 	//sort
-	qsort(order, ct,
-		sizeof(*order), order_compare);
+	qsort(order, len, sizeof(*order), order_compare);
 
 	//tree_get(gt, n);
 	//tree_delete_all_but_first(gt, 0);
 
-	return ct;
+	//return ct;
+	return;
 
 
 	int set = 0;

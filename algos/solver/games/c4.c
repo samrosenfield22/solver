@@ -1032,7 +1032,7 @@ solver_t C4_SOLVER =
 	.transtbl_buckets_ct = (1<<28),
 	.iddfs_increment = 4,
 	.aspiration_default_width = 2,
-	.default_order = (uint8_t[]){3, 2, 4, 1, 5, 0, 6},
+	.default_order = (uint8_t[]){2, 4, 6, 7, 5, 3, 1},
 	.flip_depth = 16,
 
 	.gameover = c4_gameover,

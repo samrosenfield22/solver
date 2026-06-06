@@ -9,8 +9,6 @@ replace explicit tree with recursion (sigh)
 why doesn't history heuristic work? :(
 tag tt entries (exact, upper/lower bound) so we can use aspiration
 
-
-
 general-new:
 make_move_list() instead of checking every pos
 NNUE?????
@@ -19,6 +17,8 @@ annotation (!, ?, ?!, !!)
 ranger-style file selector
 
 c4:
+endgame estimate
+make a general m,n,k solver
 
 quoridor:
 D* pathfinding
