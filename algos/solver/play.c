@@ -250,9 +250,9 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 			}
 
 			//int hmove;
-			if(solver->human_to_iter)
-				move = solver->human_to_iter(buf);
-			else
+			//if(solver->human_to_iter)
+			//	move = solver->human_to_iter(buf);
+			//else
 				move = strtol(buf, NULL, 10);
 			if(move < 0 || move >= solver->possible_moves
 				|| !solver->is_legal(pos, move))

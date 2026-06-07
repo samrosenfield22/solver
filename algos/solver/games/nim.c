@@ -222,6 +222,7 @@ solver_t NIM_SOLVER =
 	.transtbl_buckets_ct = 5000,
 	//.default_order = (uint8_t[]){7, 14, 1, 2, 6, 13, 0, 5, 12, 4, 11, 3, 10, 9, 8},
 	.default_order = (uint8_t[]){9, 12, 11, 3, 6, 8, 10, 14, 0, 1, 3, 4, 7, 9, 13},
+	.aspiration_default_width = 1,
 
 	.gameover = nim_gameover,
 	.estimate = NULL,

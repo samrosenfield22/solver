@@ -13,15 +13,13 @@
 #define RETURN_FIRST_WIN_FOUND
 //#define USE_HISTORY_HEURISTIC
 #define ASPIRATION_WINDOW
-#define PRINCIPAL_VAR_SEARCH
+//#define PRINCIPAL_VAR_SEARCH
 
-#define FORCE_SEARCH_DEPTH	(40)
+#define FORCE_SEARCH_DEPTH	(4)
 
 #define VARIATION_LENGTH	(4)
 #define PRINCIPAL_VAR_CT	(7)
 #define INNER_VAR_CT		(1)
-
-
 
 
 typedef enum

@@ -213,6 +213,7 @@ solver_t TTT_SOLVER =
 	.possible_moves = 9,
 	.transtbl_buckets_ct = 10000,
 	.default_order = (uint8_t[]){1, 0, 1, 0, 2, 1, 0, 1, 0},
+	.aspiration_default_width = 1,
 
 	.gameover = ttt_gameover,
 	.estimate = NULL,

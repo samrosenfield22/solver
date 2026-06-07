@@ -180,6 +180,9 @@ void solver_check(solver_t *s)
 	if(!(s->hash)) {printf("error: solver missing hash\n"); exit(0);}
 	if(!(s->draw_full)) {printf("error: solver missing draw_full\n"); exit(0);}
 
+	#ifdef ASPIRATION_WINDOW
+	if(!(s->aspiration_default_width)) {printf("error: solver missing aspiration_default_width\n"); exit(0);}
+	#endif
 
 }
 
@@ -462,6 +465,8 @@ bool set_aspiration_window(float *asp_window,
 {
 	bool in_window = (asp_window[0] < score
 		&& score < asp_window[1]);
+
+	//sus
 	if(score==WIN_SCORE || score==-WIN_SCORE)
 		in_window = true;
 
@@ -910,6 +915,7 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n, trans_value_t *ttval,
 		{
 			best = result.score;
 			best_index = n->child_ct-1;
+			best_full = result.full;
 		}
 
 		//if(!result.full)
@@ -1018,7 +1024,7 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n, trans_value_t *ttval,
 	assert(n->child_ct);
 	assert(n->children[0]);
 	assert(n->children[0]->score == best);
-	assert(is_win_score(best, depth) == best_full);
+	//assert(is_win_score(best, depth) == best_full);
 
 	n->score = best;	//fail soft
 

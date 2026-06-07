@@ -20,7 +20,7 @@ need aux structure for pathfinding (only changes when gates placed)
 #include "../../../utils.h"
 
 #define TOKEN_MOVES	(4)
-#define HORIZ_PLACEMENTS	(72 + TOKEN_MOVES)
+#define HORIZ_PLACEMENTS	(64 + TOKEN_MOVES)
 
 #define QUOR_Z_LEN	(2*81+2*81)
 
@@ -146,11 +146,13 @@ endstate_t quor_gameover(void *pos)
 __int128 index_get_gate_bit(int index)
 {
 	int gate_index = index - TOKEN_MOVES;
-	if(gate_index >= 72)
-		gate_index -= 72;
-	assert(gate_index < 72);
+	if(gate_index >= 64)
+		gate_index -= 64;
+	assert(gate_index < 64);
+	int row = gate_index / 8;
 	__int128 gate_bit = 1;
-	gate_bit <<= gate_index;
+	gate_bit <<= (gate_index + row);
+
 	return gate_bit;
 }
 
@@ -275,8 +277,8 @@ bool quor_is_legal(void *pos, int index)
 			return false;
 
 		//no gates hanging off the edge
-		if(((index-4) % 9)==8)
-			return false;
+		//if(((index-4) % 9)==8)
+		//	return false;
 
 
 		__int128 gate_bit = index_get_gate_bit(index);
@@ -393,8 +395,8 @@ void quor_make_move(void *pos, int index, uint32_t *hash)
 		}
 
 		int gnindex = index - TOKEN_MOVES;
-		if(gnindex >= 72)
-			gnindex -= 72;
+		if(gnindex >= 64)
+			gnindex -= 64;
 		int next_to_gate[4] = {gnindex, gnindex+1, gnindex+9, gnindex+10};
 		//for(int gn=0; gn<4; gn++)
 		//	p->map[next_to_gate[gn]].status = CELL_BAD;
@@ -843,6 +845,11 @@ int quor_human_to_iter(char *human)
 {
 	if(human[0] == '-' || human[0] == '|')
 	{
+		if(!('a' <= human[1] && human[1] <= 'h'))
+			return -1;
+		if(!('0' <= human[2] && human[2] <= '8'))
+			return -1;
+
 		int iter = (human[1]-'a');
 		iter += (human[2]-'0'-1)*9;
 		if(human[0] == '-')
@@ -901,11 +908,15 @@ solver_t QUOR_SOLVER =
 	.initial_pos = &QUOR_INIT_POS,
 	.pos_size = sizeof(quor_pos_t),
 	.hash_size = (uint8_t*)&QUOR_INIT_POS.p1_map - (uint8_t*)&QUOR_INIT_POS,
-	.possible_moves = 148,
+	.possible_moves = 132,
 	.transtbl_buckets_ct = (1<<28),
 	.iddfs_increment = 2,
 	.aspiration_default_width = 1,
-	//.default_order = (uint8_t[]){3, 2, 4, 1, 5, 0, 6},
+	/*.default_order = (uint8_t[])
+	{
+		3, 2, 4, 1, //token moves
+		, , , , , , ,
+	},*/
 	.default_order = NULL,
 	.flip_depth = 16,
 
