@@ -348,6 +348,7 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 				last = now;
 			}
 		}
+		printf("      ");
 		window_focus(analysis_hdl);
 
 		//conditions for ending the search
@@ -461,6 +462,8 @@ bool set_aspiration_window(float *asp_window,
 {
 	bool in_window = (asp_window[0] < score
 		&& score < asp_window[1]);
+	if(score==WIN_SCORE || score==-WIN_SCORE)
+		in_window = true;
 
 	if(in_window)
 	{
@@ -523,7 +526,8 @@ result_t eval(tree_t *gt, tnode_t *n, int depth,
 	//	return n->score;
 	if(ttval)
 	{
-		assert(ttval->score == n->score);
+		n->score = ttval->score;
+		//assert(ttval->score == n->score);
 		//if(n->score > MATE_LIMIT || n->score < -MATE_LIMIT)
 		if(ttval->full)
 		{
@@ -606,6 +610,11 @@ result_t eval(tree_t *gt, tnode_t *n, int depth,
 
 	//assert(n->child_ct);
 	//int best_move = n->children[0]->move_index;
+	if(is_win_score(result.score, depth))
+	{
+		result.score -= (max_or_min(depth)==MAX_LAYER)? 1: -1;
+		n->score = result.score;
+	}
 	int best_move = n->child_ct? n->children[0]->move_index : -1;
 
 	#ifdef CLEAR_SUB_NODES
@@ -841,7 +850,7 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n, trans_value_t *ttval,
 
 	result_t result;
 	float best = worst_score(depth);
-	bool best_full = true;
+	bool best_full = false;
 	int best_index = 0;
 	bool is_max = (max_or_min(depth)==MAX_LAYER);
 
@@ -879,26 +888,23 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n, trans_value_t *ttval,
 			alpha, beta, child_pv);
 
 
-		#ifdef RETURN_FIRST_WIN_FOUND
+
 		if(is_win_score(result.score, depth))
 		{
-			result.score -= is_max? 1: -1;
-			n->score = result.score;
-			tree_get(gt, n);
+			best_full = true;
+
+			#ifdef RETURN_FIRST_WIN_FOUND
 			best = result.score;
 			best_index = n->child_ct-1;
-			best_full = true;
-			//minimax(gt, depth);
-			//if(n->child_ct-1)
-			//	tree_swap_children(gt, 0, n->child_ct-1);
-			//return result;
 
 			#ifdef USE_HISTORY_HEURISTIC
 			update_history(n, i, order, len, depth, true);
 			#endif
+
 			goto analyze_end;
+			#endif	//RETURN_FIRST_WIN_FOUND
 		}
-		#endif	//RETURN_FIRST_WIN_FOUND
+
 
 		if(is_better(result.score, best, depth))
 		{
@@ -906,8 +912,8 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n, trans_value_t *ttval,
 			best_index = n->child_ct-1;
 		}
 
-		if(!result.full)
-			best_full = false;
+		//if(!result.full)
+		//	best_full = false;
 
 		#ifdef USE_ALPHABETA_PRUNING
 
@@ -923,8 +929,8 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n, trans_value_t *ttval,
 				high_limit, depth);
 			if(fail_high)
 			{
-				printf("------------ rerunning analysis at d=%d\n",
-					depth);
+				//printf("------------ rerunning analysis at d=%d\n",
+				//	depth);
 				//exit(0);
 				/*return analyze_all_children(gt, n, order,
 					len, depth, alpha_init, beta_init,
@@ -1010,11 +1016,12 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n, trans_value_t *ttval,
 
 	//no legal moves??
 	assert(n->child_ct);
-
 	assert(n->children[0]);
-
+	assert(n->children[0]->score == best);
+	assert(is_win_score(best, depth) == best_full);
 
 	n->score = best;	//fail soft
+
 	return (result_t){best, best_full};
 }
 
@@ -1351,8 +1358,8 @@ trans_value_t *tt_get(tnode_t *n, int depth)
 		value = hashmap_key_get_value(trans_tbl, flipped, NULL);
 	}
 
-	if(value)
-		n->score = value->score;
+	//if(value)
+	//	n->score = value->score;
 	return value;
 }
 

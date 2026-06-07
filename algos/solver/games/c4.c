@@ -170,6 +170,15 @@ float c4_estimate(void *pos)
 	float est = estimate_color(x, opp, p->filled, x_wmap, false);
 	est -= estimate_color(opp, x, p->filled, opp_wmap, false);
 
+	//endgame analysis
+	const int C4_ENDGAME_CT = 26;
+	int move_ct = __builtin_popcount(p->filled & ~WHOSEMOVE_BIT);
+	if(move_ct >= C4_ENDGAME_CT)
+	{
+		if(p->x_wmap && !p->opp_wmap)	est += 100;
+		else if(p->opp_wmap && !p->x_wmap)	est -= 100;
+	}
+
 	if(!c4_whosemove(p))
 		est *= -1;
 
@@ -403,13 +412,13 @@ float estimate_color_count_wins(uint64_t x, uint64_t filled,
 	int wins = __builtin_popcount(wmap);
 
 	//parity
-	int nmoves = 0;
+	int nmoves = __builtin_popcount(filled & ~WHOSEMOVE_BIT);
+	/*int nmoves = 0;
 	for(int i=0; i<7; i++)
 	{
 		nmoves += __builtin_popcount(get_col(filled, i));
 		//printf("\t0x%0x\n", get_col(filled, i));
-	}
-	//int nmoves = __builtin_popcount(filled & ~WHOSEMOVE_BIT);
+	}*/
 	bool parity = !(nmoves & 0b1);
 	//printf("%d moves played (%s)\n", nmoves, parity? "even":"odd");
 	//printf("filled: %s\n", print64(filled));
@@ -428,7 +437,7 @@ float estimate_color_count_wins(uint64_t x, uint64_t filled,
 	if(parity_wins)
 	{
 		//assert(0);
-		wins += 20;
+		wins += 50;
 	}
 
 	return wins;
@@ -500,7 +509,9 @@ float estimate_color(uint64_t x, uint64_t opp, uint64_t filled,
 //float estimate_color(uint64_t x, uint64_t filled, bool verbose)
 {
 	float est = 0;
-	est += estimate_color_count_middles(x);
+	//int move_ct = __builtin_popcount(filled & ~WHOSEMOVE_BIT);
+	//if(move_ct < 26)
+		est += estimate_color_count_middles(x);
 	est += 3*estimate_color_count_wins(x, filled, wmap, verbose);
 	//est += 3*(__builtin_popcount(wmap));
 	//est += estimate_color_count_open_threes(x, opp, verbose);
@@ -1066,7 +1077,7 @@ solver_t C4_SOLVER =
 	//.transtbl_buckets_ct = 180000001,
 	.transtbl_buckets_ct = (1<<28),
 	.iddfs_increment = 4,
-	.aspiration_default_width = 2,
+	.aspiration_default_width = 1,
 	.default_order = (uint8_t[]){2, 4, 6, 7, 5, 3, 1},
 	.flip_depth = 16,
 
