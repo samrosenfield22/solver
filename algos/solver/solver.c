@@ -28,9 +28,18 @@ typedef struct
 	bool full;
 } result_t;
 
+typedef struct
+{
+	uint32_t hash;
+	float score;
+	uint8_t move_index;
+	uint8_t move_ct;
+	uint8_t pos[];
+} gdata_t;
+
 //statics
 void tt_create(void);
-int tt_add(tnode_t *n, result_t *result, int depth,
+int tt_add(gdata_t *gd, result_t *result, int depth,
 	int bound, int best_move);
 bool set_aspiration_window(float *asp_window,
 	float *asp_window_size, float *last_score, float score);
@@ -39,14 +48,14 @@ result_t eval(tree_t *gt, tnode_t *n, int depth,
 //int build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth);
 int build_movelist(sorter_t *order, void *pos);
 void sort_movelist(sorter_t *order, int len,
-	tree_t *gt, tnode_t *n, int depth);
+	gdata_t *gd, int depth);
 bool move_is_forcing(void *pos, int move);
 
 result_t analyze_all_children(tree_t *gt, tnode_t *n, trans_value_t *ttval,
 	sorter_t *order, int len, int depth, float alpha, float beta,
 	bool is_pv);
 
-trans_value_t *tt_get(tnode_t *n, int depth);
+trans_value_t *tt_get(gdata_t *gd, int depth);
 
 bool alphabeta_cutoff(float cscore, float prune,
 	float *best_so_far, int depth);
@@ -66,6 +75,7 @@ bool max_or_min(int depth);
 tnode_t *node_make_new_move(tree_t *gt, tnode_t *n, int move);
 void *node_get_pos(tnode_t *n);
 uint32_t *node_get_hash(tnode_t *n);
+uint32_t *gdata_get_hash(gdata_t *gd);
 
 solver_t *solver;
 hashmap_t *trans_tbl = NULL;
@@ -73,14 +83,7 @@ bool who_goes_first = true;
 uint32_t position_ct = 0, max_node_ct = 0;
 int iddfs_depth;
 
-typedef struct
-{
-	uint32_t hash;
-	float score;
-	uint8_t move_index;
-	uint8_t move_ct;
-	uint8_t pos[];
-} gdata_t;
+
 size_t gdata_size, gdata_hash_size;
 
 int *HISTORY_VALS;
@@ -238,7 +241,7 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 	if(solver->print_pos)
 	{
 		printf("solving game position: ");
-		solver->print_pos(node_get_pos(gt->head));
+		solver->print_pos(th->pos);
 		printf("\n");
 	}
 	else
@@ -554,7 +557,7 @@ result_t eval(tree_t *gt, tnode_t *n, int depth,
 
 	#ifdef USE_TRANSPOSITION_TABLE
 	//check if position was already analyzed
-	trans_value_t *ttval = tt_get(n, depth);
+	trans_value_t *ttval = tt_get(n->data, depth);
 	//if(val && (val->iddfs == iddfs))
 	//	return n->score;
 	if(ttval)
@@ -626,7 +629,7 @@ result_t eval(tree_t *gt, tnode_t *n, int depth,
 		else
 			len = build_movelist(movelist, pos);
 
-		sort_movelist(movelist, len, gt, n, depth);
+		sort_movelist(movelist, len, n->data, depth);
 		//len = build_order(order, gt, n, depth);
 		//assert(n->child_ct == 0);
 
@@ -662,7 +665,7 @@ result_t eval(tree_t *gt, tnode_t *n, int depth,
 		bound = BOUND_UPPER;
 	else
 		bound = BOUND_LOWER;
-	tt_add(n, &result, depth, bound, best_move);
+	tt_add(n->data, &result, depth, bound, best_move);
 	#endif
 
 	assert(result.score == n->score);
@@ -998,12 +1001,11 @@ int build_movelist(sorter_t *order, void *pos)
 }
 
 
-void sort_movelist(sorter_t *order, int len, tree_t *gt, tnode_t *n, int depth)
+void sort_movelist(sorter_t *order, int len, gdata_t *gd, int depth)
 {
-	//int ct = 0;
-	void *pos = node_get_pos(n);
-	//(void)pos;
-	trans_value_t *v = tt_get(n, depth);
+	void *pos = gd->pos;
+	
+	trans_value_t *v = tt_get(gd, depth);
 	int best = v? v->best_move : -1;
 
 	uint8_t *killers_ply = killers[depth];
@@ -1172,10 +1174,12 @@ void tt_create(void)
 	*/
 }
 
-int tt_add(tnode_t *n, result_t *result, int depth, int bound, int best_move)
+int tt_add(gdata_t *gd, result_t *result, int depth, int bound, int best_move)
 {
-	void *pos = node_get_pos(n);
-	uint32_t *hash = node_get_hash(n);
+	//void *pos = node_get_pos(n);
+	//uint32_t *hash = node_get_hash(n);
+	void *pos = gd->pos;
+	uint32_t *hash = gdata_get_hash(gd);
 
 	trans_value_t value =
 	{
@@ -1192,10 +1196,10 @@ int tt_add(tnode_t *n, result_t *result, int depth, int bound, int best_move)
 	return hashmap_add_kvpair(trans_tbl, pos, &value, hash);
 }
 
-trans_value_t *tt_get(tnode_t *n, int depth)
+trans_value_t *tt_get(gdata_t *gd, int depth)
 {
-	void *pos = node_get_pos(n);
-	uint32_t *hash = node_get_hash(n);
+	void *pos = gd->pos;
+	uint32_t *hash = gdata_get_hash(gd);
 	trans_value_t *value = hashmap_key_get_value(trans_tbl, pos, hash);
 
 	if(!value && solver->flip && depth<=solver->flip_depth)
@@ -1383,6 +1387,14 @@ uint32_t *node_get_hash(tnode_t *n)
 		gdata_t *d = n->data;
 		return &(d->hash);
 	}
+	else
+		return NULL;
+}
+
+uint32_t *gdata_get_hash(gdata_t *gd)
+{
+	if(solver->uses_zobrist)
+		return &(gd->hash);
 	else
 		return NULL;
 }
