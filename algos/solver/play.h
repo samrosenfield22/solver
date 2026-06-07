@@ -5,6 +5,8 @@
 
 #include "solver.h"
 
+//#define FORCE_MOVE_ITERATION
+
 enum
 {
 	HUMAN_PLAYER = true,

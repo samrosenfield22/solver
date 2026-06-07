@@ -807,7 +807,7 @@ int c4_only_moves(sorter_t *sorter, void *pos)
 	//get_win_maps(p);
 
 	uint64_t move_map = 0;
-	bool only_middle = true;
+	//bool only_middle = true;
 	for(int i=0; i<7; i++)
 	{
 		//move_map |= move_bit(p, i);

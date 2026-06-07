@@ -249,10 +249,13 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 				exit(0);
 			}
 
-			//int hmove;
-			//if(solver->human_to_iter)
-			//	move = solver->human_to_iter(buf);
-			//else
+
+
+			#ifndef FORCE_MOVE_ITERATION
+			if(solver->human_to_iter)
+				move = solver->human_to_iter(buf);
+			else
+			#endif
 				move = strtol(buf, NULL, 10);
 			if(move < 0 || move >= solver->possible_moves
 				|| !solver->is_legal(pos, move))

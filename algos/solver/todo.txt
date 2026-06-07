@@ -17,6 +17,9 @@ general-new:
 * ranger-style file selector
 * native engine support for bitboards (no move indexes??)
 * window needs to accept color text
+* null move
+* multithread (lazy SMP approach - search root node w different
+	move orderings??)
 
 c4:
 * endgame estimate

@@ -22,7 +22,8 @@ need aux structure for pathfinding (only changes when gates placed)
 #define TOKEN_MOVES	(4)
 #define HORIZ_PLACEMENTS	(64 + TOKEN_MOVES)
 
-#define QUOR_Z_LEN	(2*81+2*81)
+//total number of placements (2*81 tokens, 2*64 gates)
+#define QUOR_Z_LEN	(2*81+2*64)
 
 quor_pos_t QUOR_INIT_POS =
 {
@@ -253,6 +254,7 @@ bool quor_is_legal(void *pos, int index)
 				break;
 		}
 
+		//jumps
 		if(me->x+dist_x == opp->x && me->y+dist_y == opp->y)
 		{
 			uint8_t saved_x=me->x, saved_y=me->y;
@@ -269,16 +271,11 @@ bool quor_is_legal(void *pos, int index)
 
 			return jump_legal;
 		}
-		//	return false;	//for now (should attempt hop)
 	}
 	else	//placing a gate
 	{
 		if(me->gate_ct == 0)
 			return false;
-
-		//no gates hanging off the edge
-		//if(((index-4) % 9)==8)
-		//	return false;
 
 
 		__int128 gate_bit = index_get_gate_bit(index);
@@ -397,6 +394,8 @@ void quor_make_move(void *pos, int index, uint32_t *hash)
 		int gnindex = index - TOKEN_MOVES;
 		if(gnindex >= 64)
 			gnindex -= 64;
+		int row = gnindex / 8;
+		gnindex += row;
 		int next_to_gate[4] = {gnindex, gnindex+1, gnindex+9, gnindex+10};
 		//for(int gn=0; gn<4; gn++)
 		//	p->map[next_to_gate[gn]].status = CELL_BAD;
@@ -486,7 +485,7 @@ uint32_t quor_hash(void *key, size_t size)
 		else if(p->vert & b)
 		{
 			//printf("vert @ index %d\n", i + 2*81+72);
-			zobrist_place(&h, i + 2*81+72);
+			zobrist_place(&h, i + 2*81+64);
 		}
 
 		i++;
@@ -597,14 +596,14 @@ int quor_make_movelist(sorter_t *sorter, void *pos)
 			gates = p->horiz | p->gates;
 			col = 0;
 		}
-		else if(i == TOKEN_MOVES + 72)
+		else if(i == TOKEN_MOVES + 64)
 		{
 			gates = p->vert | p->gates;
 			b = 1;
 			col = 0;
 		}
 
-		if(!(b & gates) && col != 8)
+		if(!(b & gates))
 		{
 			/*if(!quor_is_legal(p, i))
 			{
@@ -619,8 +618,11 @@ int quor_make_movelist(sorter_t *sorter, void *pos)
 
 		b <<= 1;
 		col++;
-		if(col == 9)
+		if(col == 8)
+		{
 			col = 0;
+			b<<=1;
+		}
 	}
 
 	return ct;
@@ -851,7 +853,7 @@ int quor_human_to_iter(char *human)
 			return -1;
 
 		int iter = (human[1]-'a');
-		iter += (human[2]-'0'-1)*9;
+		iter += (human[2]-'0'-1)*8;
 		if(human[0] == '-')
 			iter += 4;
 		else
@@ -887,12 +889,12 @@ char *quor_iter_to_human(int move)
 	else
 	{
 		int gate_index = move - TOKEN_MOVES;
-		if(gate_index > 72)
-			gate_index -= 72;
+		if(gate_index > 64)
+			gate_index -= 64;
 		static char gmove[4];
 		gmove[0] = (move < HORIZ_PLACEMENTS)? '-':'|';
-		gmove[1] = (gate_index % 9) + 'a';
-		gmove[2] = (gate_index / 9) + '1';
+		gmove[1] = (gate_index % 8) + 'a';
+		gmove[2] = (gate_index / 8) + '1';
 		gmove[3] = '\0';
 		return gmove;
 	}
@@ -924,7 +926,7 @@ solver_t QUOR_SOLVER =
 	.whosemove = quor_whosemove,
 	.is_legal = quor_is_legal,
 	.make_move = quor_make_move,
-	.make_movelist = quor_make_movelist,
+	//.make_movelist = quor_make_movelist,
 	//.only_moves = quor_only_moves,
 	.draw_full = quor_draw_full,
 
