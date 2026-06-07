@@ -41,10 +41,7 @@ int build_movelist(sorter_t *order, void *pos);
 void sort_movelist(sorter_t *order, int len,
 	tree_t *gt, tnode_t *n, int depth);
 bool move_is_forcing(void *pos, int move);
-void add_all_new_moves(tree_t *gt, tnode_t *n, int depth);
-void order_children(tree_t *gt, tnode_t *n, int depth);
-float sort_score(tree_t *gt, tnode_t *parent, tnode_t *n,
-	int best, int depth, int index);
+
 result_t analyze_all_children(tree_t *gt, tnode_t *n, trans_value_t *ttval,
 	sorter_t *order, int len, int depth, float alpha, float beta,
 	bool is_pv);
@@ -561,8 +558,6 @@ result_t eval(tree_t *gt, tnode_t *n, int depth,
 	if(ttval)
 	{
 		n->score = ttval->score;
-		//assert(ttval->score == n->score);
-		//if(n->score > MATE_LIMIT || n->score < -MATE_LIMIT)
 		if(ttval->full)
 		{
 			assert(n->score > MATE_LIMIT
@@ -571,7 +566,9 @@ result_t eval(tree_t *gt, tnode_t *n, int depth,
 			return (result_t){n->score, true};
 		}
 		//if(ttval->iddfs >= iddfs_depth && !asp_window_rerun)
-		if(ttval->iddfs >= iddfs_depth && ttval->bound==BOUND_EXACT)
+		//if(ttval->iddfs >= iddfs_depth && ttval->bound==BOUND_EXACT)
+		if(ttval->search_depth >= (iddfs_depth - depth)
+			&& ttval->bound==BOUND_EXACT)
 		//if(val->iddfs >= iddfs_depth
 		//	&& !(asp_window_rerun && !val->exact))
 			return (result_t){n->score, false};
@@ -631,9 +628,7 @@ result_t eval(tree_t *gt, tnode_t *n, int depth,
 		//len = build_order(order, gt, n, depth);
 		//assert(n->child_ct == 0);
 
-		//add_all_new_moves(gt, n, depth);
-		//order_children(gt, n, depth);
-		//int *order;
+
 
 		//len = solver->possible_moves;
 	}
@@ -673,128 +668,6 @@ result_t eval(tree_t *gt, tnode_t *n, int depth,
 	return result;
 }
 
-void add_all_new_moves(tree_t *gt, tnode_t *n, int depth)
-{
-	/*
-	for each child that's already there,
-	make sure tt score == child score
-	*/
-
-	/*if(depth+1 != iddfs)
-	for(int i=0; i<n->child_ct; i++)
-	{
-		checked++;
-		tnode_t *child = n->children[i];
-		trans_value_t *val = tt_get(child);
-		if(val)
-		{
-			assert(val->score == child->score);
-			if(!(val->depth == depth+1))
-				printf("val->depth=%d, depth+1=%d\n", val->depth, depth+1);
-			assert(val->depth == depth+1);
-			//printf("passed!\n");
-			passed++;
-		}
-		else
-			if(depth < 5)
-				printf("no tt record for d=%d\n", depth+1);
-	}*/
-
-	bool already_made[solver->possible_moves];
-	for(int i=0; i<solver->possible_moves; i++)
-		already_made[i] = false;
-	for(int i=0; i<n->child_ct; i++)
-		already_made[n->children[i]->move_index] = true;
-
-	for(int i=0; i<solver->possible_moves; i++)
-	{
-		int move = solver->default_order?
-			solver->default_order[i] : i;
-
-		//check if move already has a node
-		if(already_made[move])
-			continue;
-		already_made[move] = true;
-
-		tree_get(gt, n);	//do i need?
-		node_make_new_move(gt, n, move);
-	}
-
-	assert(n->child_ct <= solver->possible_moves);
-
-}
-
-void order_children(tree_t *gt, tnode_t *n, int depth)
-{
-	/*printf("before sorting @ d=%d:\n", depth);
-	for(int i=0; i<n->child_ct; i++)
-		printf("%.2f (m%d), ", n->children[i]->score, n->children[i]->move_index);
-	printf("\n");*/
-
-	trans_value_t *val = tt_get(n, depth);
-	int best = val? val->best_move : -1;
-
-	//assign sort scores
-	tree_get(gt, n);
-	for(int i=0; i<n->child_ct; i++)
-	{
-		n->children[i]->score = sort_score(gt, n, n->children[i],
-			best, depth, i);
-	}
-
-	tree_get(gt, n);
-	//bool order = max_or_min(depth);
-	tree_attach_compare_fn(gt, compare_by_score_ascending);
-	//
-	//sort the first n children (those with transtab values)
-	//qsort(n->children, stored, sizeof(void*), gt->compare_fp);
-
-	tree_sort_children(gt);
-
-	//clear sort scores
-	for(int i=0; i<n->child_ct; i++)
-		n->children[i]->score = 0;
-
-	//for(int i=0; i<n->child_ct; i++)
-	//	printf("%d, ", n->children[i]->move_index);
-	//printf("\n");
-}
-
-float sort_score(tree_t *gt, tnode_t *parent, tnode_t *n,
-	int best, int depth, int index)
-{
-	float score;
-
-
-	//int end = solver->gameover(n);
-	//int win = max_or_min(depth)? END_P1_WON : END_P2_WON;
-
-	/*if(end == win)
-		score = 1000;
-	else *//*if(n->move_index == best)
-		score = 999;
-	else*/
-	{
-		score = solver->estimate_sort(node_get_pos(n), n->move_index);
-		/*trans_value_t *val = tt_get(n);
-		if(val)
-		{
-			score = val->score;
-			if(max_or_min(depth)==MIN_LAYER)
-				score *= -1;
-		}
-		else
-			score = solver->possible_moves - index;*/
-
-		//tiebreak
-		score -= (float)index/20;
-		//float defaults = solver->possible_moves - index;
-		//score += defaults/20;
-	}
-
-	return score;
-}
-
 /*void history_bonus(void *pos, int move, int depth)
 {
 	int sdq = (iddfs_depth - depth) * (iddfs_depth - depth);
@@ -805,10 +678,10 @@ float sort_score(tree_t *gt, tnode_t *parent, tnode_t *n,
 		printf("incrementing 3cent by %d (d=%d)\n", sdq, depth);
 }*/
 
-void update_history(tnode_t *n, int index,
+void update_history(void *pos, int index,
 	sorter_t *order, int len, int depth, bool was_cutoff)
 {
-	void *pos = node_get_pos(n);
+	//void *pos = node_get_pos(n);
 	//int move = order[index].move;
 	int sdq = (iddfs_depth - depth) * (iddfs_depth - depth);
 	//sdq *= sdq;
@@ -865,7 +738,7 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n, trans_value_t *ttval,
 {
 	//assert(n->child_ct == 0);
 
-	if(ttval && ttval->iddfs >= iddfs_depth)
+	if(ttval && ttval->search_depth >= (iddfs_depth - depth))
 	{
 		if(ttval->bound == BOUND_LOWER)
 			alpha = max(alpha, ttval->score);
@@ -933,7 +806,7 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n, trans_value_t *ttval,
 			best_index = n->child_ct-1;
 
 			#ifdef USE_HISTORY_HEURISTIC
-			update_history(n, i, order, len, depth, true);
+			update_history(pos, i, order, len, depth, true);
 			#endif
 
 			goto analyze_end;
@@ -989,7 +862,7 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n, trans_value_t *ttval,
 		{
 			//update history
 			#ifdef USE_HISTORY_HEURISTIC
-			update_history(n, i, order, len, depth, true);
+			update_history(pos, i, order, len, depth, true);
 			#endif
 
 			//update killers
@@ -1123,7 +996,7 @@ int build_movelist(sorter_t *order, void *pos)
 	return ct;
 }
 
-//int build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth)
+
 void sort_movelist(sorter_t *order, int len, tree_t *gt, tnode_t *n, int depth)
 {
 	//int ct = 0;
@@ -1372,8 +1245,9 @@ int tt_add(tnode_t *n, result_t *result, int depth, int bound, int best_move)
 		.score = result->score,
 		.full = result->full,
 		.bound = bound,
-		.iddfs = iddfs_depth,
-		.depth = depth,
+		//.iddfs = iddfs_depth,
+		//.depth = depth,
+		.search_depth = iddfs_depth - depth,
 		.best_move = best_move,
 	};
 

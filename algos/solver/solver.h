@@ -13,10 +13,10 @@
 #define RETURN_FIRST_WIN_FOUND
 //#define USE_HISTORY_HEURISTIC
 #define ASPIRATION_WINDOW
-//#define PRINCIPAL_VAR_SEARCH
+#define PRINCIPAL_VAR_SEARCH
 //#define USE_MULTICORE
 
-//#define FORCE_SEARCH_DEPTH	(4)
+//#define FORCE_SEARCH_DEPTH	(40)
 
 #define VARIATION_LENGTH	(4)
 #define PRINCIPAL_VAR_CT	(7)
@@ -46,12 +46,14 @@ enum
 typedef struct
 {
 	float score;
-	uint8_t best;
-	uint8_t iddfs;
-	uint8_t depth;
+	//uint8_t best;
+	//uint8_t iddfs;
+	//uint8_t depth;
+	uint8_t search_depth;
 	bool full;
 	int bound;
 	int8_t best_move;
+	//age??
 } trans_value_t;
 
 typedef struct

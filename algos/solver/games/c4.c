@@ -1042,7 +1042,7 @@ bool c4_replace_transpose(void *k_old, void *v_old,
 {
 	return true;
 
-	trans_value_t *val_old = v_old;
+	/*trans_value_t *val_old = v_old;
 	trans_value_t *val_new = v_new;
 
 	if((val_old->score >= MATE_LIMIT
@@ -1062,7 +1062,7 @@ bool c4_replace_transpose(void *k_old, void *v_old,
 		return false;
 	return true;
 
-
+	*/
 }
 
 solver_t C4_SOLVER =
