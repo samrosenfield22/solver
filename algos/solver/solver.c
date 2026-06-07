@@ -11,6 +11,8 @@
 #include <string.h>
 #include <assert.h>
 
+#include <omp.h>
+
 enum
 {
 	MAX_LAYER = true,
@@ -263,6 +265,16 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 	float asp_window[] = {-WIN_SCORE, WIN_SCORE};
 	float last_iddfs_score = 0;
 
+	int cores = 1;
+	solver_t mod_solvers[cores];
+	for(int i=0; i<cores; i++)
+	{
+		memcpy(&mod_solvers[i], game_solver, sizeof(solver_t));
+		mod_solvers[i].default_order = mem_malloc(solver->possible_moves);
+		for(int m=0; m<solver->possible_moves; m++)
+			mod_solvers[i].default_order[m] = rand() / 2000;
+	}
+
 	//iddfs
 	int iddfs;
 	int incr = solver->iddfs_increment;
@@ -289,10 +301,27 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 
 			printf("\niddfs=%d in window [%.1f,%.1f] ",
 				iddfs, asp_window[0], asp_window[1]);
+
+			#ifdef USE_MULTICORE
+			#pragma omp parallel for private(solver)
+			for(int mp=0; mp<2; mp++)
+			{
+				int tid = omp_get_thread_num();
+				//solver = mod_solvers[tid];
+				solver = (tid==0)? game_solver : &mod_solvers[0];
+				printf("\nsolver in thread %d w default order:", tid);
+				for(int m=0; m<solver->possible_moves; m++)
+					printf("%d, ", solver->default_order[m]);
+				result = eval(gt, gt->head, 0,
+					asp_window[0], asp_window[1],
+					true);
+			}
+			//exit(0);
+			#else
 			result = eval(gt, gt->head, 0,
 				asp_window[0], asp_window[1],
 				true);
-
+			#endif
 
 			bool in_window = true;
 			#ifdef ASPIRATION_WINDOW
@@ -591,7 +620,7 @@ result_t eval(tree_t *gt, tnode_t *n, int depth,
 
 	if(!len)
 	{
-		assert(n->child_ct == 0);
+		//assert(n->child_ct == 0);
 
 		if(solver->make_movelist)
 			len = solver->make_movelist(movelist, pos);
@@ -600,7 +629,7 @@ result_t eval(tree_t *gt, tnode_t *n, int depth,
 
 		sort_movelist(movelist, len, gt, n, depth);
 		//len = build_order(order, gt, n, depth);
-		assert(n->child_ct == 0);
+		//assert(n->child_ct == 0);
 
 		//add_all_new_moves(gt, n, depth);
 		//order_children(gt, n, depth);
@@ -859,7 +888,8 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n, trans_value_t *ttval,
 	int best_index = 0;
 	bool is_max = (max_or_min(depth)==MAX_LAYER);
 
-	//for(int i=0; i<n->child_ct; i++)
+
+
 	for(int i=0; i<len; i++)
 	{
 		tree_get(gt, n);
@@ -1522,7 +1552,7 @@ tnode_t *node_make_new_move(tree_t *gt, tnode_t *n, int move)
 		solver->make_move(node_get_pos(child), move, hp);
 		//solver->make_move_temp(node_get_pos(child), node_get_pos(n), move, hp);
 		child->move_index = move;
-		assert(child->score == 0);
+		//assert(child->score == 0);
 
 
 	}
