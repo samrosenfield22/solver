@@ -46,7 +46,6 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n, trans_value_t *ttval,
 	sorter_t *order, int len, int depth, float alpha, float beta,
 	bool is_pv);
 
-bool tt_check(tnode_t *n);
 trans_value_t *tt_get(tnode_t *n, int depth);
 
 bool alphabeta_cutoff(float cscore, float prune,
@@ -77,6 +76,9 @@ int iddfs_depth;
 typedef struct
 {
 	uint32_t hash;
+	float score;
+	uint8_t move_index;
+	uint8_t move_ct;
 	uint8_t pos[];
 } gdata_t;
 size_t gdata_size, gdata_hash_size;
@@ -681,7 +683,6 @@ result_t eval(tree_t *gt, tnode_t *n, int depth,
 void update_history(void *pos, int index,
 	sorter_t *order, int len, int depth, bool was_cutoff)
 {
-	//void *pos = node_get_pos(n);
 	//int move = order[index].move;
 	int sdq = (iddfs_depth - depth) * (iddfs_depth - depth);
 	//sdq *= sdq;
@@ -1110,70 +1111,6 @@ bool move_is_forcing(void *pos, int move)
 	int len = solver->only_moves(NULL, after);
 	return (len > 0);
 }
-
-/*tnode_t *create_next_order_child(tree_t *gt, tnode_t *n, int index)
-{
-	int m = get_next_order_move(n, index);
-
-
-	tree_get(gt, n);	//do i need?
-
-	//check if move already has a node
-	tnode_t *already_made = NULL;
-	for(int j=0; j<n->child_ct; j++)
-	{
-		if(n->children[j]->move_index == i)
-		{
-			already_made = n->children[j];
-			break;
-		}
-	}
-	//if(already_made)
-	//	continue;
-
-		if(solver->is_legal(n->data, i))
-		{
-			tree_add_copies(gt, 1);
-			tnode_t *child = n->children[n->child_ct-1];
-			solver->make_move(child->data, i);
-			child->move_index = i;
-		}
-	}
-}
-
-int get_next_order_move(tnode_t *n, int index)
-{
-	int i = -1;
-	int best_move = -1;
-	trans_value_t *val = tt_get(n);
-	if(val)
-	{
-		best_move = val->best_move;
-	}
-
-	if(index == 0 && best_move != -1)
-		return best_move;
-	else
-		if(solver->default_order)
-		{
-			for(int i=0; i<solver->possible_moves; i++)
-			{
-				//if(solver->default_order[i] == best_move)
-			}
-			if(solver->default_order[index] == best_move)
-				return solver->default_order[index+1];
-			else
-				return solver->default_order[index];
-		}
-		else
-		{
-			if(index == best_move)
-				return index+1;
-			else
-				return index;
-		}
-
-}*/
 
 void tt_create(void)
 {
