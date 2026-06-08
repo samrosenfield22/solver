@@ -3,7 +3,7 @@ GAME SOLVER -- TO DO
 
 
 general-fix:
-* replace explicit tree with recursion (sigh)
+* replace explicit tree with recursion (sigh) - DONE!!
 * why doesn't history heuristic work? :(
 * tag tt entries (exact, upper/lower bound) so we can
 use aspiration - DONE

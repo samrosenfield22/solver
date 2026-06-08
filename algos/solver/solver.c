@@ -759,11 +759,9 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 	(void)beta_init;
 
 	result_t result;
-	result_t best_result = {.score=worst_score(depth), .best_move = -1};
-	//float best = worst_score(depth);
-	//bool best_full = false;
-	//int best_move = -1;
-	//int best_index = 0;
+	result_t best_result = {.score=worst_score(depth), .full=true, .best_move = order[0].move};
+
+
 	bool is_max = (max_or_min(depth)==MAX_LAYER);
 
 
@@ -773,12 +771,13 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 
 		//get move to try
 		int move = order[i].move;
-		assert(move != -1);
+		/*assert(move != -1);
 		if(move == -1)
+		{
+			assert(len > 1);
 			continue;
+		}*/
 		assert(0 <= move && move < solver->possible_moves);
-
-		//printf("trying move %d at d=%d\n", move, depth);
 
 		//make new position
 		//tnode_t *child = node_make_new_move(gt, n, move);
@@ -835,10 +834,6 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 		{
 			best_result = result;
 			best_result.best_move = move;
-			//best = result.score;
-			//best_index = n->child_ct-1;
-			//best_move = move;
-			//best_full = result.full;
 		}
 
 		//if(!result.full)
@@ -929,15 +924,17 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 		#endif
 	}*/
 
-	//(void)best_move;
-	//assert(best_index != -1);
 
-	//assert(best_index < n->child_ct);
 
 	analyze_end:
-	assert(0 <= best_result.best_move
-		&& best_result.best_move < solver->possible_moves);
-	//tree_get(gt, n);
+	if(!(0 <= best_result.best_move
+		&& best_result.best_move < solver->possible_moves))
+	{
+		printf("\nlen=%d, move=%d\n", len, best_result.best_move);
+		printf("score went from %.1f to %.1f\n", worst_score(depth), best_result.score);
+		assert(0);
+	}
+
 
 
 	//no legal moves??
@@ -1228,7 +1225,7 @@ bool is_worse(float s0, float s1, int depth)
 
 float worst_score(int depth)
 {
-	float worst = (max_or_min(depth)==MAX_LAYER)? -WIN_SCORE : WIN_SCORE;
+	float worst = (max_or_min(depth)==MAX_LAYER)? -WIN_SCORE-1 : WIN_SCORE+1;
 	//float worst = max_or_min(depth)? -1 : 1;
 	assert(is_worse(worst, 0, depth));
 	return worst;
