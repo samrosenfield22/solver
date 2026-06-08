@@ -26,14 +26,15 @@ typedef struct
 {
 	float score;
 	bool full;
+	int best_move;
 } result_t;
 
 typedef struct
 {
 	uint32_t hash;
 	float score;
-	uint8_t move_index;
-	uint8_t move_ct;
+	int move_index;
+	//uint8_t move_ct;
 	uint8_t pos[];
 } gdata_t;
 
@@ -43,7 +44,7 @@ int tt_add(gdata_t *gd, result_t *result, int depth,
 	int bound, int best_move);
 bool set_aspiration_window(float *asp_window,
 	float *asp_window_size, float *last_score, float score);
-result_t eval(tree_t *gt, tnode_t *n, int depth,
+result_t eval(gdata_t *gd, int depth,
 	float alpha, float beta, bool is_pv);
 //int build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth);
 int build_movelist(sorter_t *order, void *pos);
@@ -51,7 +52,7 @@ void sort_movelist(sorter_t *order, int len,
 	gdata_t *gd, int depth);
 bool move_is_forcing(void *pos, int move);
 
-result_t analyze_all_children(tree_t *gt, tnode_t *n, trans_value_t *ttval,
+result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 	sorter_t *order, int len, int depth, float alpha, float beta,
 	bool is_pv);
 
@@ -59,7 +60,6 @@ trans_value_t *tt_get(gdata_t *gd, int depth);
 
 bool alphabeta_cutoff(float cscore, float prune,
 	float *best_so_far, int depth);
-//void evaluate(tree_t *gt, solver_t *solver);
 float max(float x, float y);
 float min(float x, float y);
 void print_score(float score);
@@ -72,7 +72,8 @@ float worst_score(int depth);
 bool is_win_score(float s, int depth);
 bool max_or_min(int depth);
 
-tnode_t *node_make_new_move(tree_t *gt, tnode_t *n, int move);
+//tnode_t *node_make_new_move(tree_t *gt, tnode_t *n, int move);
+bool make_new_move(gdata_t *child, gdata_t *gd, int move);
 void *node_get_pos(tnode_t *n);
 uint32_t *node_get_hash(tnode_t *n);
 uint32_t *gdata_get_hash(gdata_t *gd);
@@ -203,13 +204,16 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 	position_ct = 0;
 	max_node_ct = 0;
 
-
-	//make the tree
 	gdata_size = sizeof(gdata_t) + solver->pos_size;
+
+	/*
+	//make the tree
 	//tree_t *gt = tree_create(solver->pos_size);
 	tree_t *gt = tree_create(gdata_size);
 	tree_clear_search_depth(gt);
 	tree_attach_print_fn(gt, solver->print_pos);
+	*/
+
 	#ifdef USE_TRANSPOSITION_TABLE
 	if(!trans_tbl)
 		tt_create();
@@ -218,11 +222,12 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 	if(!pos)
 		pos = solver->initial_pos;
 	//tree_add(gt, pos);
-	gdata_t *th = mem_malloc(gdata_size);
-	th->hash = solver->hash(pos, solver->pos_size);
-	memcpy(&th->pos, pos, solver->pos_size);
-	tree_add(gt, th);
-	mem_free(th);
+	gdata_t *gd = mem_malloc(gdata_size);
+	//gdata_t gd;
+	gd->hash = solver->hash(pos, solver->pos_size);
+	memcpy(&(gd->pos), pos, solver->pos_size);
+	//tree_add(gt, &gd);
+	//mem_free(gd);
 
 	//term_clear();
 
@@ -241,7 +246,7 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 	if(solver->print_pos)
 	{
 		printf("solving game position: ");
-		solver->print_pos(th->pos);
+		solver->print_pos(gd->pos);
 		printf("\n");
 	}
 	else
@@ -290,7 +295,7 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 		//if(verbose)
 		//	printf("\niddfs depth=%d\n", iddfs);
 
-		tree_set_search_depth(gt, iddfs);
+		//tree_set_search_depth(gt, iddfs);
 		uint32_t last = toc_ms();
 
 
@@ -305,7 +310,7 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 				iddfs, asp_window[0], asp_window[1]);
 
 			#ifdef USE_MULTICORE
-			#pragma omp parallel for private(solver)
+			/*#pragma omp parallel for private(solver)
 			for(int mp=0; mp<2; mp++)
 			{
 				int tid = omp_get_thread_num();
@@ -318,9 +323,9 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 					asp_window[0], asp_window[1],
 					true);
 			}
-			//exit(0);
+			//exit(0);*/
 			#else
-			result = eval(gt, gt->head, 0,
+			result = eval(gd, 0,
 				asp_window[0], asp_window[1],
 				true);
 			#endif
@@ -336,9 +341,9 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 
 			//asp window failed
 			//clear the tree
-			tnode_t *h = tree_get(gt, gt->head);
-			while(h->child_ct)
-				tree_delete_child(gt, 0);
+			//tnode_t *h = tree_get(gt, gt->head);
+			//while(h->child_ct)
+			//	tree_delete_child(gt, 0);
 		}
 
 		//print info
@@ -354,7 +359,8 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 				//window_cursor_set(4);
 				printf("\t\t   (depth: %d)\n\n", iddfs);
 				printf("  %+.2f   ", result.score);
-				tnode_t *n = gt->head->children[0];
+
+				/*tnode_t *n = gt->head->children[0];
 				for(int i=0; i<2*VARIATION_LENGTH; i++)
 				{
 					if(i)
@@ -373,7 +379,7 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 						break;
 					//assert(n->child_ct);
 					n = n->children[0];
-				}
+				}*/
 
 				uint32_t now = toc_ms();
 				window_focus(analysis_hdl);
@@ -403,9 +409,9 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 		#endif
 
 		//clear the tree
-		tnode_t *h = tree_get(gt, gt->head);
-		while(h->child_ct)
-			tree_delete_child(gt, 0);
+		//tnode_t *h = tree_get(gt, gt->head);
+		//while(h->child_ct)
+		//	tree_delete_child(gt, 0);
 	}
 
 	//count time
@@ -414,7 +420,11 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 	uint32_t min = sec_total/60;
 	uint32_t sec = sec_total - (60*min);
 
-	int best_move = gt->head->children[0]->move_index;
+	//int best_move = gt->head->children[0]->move_index;
+	int best_move = result.best_move;
+	//if(result.full)
+	//	printf("full!\n");
+	assert(best_move != -1);
 
 	if(verbose)
 	{
@@ -449,8 +459,9 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 		#endif
 	}
 
-	//tree_clear(gt);
-	tree_destroy(gt);
+
+	//tree_destroy(gt);
+	mem_free(gd);
 	hashmap_destroy(trans_tbl);
 	zobrist_free();
 	trans_tbl = NULL;
@@ -540,35 +551,45 @@ bool set_aspiration_window(float *asp_window,
 }
 
 //recursive
-result_t eval(tree_t *gt, tnode_t *n, int depth,
+result_t eval(gdata_t *gd, int depth,
 	float alpha, float beta, bool is_pv)
 {
+
+
+	/*term_move_cursor(0, 12);
+	solver->draw_full(gd->pos);
+	printf("(enter to continue): ");
+	getchar();
+*/
+
 	//if(is_pv)
 	//	printf("\tpv node at d=%d w [%.1f,%.1f]\n",
 	//	depth, alpha, beta);
-	assert(n);
+	assert(gd);
 	//assert(n->child_ct == 0);
 	if(depth > 1000)
 	{
 		printf("error! depth is crazy big lol\n");
 		exit(0);
 	}
-	void *pos = node_get_pos(n);
+	//void *pos = node_get_pos(n);
+	void *pos = &(gd->pos);
 
+	trans_value_t *ttval = NULL;
 	#ifdef USE_TRANSPOSITION_TABLE
 	//check if position was already analyzed
-	trans_value_t *ttval = tt_get(n->data, depth);
+	ttval = tt_get(gd, depth);
 	//if(val && (val->iddfs == iddfs))
 	//	return n->score;
 	if(ttval)
 	{
-		n->score = ttval->score;
+		gd->score = ttval->score;
 		if(ttval->full)
 		{
-			assert(n->score > MATE_LIMIT
-				|| n->score < -MATE_LIMIT
-				|| n->score == 0);
-			return (result_t){n->score, true};
+			assert(gd->score > MATE_LIMIT
+				|| gd->score < -MATE_LIMIT
+				|| gd->score == 0);
+			return (result_t){.score=gd->score, .full=true, .best_move=ttval->best_move};
 		}
 		//if(ttval->iddfs >= iddfs_depth && !asp_window_rerun)
 		//if(ttval->iddfs >= iddfs_depth && ttval->bound==BOUND_EXACT)
@@ -576,14 +597,14 @@ result_t eval(tree_t *gt, tnode_t *n, int depth,
 			&& ttval->bound==BOUND_EXACT)
 		//if(val->iddfs >= iddfs_depth
 		//	&& !(asp_window_rerun && !val->exact))
-			return (result_t){n->score, false};
+			return (result_t){.score=gd->score, .full=false, .best_move=ttval->best_move};
 	}
 	#endif
 
 	//update metrics
 	position_ct++;
-	if(gt->node_ct > max_node_ct)
-		max_node_ct = gt->node_ct;
+	//if(gt->node_ct > max_node_ct)
+	//	max_node_ct = gt->node_ct;
 
 
 	//evaluate end states/leaf nodes
@@ -592,21 +613,21 @@ result_t eval(tree_t *gt, tnode_t *n, int depth,
 	{
 		switch(endstate)
 		{
-			case END_P1_WON:	n->score = WIN_SCORE;	break;
-			case END_P2_WON:	n->score = -WIN_SCORE;	break;
-			case END_DRAW:		n->score = 0;			break;
+			case END_P1_WON:	gd->score = WIN_SCORE;	break;
+			case END_P2_WON:	gd->score = -WIN_SCORE;	break;
+			case END_DRAW:		gd->score = 0;			break;
 			default:	printf("invalid endstate!\n"); exit(0);
 		}
-		return (result_t){n->score, true};
+		return (result_t){.score=gd->score, .full=true, .best_move=-1};
 	}
-	else if(depth >= gt->search_depth)
+	else if(depth >= iddfs_depth)
 	{
 		if(solver->estimate)
-			n->score = solver->estimate(pos);
+			gd->score = solver->estimate(pos);
 		else
-			n->score = 0;
-		assert(-WIN_SCORE < n->score && n->score < WIN_SCORE);
-		return (result_t){n->score, false};
+			gd->score = 0;
+		assert(-WIN_SCORE < gd->score && gd->score < WIN_SCORE);
+		return (result_t){.score=gd->score, .full=false, .best_move=-1};
 	}
 
 	//float score;
@@ -629,7 +650,10 @@ result_t eval(tree_t *gt, tnode_t *n, int depth,
 		else
 			len = build_movelist(movelist, pos);
 
-		sort_movelist(movelist, len, n->data, depth);
+		sort_movelist(movelist, len, gd, depth);
+		//printf("movelist:\n");
+		//for(int m=0; m<len; m++)
+		//	printf("%d, ", movelist[m].move);
 		//len = build_order(order, gt, n, depth);
 		//assert(n->child_ct == 0);
 
@@ -639,21 +663,25 @@ result_t eval(tree_t *gt, tnode_t *n, int depth,
 	}
 
 	//main analysis -- recursive tree search
-	result_t result = analyze_all_children(gt, n, ttval, movelist, len,
+	result_t result = analyze_all_children(gd, ttval, movelist, len,
 		depth, alpha, beta, is_pv);
+
 
 	//assert(n->child_ct);
 	//int best_move = n->children[0]->move_index;
 	if(is_win_score(result.score, depth))
 	{
 		result.score -= (max_or_min(depth)==MAX_LAYER)? 1: -1;
-		n->score = result.score;
+		//
 	}
-	int best_move = n->child_ct? n->children[0]->move_index : -1;
+	gd->score = result.score;	//might not even need
+
+	//int best_move = n->child_ct? n->children[0]->move_index : -1;
+
 
 	#ifdef CLEAR_SUB_NODES
 	//clear nodes except the best one(s)
-	clear_suboptimal_nodes(gt, n, depth, VARIATION_LENGTH);
+	//clear_suboptimal_nodes(gt, n, depth, VARIATION_LENGTH);
 	#endif
 
 	#ifdef USE_TRANSPOSITION_TABLE
@@ -665,11 +693,14 @@ result_t eval(tree_t *gt, tnode_t *n, int depth,
 		bound = BOUND_UPPER;
 	else
 		bound = BOUND_LOWER;
-	tt_add(n->data, &result, depth, bound, best_move);
+	tt_add(gd, &result, depth, bound, result.best_move);
 	#endif
 
-	assert(result.score == n->score);
+	//gd->score = result.score;
+	//assert(result.score == gd->score);
 	//return n->score;
+
+	assert(result.best_move != -1);
 	return result;
 }
 
@@ -736,7 +767,7 @@ void update_history(void *pos, int index,
 	}
 }
 
-result_t analyze_all_children(tree_t *gt, tnode_t *n, trans_value_t *ttval,
+result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 	sorter_t *order, int len, int depth, float alpha, float beta,
 	bool is_pv)
 {
@@ -752,7 +783,7 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n, trans_value_t *ttval,
 	if(alpha >= beta)	//bail immediately
 	{
 		assert(ttval->full == false);
-		return (result_t){ttval->score, false};
+		return (result_t){.score=ttval->score, .full=false, .best_move=ttval->best_move};
 	}
 
 	float alpha_init = alpha, beta_init = beta;
@@ -762,26 +793,35 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n, trans_value_t *ttval,
 	result_t result;
 	float best = worst_score(depth);
 	bool best_full = false;
-	int best_index = 0;
+	int best_move = -1;
+	//int best_index = 0;
 	bool is_max = (max_or_min(depth)==MAX_LAYER);
-
 
 
 	for(int i=0; i<len; i++)
 	{
-		tree_get(gt, n);
+		//tree_get(gt, n);
 
+		//get move to try
 		int move = order[i].move;
 		assert(move != -1);
 		if(move == -1)
 			continue;
 		assert(0 <= move && move < solver->possible_moves);
-		tnode_t *child = node_make_new_move(gt, n, move);
-		//assert(child);	//if false, the move wasn't legal
-		if(!child)
+
+		//printf("trying move %d at d=%d\n", move, depth);
+
+		//make new position
+		//tnode_t *child = node_make_new_move(gt, n, move);
+		//gdata_t child;
+		gdata_t *child = mem_malloc(gdata_size);
+		bool made = make_new_move(child, gd, move);
+		//if(!child)
+		if(!made)
 		{
 			assert(len != 1);
 			//assert(i);
+			mem_free(child);
 			continue;
 		}
 
@@ -796,9 +836,9 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n, trans_value_t *ttval,
 		}*/
 
 		bool child_pv = is_pv && (i==0);
-		result = eval(gt, child, depth+1,
+		result = eval(child, depth+1,
 			alpha, beta, child_pv);
-
+		mem_free(child);
 
 
 		if(is_win_score(result.score, depth))
@@ -807,7 +847,8 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n, trans_value_t *ttval,
 
 			#ifdef RETURN_FIRST_WIN_FOUND
 			best = result.score;
-			best_index = n->child_ct-1;
+			//best_index = n->child_ct-1;
+			best_move = move;
 
 			#ifdef USE_HISTORY_HEURISTIC
 			update_history(pos, i, order, len, depth, true);
@@ -821,7 +862,8 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n, trans_value_t *ttval,
 		if(is_better(result.score, best, depth))
 		{
 			best = result.score;
-			best_index = n->child_ct-1;
+			//best_index = n->child_ct-1;
+			best_move = move;
 			best_full = result.full;
 		}
 
@@ -914,13 +956,15 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n, trans_value_t *ttval,
 	}*/
 
 	//(void)best_move;
-	assert(best_index != -1);
-	assert(best_index < n->child_ct);
+	//assert(best_index != -1);
+
+	//assert(best_index < n->child_ct);
 
 	analyze_end:
-	tree_get(gt, n);
+	assert(0 <= best_move && best_move < solver->possible_moves);
+	//tree_get(gt, n);
 	//if(depth)
-		tree_swap_children(gt, 0, best_index);
+	//	tree_swap_children(gt, 0, best_index);
 	/*else
 	{
 		printf("minimax!\n");
@@ -928,14 +972,14 @@ result_t analyze_all_children(tree_t *gt, tnode_t *n, trans_value_t *ttval,
 	}*/
 
 	//no legal moves??
-	assert(n->child_ct);
-	assert(n->children[0]);
-	assert(n->children[0]->score == best);
+	//assert(n->child_ct);
+	//assert(n->children[0]);
+	//assert(n->children[0]->score == best);
 	//assert(is_win_score(best, depth) == best_full);
 
-	n->score = best;	//fail soft
+	//n->score = best;	//fail soft
 
-	return (result_t){best, best_full};
+	return (result_t){.score=best, .full=best_full, .best_move=best_move};
 }
 
 
@@ -980,7 +1024,6 @@ int order_compare(const void *aa, const void *bb)
 int build_movelist(sorter_t *order, void *pos)
 {
 	int ct = 0;
-	//void *pos = node_get_pos(n);
 
 	for(int i=0; i<solver->possible_moves; i++)
 	{
@@ -1003,8 +1046,8 @@ int build_movelist(sorter_t *order, void *pos)
 
 void sort_movelist(sorter_t *order, int len, gdata_t *gd, int depth)
 {
-	void *pos = gd->pos;
-	
+	void *pos = &(gd->pos);
+
 	trans_value_t *v = tt_get(gd, depth);
 	int best = v? v->best_move : -1;
 
@@ -1176,9 +1219,7 @@ void tt_create(void)
 
 int tt_add(gdata_t *gd, result_t *result, int depth, int bound, int best_move)
 {
-	//void *pos = node_get_pos(n);
-	//uint32_t *hash = node_get_hash(n);
-	void *pos = gd->pos;
+	void *pos = &(gd->pos);
 	uint32_t *hash = gdata_get_hash(gd);
 
 	trans_value_t value =
@@ -1198,7 +1239,7 @@ int tt_add(gdata_t *gd, result_t *result, int depth, int bound, int best_move)
 
 trans_value_t *tt_get(gdata_t *gd, int depth)
 {
-	void *pos = gd->pos;
+	void *pos = &(gd->pos);
 	uint32_t *hash = gdata_get_hash(gd);
 	trans_value_t *value = hashmap_key_get_value(trans_tbl, pos, hash);
 
@@ -1349,7 +1390,7 @@ void clear_suboptimal_nodes(tree_t *gt, tnode_t *n, int depth, int var_length)
 	}
 }
 
-tnode_t *node_make_new_move(tree_t *gt, tnode_t *n, int move)
+/*tnode_t *node_make_new_move(tree_t *gt, tnode_t *n, int move)
 {
 	tnode_t *child = NULL;
 	//if(solver->is_legal(node_get_pos(n), move))
@@ -1361,20 +1402,35 @@ tnode_t *node_make_new_move(tree_t *gt, tnode_t *n, int move)
 		child = n->children[n->child_ct-1];
 
 		uint32_t *hp = node_get_hash(child);
-		//*hp = *node_get_hash(n);
+		// *hp = *node_get_hash(n);
 
 
 		solver->make_move(node_get_pos(child), move, hp);
-		//solver->make_move_temp(node_get_pos(child), node_get_pos(n), move, hp);
 		child->move_index = move;
 		//assert(child->score == 0);
 
 
 	}
 	return child;
+}*/
+
+bool make_new_move(gdata_t *child, gdata_t *gd, int move)
+{
+	/*tree_get(gt, n);
+	tree_add_copies(gt, 1);
+	//tree_add(gt, NULL);
+	child = n->children[n->child_ct-1];*/
+
+	memcpy(child, gd, gdata_size);
+
+	uint32_t *hp = gdata_get_hash(child);
+	solver->make_move(&(child->pos), move, hp);
+	child->move_index = move;
+
+	return true;	//always?
 }
 
-void *node_get_pos(tnode_t *n)
+/*void *node_get_pos(tnode_t *n)
 {
 	gdata_t *d = n->data;
 	return &(d->pos);
@@ -1389,7 +1445,7 @@ uint32_t *node_get_hash(tnode_t *n)
 	}
 	else
 		return NULL;
-}
+}*/
 
 uint32_t *gdata_get_hash(gdata_t *gd)
 {

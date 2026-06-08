@@ -42,37 +42,34 @@ char *print64(uint64_t n)
 	return buf;
 }
 
-
-
-//#define c4_ok(pos)	true
-/*bool c4_ok(c4_pos_t *p)
-{
-	if(!(p->whosemove==true || p->whosemove==false))
-		return false;
-	for(int i=0; i<7; i++)
-	{
-		if(p->columns_filled[i] & 0b11000000)
-			return false;
-		if(p->columns_color[i] & 0b11000000)
-			return false;
-	}
-	return true;
-}*/
-
-bool c4_whosemove(void *pos)
-{
-	//assert(c4_ok(pos));
-	c4_pos_t *p = pos;
-	//return p->whosemove;
-	return p->filled & WHOSEMOVE_BIT;
-}
-
 uint8_t get_col(uint64_t col, int index)
 {
 	uint8_t c = 0b111111;
 	c &= col >> (7*index);
 	return c;
 }
+
+//#define c4_ok(pos)	true
+bool c4_ok(c4_pos_t *p)
+{
+	for(int i=0; i<7; i++)
+	{
+		if(get_col(p->filled, i) & 0b11000000)
+			return false;
+		if(get_col(p->x, i) & 0b11000000)
+			return false;
+	}
+	return true;
+}
+
+bool c4_whosemove(void *pos)
+{
+	assert(c4_ok(pos));
+	c4_pos_t *p = pos;
+	//return p->whosemove;
+	return p->filled & WHOSEMOVE_BIT;
+}
+
 
 //returns the bit required to make the given move (or with
 //both x and filled)
@@ -119,7 +116,7 @@ bool is_win(uint64_t x)
 
 endstate_t c4_gameover(void *pos)
 {
-	//assert(c4_ok(pos));
+	assert(c4_ok(pos));
 	c4_pos_t *p = pos;
 
 	//uint64_t x = p->x ^ p->filled;
@@ -151,7 +148,7 @@ endstate_t c4_gameover(void *pos)
 
 float c4_estimate(void *pos)
 {
-	//assert(c4_ok(pos));
+	assert(c4_ok(pos));
 	c4_pos_t *p = pos;
 
 	uint64_t x = p->x | WHOSEMOVE_BIT;
@@ -623,7 +620,7 @@ int c4_get_placement(void *pos, int index)
 
 void c4_make_move(void *pos, int index, uint32_t *hash)
 {
-	//assert(c4_ok(pos));
+	assert(c4_ok(pos));
 	c4_pos_t *p = pos;
 
 

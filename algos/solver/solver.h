@@ -12,11 +12,11 @@
 #define CLEAR_SUB_NODES
 #define RETURN_FIRST_WIN_FOUND
 //#define USE_HISTORY_HEURISTIC
-//#define ASPIRATION_WINDOW
-//#define PRINCIPAL_VAR_SEARCH
+#define ASPIRATION_WINDOW
+#define PRINCIPAL_VAR_SEARCH
 //#define USE_MULTICORE
 
-//#define FORCE_SEARCH_DEPTH	(40)
+#define FORCE_SEARCH_DEPTH	(40)
 
 #define VARIATION_LENGTH	(4)
 #define PRINCIPAL_VAR_CT	(7)
@@ -52,7 +52,7 @@ typedef struct
 	uint8_t search_depth;
 	bool full;
 	int bound;
-	int8_t best_move;
+	int best_move;
 	//age??
 } trans_value_t;
 
