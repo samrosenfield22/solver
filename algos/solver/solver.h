@@ -15,10 +15,10 @@
 #define PRINCIPAL_VAR_SEARCH
 //#define USE_MULTICORE
 
-#define FORCE_SEARCH_DEPTH	(40)
+//#define FORCE_SEARCH_DEPTH	(40)
 
 #define VARIATION_LENGTH	(4)
-#define DISPLAY_VAR_CT		(9)
+#define DISPLAY_VAR_CT		(1)
 
 
 typedef enum

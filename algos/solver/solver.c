@@ -199,9 +199,14 @@ void print_variations(gdata_t *gd, int len)
 			memcpy(var_walker, gd, gdata_size);
 
 			//get tt info of the nth move
-			make_new_move(var_walker, var_walker, i);
-			from_root[i].tv = tt_get(var_walker, 0);
-			from_root[i].move = i;
+			if(solver->is_legal(gd->pos, i))
+			{
+				make_new_move(var_walker, var_walker, i);
+				from_root[i].tv = tt_get(var_walker, 0);
+				from_root[i].move = i;
+			}
+			else
+				from_root[i].tv = NULL;
 		}
 
 
@@ -302,8 +307,8 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 
 	//term_clear();
 
-	//window_focus(eval_hdl);
-	//printf("\n\n\n\n");
+	window_focus(eval_hdl);
+	window_clear();
 	window_focus(analysis_hdl);
 	window_clear();
 
@@ -499,12 +504,12 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 			result.full? " (full solve)":"");
 	}
 
-	printf("best move: \t\t");
+	printf("best move: \t");
 	if(solver->iter_to_human)
 		printf("%s\n", solver->iter_to_human(best_move));
 	else
 		printf("%d\n", best_move);
-	printf("evaluation: %.1f\n", result.score);
+	printf("evaluation:\t%.1f\n", result.score);
 	//print_eval_bar(gt->head->children[0]->score);
 	//printf("\n\n");
 
@@ -853,6 +858,8 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 
 	bool is_max = (max_or_min(depth)==MAX_LAYER);
 
+	bool multi_pv = (depth==0 && DISPLAY_VAR_CT>1);
+	bool multi_full = true;
 
 	for(int i=0; i<len; i++)
 	{
@@ -898,14 +905,17 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 			alpha, beta, child_pv);
 		//sl_free(child);
 
+		if(multi_pv && !result.full)
+			multi_full = false;
 
+		#ifdef RETURN_FIRST_WIN_FOUND
 		if(is_win_score(result.score, depth))
 		{
 			//best_full = true;
 			best_result = result;
 			best_result.best_move = move;
 
-			#ifdef RETURN_FIRST_WIN_FOUND
+
 			//best = result.score;
 			//best_index = n->child_ct-1;
 			//best_move = move;
@@ -915,8 +925,9 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 			#endif
 
 			goto analyze_end;
-			#endif	//RETURN_FIRST_WIN_FOUND
+
 		}
+		#endif	//RETURN_FIRST_WIN_FOUND
 
 
 		if(is_better(result.score, best_result.score, depth))
@@ -931,7 +942,7 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 		#ifdef USE_ALPHABETA_PRUNING
 
 		#ifdef PRINCIPAL_VAR_SEARCH
-		if(is_pv && i)
+		if(is_pv && i && !multi_pv)
 		{
 			assert(alpha+1 == beta);
 			//if we failed high, rerun
@@ -957,10 +968,13 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 		}
 		#endif	//PRINCIPAL_VAR_SEARCH
 
-		if(is_max)
-			alpha = max(alpha, result.score);
-		else	//min
-			beta = min(beta, result.score);
+		if(!multi_pv)
+		{
+			if(is_max)
+				alpha = max(alpha, result.score);
+			else	//min
+				beta = min(beta, result.score);
+		}
 
 		if(alpha >= beta)
 		{
@@ -994,11 +1008,14 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 		#ifdef PRINCIPAL_VAR_SEARCH
 		if(is_pv && (i==0))
 		{
-			if(is_max)
-				beta = alpha+1;
-			else
-				alpha = beta-1;
-			//printf("[%.1f,%.1f]\n", alpha, beta);
+			if(!multi_pv)
+			{
+				if(is_max)
+					beta = alpha+1;
+				else
+					alpha = beta-1;
+				//printf("[%.1f,%.1f]\n", alpha, beta);
+			}
 		}
 		#endif	//PRINCIPAL_VAR_SEARCH
 		#endif	//USE_ALPHABETA_PRUNING
@@ -1032,6 +1049,10 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 	//assert(is_win_score(best, depth) == best_full);
 
 	//n->score = best;	//fail soft
+
+	//in multi pv, all nodes need to fully evaluate to depth
+	if(multi_pv && !multi_full)
+		best_result.full = false;
 
 	//return (result_t){.score=best, .full=best_full, .best_move=best_move};
 	return best_result;

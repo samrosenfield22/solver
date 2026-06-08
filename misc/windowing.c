@@ -315,6 +315,12 @@ void window_add_char(text_window_t *win, char c)
 	{
 		window_newline(win);
 	}
+	else if(c == '\t')
+	{
+		for(int i=win->cursor_x%8; i<8; i++)
+			window_add_char(win, ' ');
+		return;
+	}
 	else
 	{
 		putchar(c);
