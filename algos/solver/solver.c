@@ -165,6 +165,8 @@ typedef struct
 	int move;
 } tv_with_last_move_t;
 
+int pv_var_move;
+
 int vars_from_root_compare(const void *aa, const void *bb)
 {
 	tv_with_last_move_t *a = (tv_with_last_move_t *)aa;
@@ -172,6 +174,8 @@ int vars_from_root_compare(const void *aa, const void *bb)
 
 	if(!a->tv)	return 1;
 	if(!b->tv)	return -1;
+	if(a->move == pv_var_move) return -1;
+	if(b->move == pv_var_move) return 1;
 	return b->tv->score - a->tv->score;
 }
 
@@ -181,6 +185,9 @@ void print_variations(gdata_t *gd, int len)
 	gdata_t *var_walker = mem_malloc(gdata_size);
 
 	int vars = DISPLAY_VAR_CT;
+
+	memcpy(var_walker, gd, gdata_size);
+	pv_var_move = tt_get(var_walker, 0)->best_move;
 
 	//load and sort the moves from root
 	tv_with_last_move_t from_root[solver->possible_moves];
@@ -212,6 +219,9 @@ void print_variations(gdata_t *gd, int len)
 
 	for(int v=0; v<vars; v++)
 	{
+		if(!from_root[v].tv)
+			continue;
+
 		int spaces = printf("  #%d %+.1f", v+1, from_root[v].tv->score);
 		for(int s=spaces; s<13; s++)
 			printf(" ");
@@ -445,7 +455,7 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 				last = now;
 			}
 		}
-		printf("      ");
+		//printf("      ");
 		window_focus(analysis_hdl);
 
 		//conditions for ending the search
