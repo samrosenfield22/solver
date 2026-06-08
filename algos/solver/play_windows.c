@@ -10,7 +10,7 @@ void init_play_windows(void)
 	if(analysis_hdl == -1)
 		analysis_hdl = window_wh(117, 3, 48, 40);
 	if(eval_hdl == -1)
-		eval_hdl = window_wh(52, 3, 46, 7);
+		eval_hdl = window_wh(52, 3, 46, 8);
 
 	if(notation_win_hdl == -1)
 	{

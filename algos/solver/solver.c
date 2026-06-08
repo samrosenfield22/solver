@@ -159,6 +159,99 @@ void solver_check(solver_t *s)
 
 }
 
+typedef struct
+{
+	trans_value_t *tv;
+	int move;
+} tv_with_last_move_t;
+
+int vars_from_root_compare(const void *aa, const void *bb)
+{
+	tv_with_last_move_t *a = (tv_with_last_move_t *)aa;
+	tv_with_last_move_t *b = (tv_with_last_move_t *)bb;
+
+	if(!a->tv)	return 1;
+	if(!b->tv)	return -1;
+	return b->tv->score - a->tv->score;
+}
+
+void print_variations(gdata_t *gd, int len)
+{
+
+	gdata_t *var_walker = mem_malloc(gdata_size);
+
+	int vars = DISPLAY_VAR_CT;
+
+	//load and sort the moves from root
+	tv_with_last_move_t from_root[solver->possible_moves];
+	if(vars > 1)
+	{
+		for(int i=0; i<solver->possible_moves; i++)
+		{
+			//copy original gd
+			memcpy(var_walker, gd, gdata_size);
+
+			//get tt info of the nth move
+			make_new_move(var_walker, var_walker, i);
+			from_root[i].tv = tt_get(var_walker, 0);
+			from_root[i].move = i;
+		}
+
+
+		//sort them
+		qsort(from_root, solver->possible_moves,
+			sizeof(from_root[0]), vars_from_root_compare);
+	}
+	else
+	{
+		memcpy(var_walker, gd, gdata_size);
+		from_root[0].tv = tt_get(var_walker, 0);
+		from_root[0].move = from_root[0].tv->best_move;
+	}
+	//assert(from_root[0].move == )
+
+	for(int v=0; v<vars; v++)
+	{
+		int spaces = printf("  #%d %+.1f", v+1, from_root[v].tv->score);
+		for(int s=spaces; s<13; s++)
+			printf(" ");
+
+		int vmove = from_root[v].move;	//nth best
+
+		//copy original gd
+		memcpy(var_walker, gd, gdata_size);
+
+		int i;
+		for(i=0; i<len; i++)
+		{
+			//set variation to its best_move
+			//variation[i] = vmove;
+
+			//print var move
+			if(solver->iter_to_human)
+				printf(solver->iter_to_human(vmove));
+			else
+				printf("%d", vmove);
+			if(i < len-1) printf(", ");
+
+			//make the move
+			make_new_move(var_walker, var_walker, vmove);
+
+			//get the next one
+			trans_value_t *tv = tt_get(var_walker, 0);
+			if(!tv)
+				break;
+			vmove = tv->best_move;
+		}
+
+		for(; i<2*VARIATION_LENGTH; i++)
+			printf("   ");
+		printf("\n");
+	}
+
+	mem_free(var_walker);
+}
+
 float solve(solver_t *game_solver, void *pos, int init_depth,
 	int time_lim_ms, bool verbose)
 {
@@ -326,27 +419,23 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 			{
 				//window_cursor_set(4);
 				printf("\t\t   (depth: %d)\n\n", iddfs);
-				printf("  %+.2f   ", result.score);
+				//printf("  %+.2f   ", result.score);
 
-				/*tnode_t *n = gt->head->children[0];
-				for(int i=0; i<2*VARIATION_LENGTH; i++)
+				//print variation(s)
+				int var_len = min(iddfs, 2*VARIATION_LENGTH);
+				print_variations(gd, var_len);
+				/*for(int i=0; i<var_len; i++)
 				{
 					if(i)
 						printf(", ");
-					if(i >= iddfs)
-						break;
-					if(!n)
-						break;
 
+					uint8_t var_move = variation[i];
+					if(var_move == -1)
+						break;
 					if(solver->iter_to_human)
-						printf(solver->iter_to_human(n->move_index));
+						printf(solver->iter_to_human(var_move));
 					else
-						printf("%d", n->move_index);
-
-					if(!n->child_ct)
-						break;
-					//assert(n->child_ct);
-					n = n->children[0];
+						printf("%d", var_move);
 				}*/
 
 				uint32_t now = toc_ms();
@@ -396,13 +485,8 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 
 	if(verbose)
 	{
-		//output
-		//printf("\n\n");
-		//tree_draw(gt, VARIATION_LENGTH*2);
-
 		printf("\n\n--- search ran to depth = %d%s ---\n", iddfs,
 			result.full? " (full solve)":"");
-
 	}
 
 	printf("best move: \t\t");
@@ -522,7 +606,6 @@ bool set_aspiration_window(float *asp_window,
 result_t eval(gdata_t *gd, int depth,
 	float alpha, float beta, bool is_pv)
 {
-
 
 	/*term_move_cursor(0, 12);
 	solver->draw_full(gd->pos);
@@ -646,12 +729,6 @@ result_t eval(gdata_t *gd, int depth,
 
 	//int best_move = n->child_ct? n->children[0]->move_index : -1;
 
-
-	#ifdef CLEAR_SUB_NODES
-	//clear nodes except the best one(s)
-	//clear_suboptimal_nodes(gt, n, depth, VARIATION_LENGTH);
-	#endif
-
 	#ifdef USE_TRANSPOSITION_TABLE
 	int bound;
 	if(alpha < result.score
@@ -667,6 +744,8 @@ result_t eval(gdata_t *gd, int depth,
 	//gd->score = result.score;
 	//assert(result.score == gd->score);
 	//return n->score;
+
+
 
 	assert(result.best_move != -1);
 	return result;
@@ -893,8 +972,7 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 				}
 			}*/
 
-			//if(!(depth==0 && i<PRINCIPAL_VAR_CT))
-				break;
+			break;
 		}
 		/*else
 		{

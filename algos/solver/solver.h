@@ -18,7 +18,7 @@
 #define FORCE_SEARCH_DEPTH	(40)
 
 #define VARIATION_LENGTH	(4)
-#define PRINCIPAL_VAR_CT	(7)
+#define DISPLAY_VAR_CT		(2)
 
 
 typedef enum
