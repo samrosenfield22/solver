@@ -9,7 +9,6 @@
 
 #define USE_ALPHABETA_PRUNING
 #define USE_TRANSPOSITION_TABLE
-#define CLEAR_SUB_NODES
 #define RETURN_FIRST_WIN_FOUND
 //#define USE_HISTORY_HEURISTIC
 #define ASPIRATION_WINDOW
@@ -20,7 +19,6 @@
 
 #define VARIATION_LENGTH	(4)
 #define PRINCIPAL_VAR_CT	(7)
-#define INNER_VAR_CT		(1)
 
 
 typedef enum

@@ -63,8 +63,7 @@ bool alphabeta_cutoff(float cscore, float prune,
 float max(float x, float y);
 float min(float x, float y);
 void print_score(float score);
-void minimax(tree_t *gt, int depth);
-void clear_suboptimal_nodes(tree_t *gt, tnode_t *n, int depth, int var_length);
+
 
 bool is_better(float s0, float s1, int depth);
 bool is_worse(float s0, float s1, int depth);
@@ -139,37 +138,6 @@ void print_eval_bar(float score)
 
 	window_focus(analysis_hdl);
 }
-
-/*void *construct_pos(solver_t *game_solver, char *seq)
-{
-	if(!seq)
-		return NULL;
-	printf("got seq: \'%s\'\n", seq);
-
-	solver = game_solver;
-
-	void *pos = mem_malloc(solver->pos_size);
-	memcpy(pos, solver->initial_pos, solver->pos_size);
-
-	for(char *token = strtok(seq, ","); token;
-		token = strtok(NULL, ","))
-	{
-		if(*token == '\n')
-			break;
-		int move = strtol(token, NULL, 10);
-		printf("move=%d\n", move);
-
-		if(solver->is_legal(pos, move))
-			solver->make_move(pos, move, NULL);
-		else
-		{
-			printf("illegal move %d\n", move);
-			return NULL;
-		}
-	}
-
-	return pos;
-}*/
 
 bool asp_window_rerun = false;
 
@@ -452,7 +420,7 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 		printf("\n\nposition solved in %d m, %d sec\n", min, sec);
 		printf("time per position: %.2f us\n", ((float)us)/position_ct);
 		printf("evaluated %s unique positions\n", sprintbig(position_ct, "%d"));
-		printf("greatest number of nodes stored in tree: %u\n", max_node_ct);
+		//printf("greatest number of nodes stored in tree: %u\n", max_node_ct);
 		#ifdef USE_TRANSPOSITION_TABLE
 		printf("hashmap load factor = %d%%\n", hashmap_load(trans_tbl));
 		printf("number of collisions: %s\n", sprintbig(hashmap_collisions(trans_tbl), "%d"));
@@ -791,9 +759,10 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 	(void)beta_init;
 
 	result_t result;
-	float best = worst_score(depth);
-	bool best_full = false;
-	int best_move = -1;
+	result_t best_result = {.score=worst_score(depth), .best_move = -1};
+	//float best = worst_score(depth);
+	//bool best_full = false;
+	//int best_move = -1;
 	//int best_index = 0;
 	bool is_max = (max_or_min(depth)==MAX_LAYER);
 
@@ -814,14 +783,15 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 		//make new position
 		//tnode_t *child = node_make_new_move(gt, n, move);
 		//gdata_t child;
-		gdata_t *child = mem_malloc(gdata_size);
-		bool made = make_new_move(child, gd, move);
+		//gdata_t *child = sl_alloc(gdata_size);
+		uint8_t child[gdata_size];
+		bool made = make_new_move((gdata_t *)&child, gd, move);
 		//if(!child)
 		if(!made)
 		{
 			assert(len != 1);
 			//assert(i);
-			mem_free(child);
+			//sl_free(child);
 			continue;
 		}
 
@@ -836,19 +806,21 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 		}*/
 
 		bool child_pv = is_pv && (i==0);
-		result = eval(child, depth+1,
+		result = eval((gdata_t *)&child, depth+1,
 			alpha, beta, child_pv);
-		mem_free(child);
+		//sl_free(child);
 
 
 		if(is_win_score(result.score, depth))
 		{
-			best_full = true;
+			//best_full = true;
+			best_result = result;
+			best_result.best_move = move;
 
 			#ifdef RETURN_FIRST_WIN_FOUND
-			best = result.score;
+			//best = result.score;
 			//best_index = n->child_ct-1;
-			best_move = move;
+			//best_move = move;
 
 			#ifdef USE_HISTORY_HEURISTIC
 			update_history(pos, i, order, len, depth, true);
@@ -859,12 +831,14 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 		}
 
 
-		if(is_better(result.score, best, depth))
+		if(is_better(result.score, best_result.score, depth))
 		{
-			best = result.score;
+			best_result = result;
+			best_result.best_move = move;
+			//best = result.score;
 			//best_index = n->child_ct-1;
-			best_move = move;
-			best_full = result.full;
+			//best_move = move;
+			//best_full = result.full;
 		}
 
 		//if(!result.full)
@@ -961,15 +935,10 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 	//assert(best_index < n->child_ct);
 
 	analyze_end:
-	assert(0 <= best_move && best_move < solver->possible_moves);
+	assert(0 <= best_result.best_move
+		&& best_result.best_move < solver->possible_moves);
 	//tree_get(gt, n);
-	//if(depth)
-	//	tree_swap_children(gt, 0, best_index);
-	/*else
-	{
-		printf("minimax!\n");
-		minimax(gt, depth);
-	}*/
+
 
 	//no legal moves??
 	//assert(n->child_ct);
@@ -979,39 +948,9 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 
 	//n->score = best;	//fail soft
 
-	return (result_t){.score=best, .full=best_full, .best_move=best_move};
+	//return (result_t){.score=best, .full=best_full, .best_move=best_move};
+	return best_result;
 }
-
-
-/*bool move_loses(void *pos, int move)
-{
-	if(!solver->is_legal(pos, move))
-		return false;
-
-	void *after = mem_malloc(solver->pos_size);
-	void *next = mem_malloc(solver->pos_size);
-	memcpy(after, pos, solver->pos_size);
-	solver->make_move(after, move, NULL);
-
-	bool losing = false;
-	for(int i=0; i<solver->possible_moves; i++)
-	{
-		if(!solver->is_legal(after, i))
-			continue;
-		memcpy(next, after, solver->pos_size);
-		solver->make_move(next, i, NULL);
-		int endstate = solver->gameover(next);
-		if(endstate == END_P1_WON || endstate == END_P2_WON)
-		{
-			losing = true;
-			break;
-		}
-	}
-
-	mem_free(after);
-	mem_free(next);
-	return losing;
-}*/
 
 int order_compare(const void *aa, const void *bb)
 {
@@ -1331,34 +1270,6 @@ void print_score(float score)
 	}
 }
 
-void minimax(tree_t *gt, int depth)
-{
-	//assert(!tree_is_leaf(gt));
-	if(tree_is_leaf(gt))
-	{
-		//assert(0);
-		return;
-	}
-
-	/*printf("doing minimax on node w %d children\n", gt->p->child_ct);
-	for(int i=0; i<gt->p->child_ct; i++)
-		printf("\tchild %d has score %d\n", i, gt->p->children[i]->score);
-	*/
-
-	//sort children by score (ascending or descending)
-	bool order = max_or_min(depth);
-	tree_attach_compare_fn(gt, (order==MAX_LAYER)?
-		compare_by_score_ascending : compare_by_score_descending);
-	tree_sort_children(gt);
-
-	//set node score to child 0's score
-	//tree_set_score(gt, gt->p->children[0]->score);
-
-	//calculate "mate in n moves"?
-	//if(gt->p->score >= 100)		gt->p->score++;
-	//if(gt->p->score <= -100)	gt->p->score--;
-}
-
 bool max_or_min(int depth)
 {
 	bool mm = !(depth & 0b1);
@@ -1367,28 +1278,7 @@ bool max_or_min(int depth)
 	return mm? MAX_LAYER : MIN_LAYER;
 }
 
-void clear_suboptimal_nodes(tree_t *gt, tnode_t *n, int depth, int var_length)
-{
-	tree_get(gt, n);
-	if(depth >= var_length*2)
-	{
-		//while(n->child_ct > 0)
-		//	tree_delete_child(gt, 0);
-		tree_delete_all_but_first(gt, 0);
-	}
-	else if(depth)
-	{
-		//while(n->child_ct > INNER_VAR_CT)
-		//	tree_delete_child(gt, INNER_VAR_CT);
-		tree_delete_all_but_first(gt, INNER_VAR_CT);
-	}
-	else	//root node
-	{
-		//while(n->child_ct > PRINCIPAL_VAR_CT)
-		//	tree_delete_child(gt, PRINCIPAL_VAR_CT);
-		tree_delete_all_but_first(gt, PRINCIPAL_VAR_CT);
-	}
-}
+
 
 /*tnode_t *node_make_new_move(tree_t *gt, tnode_t *n, int move)
 {
