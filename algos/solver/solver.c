@@ -278,20 +278,20 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 				iddfs, asp_window[0], asp_window[1]);
 
 			#ifdef USE_MULTICORE
-			/*#pragma omp parallel for private(solver)
+			#pragma omp parallel for private(solver)
 			for(int mp=0; mp<2; mp++)
 			{
 				int tid = omp_get_thread_num();
 				//solver = mod_solvers[tid];
 				solver = (tid==0)? game_solver : &mod_solvers[0];
-				printf("\nsolver in thread %d w default order:", tid);
-				for(int m=0; m<solver->possible_moves; m++)
-					printf("%d, ", solver->default_order[m]);
-				result = eval(gt, gt->head, 0,
+				//printf("\nsolver in thread %d w default order:", tid);
+				//for(int m=0; m<solver->possible_moves; m++)
+				//	printf("%d, ", solver->default_order[m]);
+				result = eval(gd, 0,
 					asp_window[0], asp_window[1],
 					true);
 			}
-			//exit(0);*/
+			//exit(0);
 			#else
 			result = eval(gd, 0,
 				asp_window[0], asp_window[1],

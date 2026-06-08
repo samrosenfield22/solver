@@ -70,6 +70,8 @@ void hashmap_clear(hashmap_t *h)
 		{
 			kvpair_t *kv = h->map[i];
 
+			kv->lock = false;
+
 			if(kv->value)
 			{
 				/*int v = *(int*)kv->value;
@@ -111,9 +113,15 @@ int hashmap_add_kvpair(hashmap_t *h, void *key, void *value,
 	kvpair_t **bucket = hashmap_key_get_bucket(h, key, hash);
 	assert(bucket);
 
+	/*if((*bucket)->lock)
+		return HM_NO_ADD;
+	(*bucket)->lock = true;*/
+
+
 	if(*bucket)	//bucket already filled
 	{
 		kvpair_t *kv = *bucket;
+
 		if(keys_match(h, kv->key, key))
 		{
 			//replace value
@@ -153,6 +161,7 @@ int hashmap_add_kvpair(hashmap_t *h, void *key, void *value,
 
 
 	//mem_free(norm_key);
+	//(*bucket)->lock = false;
 	return add_result;
 
 	////////////////////////////////////////////////////////
@@ -223,6 +232,11 @@ void *hashmap_key_get_value(hashmap_t *h, void *key, uint32_t *hash)
 			//mem_free(norm_key);
 		return NULL;
 	}
+
+	/*if(kv->lock)
+		return NULL;
+	kv->lock = true;*/
+
 	//printf("retrieved bucket w value %d\n", kv->value);
 
 	//return kv->value;
@@ -233,10 +247,14 @@ void *hashmap_key_get_value(hashmap_t *h, void *key, uint32_t *hash)
 	//if(h->normalize_key)
 		//mem_free(norm_key);
 
-	if(match)
+	void *val = match? kv->value : NULL;
+	//kv->lock = false;
+	return val;
+
+	/*if(match)
 		return kv->value;
 	else
-		return NULL;
+		return NULL;*/
 
 
 	/////////////////////////////////////////////

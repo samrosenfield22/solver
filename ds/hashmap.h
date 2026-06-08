@@ -6,6 +6,8 @@
 
 typedef struct
 {
+	bool lock;
+
 	void *key;
 	void *value;
 } kvpair_t;
@@ -22,7 +24,7 @@ typedef struct
 	void (*normalize_key)(void *k);
 	bool (*replace_fp)(void *k1, void *v1, void *k2, void *v2);
 
-	void *map[];
+	kvpair_t *map[];
 } hashmap_t;
 
 enum
