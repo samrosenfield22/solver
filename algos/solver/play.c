@@ -171,7 +171,7 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 	while(1)
 	{
 		term_move_cursor(0, 12);
-		solver->draw_full(pos);
+		solver->draw_full(pos, seq_ct? seq[seq_ct-1] : -1);
 		print_sequence_fancy(solver, seq, stdout);
 
 
@@ -271,7 +271,7 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 		}
 		else	//COMPUTER_PLAYER
 		{
-			move = solve(solver, pos, seq_ct, COMP_TIME, DEV_MODE);
+			move = solve(solver, pos, seq_ct, COMP_TIME, true);
 			solver->make_move(pos, move, NULL);
 		}
 
@@ -293,7 +293,7 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 				case END_NOT_OVER:	break;
 			}
 			term_move_cursor(0, 12);
-			solver->draw_full(pos);
+			solver->draw_full(pos, -1);
 			print_sequence(solver, seq, stdout);
 			break;
 		}

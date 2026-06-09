@@ -15,7 +15,7 @@ float estimate_color(uint64_t x, uint64_t opp, uint64_t filled,
 	uint64_t wmap, bool verbose);
 void get_win_maps(c4_pos_t *p);
 //void get_win_map(uint64_t *wmap, uint64_t x, uint64_t filled);
-void c4_draw_full(void *pos);
+void c4_draw_full(void *pos, int last_move);
 uint32_t c4_hash(void *key, size_t size);
 
 #define WHOSEMOVE_BIT	(((uint64_t)1)<<63)
@@ -906,7 +906,7 @@ int c4_only_moves(sorter_t *sorter, void *pos)
 	//estimate_color(cols, opp, true);
 }*/
 
-void c4_draw_full(void *pos)
+void c4_draw_full(void *pos, int last_move)
 {
 	c4_pos_t *p = pos;
 
@@ -944,6 +944,21 @@ void c4_draw_full(void *pos)
 	//uint64_t rwm = win_map(red, filled);
 	//uint64_t ywm = win_map(yel, filled);
 
+	uint64_t recent = 0;
+	if(last_move != -1)
+	{
+		uint8_t rec_col = get_col(p->filled, last_move);
+		for(uint8_t i=1; ; i<<=1)
+		{
+			if(!(i & rec_col))
+			{
+				i>>=1;
+				recent |= i << (7*last_move);
+				break;
+			}
+		}
+	}
+
 
 	//header
 	printf("\n\n\n\n\n");
@@ -961,6 +976,7 @@ void c4_draw_full(void *pos)
 		{
 			char c = '_';
 			char *color = TERM_WHITE;
+			char *bg = TERM_BLACK_BG;
 			uint64_t bit_m = row_m << (7*col);
 			if(p->filled & bit_m)
 			{
@@ -971,6 +987,9 @@ void c4_draw_full(void *pos)
 				color = ry? TERM_RED : TERM_YELLOW;
 				//c = ry? 'R':'Y';
 				c = 'O';
+
+				if(bit_m & recent)
+					bg = TERM_BLUE_BG;
 
 				//if(wm & bit_m)
 				//	assert(0);
@@ -983,7 +1002,7 @@ void c4_draw_full(void *pos)
 				if(ywm & bit_m)	color = TERM_YELLOW;
 			}
 			//term_fg(color);
-			printf("%s%c%s   ", color, c, TERM_RESET);
+			printf("%s%s%c%s   ", bg, color, c, TERM_RESET);
 			//term_clear();
 		}
 	}

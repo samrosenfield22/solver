@@ -132,7 +132,7 @@ bool nim_keys_match(void *k1, void *k2)
 
 }*/
 
-void nim_draw_full(void *pos)
+void nim_draw_full(void *pos, int last_move)
 {
 	nim_pos_t *p = pos;
 

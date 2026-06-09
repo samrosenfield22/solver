@@ -1,6 +1,7 @@
 
 
 #include "ttt.h"
+#include "../../../utils.h"
 
 #include <stdio.h>
 #include <stdint.h>
@@ -157,7 +158,7 @@ bool ttt_keys_match(void *k1, void *k2)
 
 }*/
 
-void ttt_draw_full(void *pos)
+void ttt_draw_full(void *pos, int last_move)
 {
 	ttt_pos_t *p = pos;
 
@@ -169,6 +170,9 @@ void ttt_draw_full(void *pos)
 		printf("%s%d  ", indent, r);
 		for(int c=0; c<3; c++)
 		{
+			printf((3*r+c == last_move)?
+				TERM_BLUE_BG : TERM_BLACK_BG);
+
 			int piece = p->spaces[3*r+c];
 
 			switch(piece)
@@ -177,6 +181,8 @@ void ttt_draw_full(void *pos)
 				case O_PIECE: putchar('O'); break;
 				case EMPTY: putchar(' '); break;
 			}
+			printf(TERM_BLACK_BG);
+			
 			if(c != 2)
 				printf(" | ");
 		}

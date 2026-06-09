@@ -278,7 +278,6 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 		solver->hash_size = solver->pos_size;
 
 	position_ct = 0;
-	max_node_ct = 0;
 
 	gdata_size = sizeof(gdata_t) + solver->pos_size;
 
@@ -332,7 +331,6 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 	#else
 	printf("(time limit %d ms)", time_lim_ms);
 	#endif
-
 	printf("\n");
 
 	tic();
@@ -349,13 +347,13 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 	float last_iddfs_score = 0;
 
 	int cores = 1;
-	solver_t mod_solvers[cores];
+	solver_t alt_solvers[cores];
 	for(int i=0; i<cores; i++)
 	{
-		memcpy(&mod_solvers[i], game_solver, sizeof(solver_t));
-		mod_solvers[i].default_order = mem_malloc(solver->possible_moves);
+		memcpy(&alt_solvers[i], game_solver, sizeof(solver_t));
+		alt_solvers[i].default_order = mem_malloc(solver->possible_moves);
 		for(int m=0; m<solver->possible_moves; m++)
-			mod_solvers[i].default_order[m] = rand() / 2000;
+			alt_solvers[i].default_order[m] = rand() / 2000;
 	}
 
 	//iddfs
@@ -390,8 +388,8 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 			for(int mp=0; mp<2; mp++)
 			{
 				int tid = omp_get_thread_num();
-				//solver = mod_solvers[tid];
-				solver = (tid==0)? game_solver : &mod_solvers[0];
+				//solver = alt_solvers[tid];
+				solver = (tid==0)? game_solver : &alt_solvers[0];
 				//printf("\nsolver in thread %d w default order:", tid);
 				//for(int m=0; m<solver->possible_moves; m++)
 				//	printf("%d, ", solver->default_order[m]);

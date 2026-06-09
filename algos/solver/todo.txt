@@ -4,27 +4,31 @@ GAME SOLVER -- TO DO
 
 general-fix:
 * replace explicit tree with recursion (sigh)			DONE!!
-* why doesn't history heuristic work? :(
+* why doesn't history heuristic work? :(				-
 * tag tt entries (exact, upper/lower bound) so we can
 use aspiration											DONE
-* window needs to handle \t so we don't go outside
+* window needs to handle \t so we don't go outside		DONE
+* hard stop at time limit								-
 
 general-new:
 * make_move_list() instead of checking every pos		DONE (meh)
-* NNUE?????
-* keyboard control for game playing
-* annotation (!, ?, ?!, !!)
-* ranger-style file selector
-* native engine support for bitboards (no move indexes??)
-* window needs to accept color text
-* null move
-* multithread (lazy SMP approach - search root node w different
-	move orderings??)
+* NNUE?????												-
+* keyboard control for game playing						-
+* draw most recent move different						DONE
+* annotation (!, ?, ?!, !!)								-
+* ranger-style file selector							-
+* native engine support for bitboards (no
+move indexes??)											-
+* window needs to accept color text						-
+* null move												-
+* multithread (lazy SMP approach - search root node
+w different	move orderings??)							-
+* widgets lib (bar, graph)								-
 
 c4:
-* endgame estimate
-* make a general m,n,k solver
+* endgame estimate										-
+* make a general m,n,k solver							-
 
 quoridor:
-* D* pathfinding
-* quor zobrist isnt working maybe now it is
+* A*? pathfinding										-
+* quor zobrist isnt working maybe now it is				-

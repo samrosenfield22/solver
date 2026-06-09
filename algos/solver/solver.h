@@ -18,7 +18,7 @@
 //#define FORCE_SEARCH_DEPTH	(40)
 
 #define VARIATION_LENGTH	(4)
-#define DISPLAY_VAR_CT		(1)
+#define DISPLAY_VAR_CT		(7)
 
 
 typedef enum
@@ -195,7 +195,7 @@ typedef struct
 
 	/*required:
 	draws the position, make it nice looking*/
-	void (*draw_full)(void *pos);
+	void (*draw_full)(void *pos, int last_move);
 
 	/*optional:
 	converts a human-friendly expression of a move (i.e. Nc3)

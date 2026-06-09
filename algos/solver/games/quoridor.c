@@ -54,7 +54,7 @@ enum
 
 
 //
-void quor_draw_full(void *pos);
+void quor_draw_full(void *pos, int last_move);
 uint32_t quor_hash(void *key, size_t size);
 
 
@@ -76,7 +76,7 @@ bool quor_ok(quor_pos_t *p)
 	//assert(p->p1.token != p->p2.token);
 	if(p->p1.token == p->p2.token)
 	{
-		quor_draw_full(p);
+		quor_draw_full(p, -1);
 		printf("tokens equal!\n");
 		assert(0);
 	}
@@ -692,7 +692,7 @@ void print_player_info(quor_player_t *pl)
 	//
 }
 
-void quor_draw_full(void *pos)
+void quor_draw_full(void *pos, int last_move)
 {
 	quor_pos_t *p = pos;
 
