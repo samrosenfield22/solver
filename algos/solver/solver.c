@@ -346,9 +346,9 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 	float asp_window[] = {-WIN_SCORE, WIN_SCORE};
 	float last_iddfs_score = 0;
 
-	int cores = 1;
-	solver_t alt_solvers[cores];
-	for(int i=0; i<cores; i++)
+	int cores = MULTICORE_CT;
+	solver_t alt_solvers[cores-1];
+	for(int i=0; i<cores-1; i++)
 	{
 		memcpy(&alt_solvers[i], game_solver, sizeof(solver_t));
 		alt_solvers[i].default_order = mem_malloc(solver->possible_moves);
@@ -360,7 +360,7 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 	int iddfs;
 	int incr = solver->iddfs_increment;
 	if(!incr)
-		incr = 1;
+		incr = 2;
 	for(iddfs=0;; iddfs+=incr)
 	{
 		//iddfs_depth = iddfs + init_depth;
@@ -383,26 +383,31 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 			printf("\niddfs=%d in window [%.1f,%.1f] ",
 				iddfs, asp_window[0], asp_window[1]);
 
-			#ifdef USE_MULTICORE
-			#pragma omp parallel for private(solver)
-			for(int mp=0; mp<2; mp++)
+			if(MULTICORE_CT > 1)
 			{
-				int tid = omp_get_thread_num();
-				//solver = alt_solvers[tid];
-				solver = (tid==0)? game_solver : &alt_solvers[0];
-				//printf("\nsolver in thread %d w default order:", tid);
-				//for(int m=0; m<solver->possible_moves; m++)
-				//	printf("%d, ", solver->default_order[m]);
+				#pragma omp parallel for private(solver)
+				for(int mp=0; mp<MULTICORE_CT; mp++)
+				{
+					int tid = omp_get_thread_num();
+					//solver = alt_solvers[tid];
+					solver = (tid==0)? game_solver : &alt_solvers[tid-1];
+					window_unfocus();
+					term_move_cursor(5, 20+3*tid);
+					printf("\nsolver in thread %d w default order:", tid);
+					for(int m=0; m<solver->possible_moves; m++)
+						printf("%d, ", solver->default_order[m]);
+					//result = eval(gd, 0,
+					//	asp_window[0], asp_window[1],
+					//	true);
+				}
+				exit(0);
+			}
+			else
+			{
 				result = eval(gd, 0,
 					asp_window[0], asp_window[1],
 					true);
 			}
-			//exit(0);
-			#else
-			result = eval(gd, 0,
-				asp_window[0], asp_window[1],
-				true);
-			#endif
 
 			bool in_window = true;
 			#ifdef ASPIRATION_WINDOW
@@ -1373,6 +1378,7 @@ void print_score(float score)
 		printf("M%d  ", dif);
 	}
 }
+
 
 bool max_or_min(int depth)
 {

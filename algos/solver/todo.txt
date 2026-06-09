@@ -32,4 +32,5 @@ c4:
 
 quoridor:
 * A*? pathfinding										-
-* quor zobrist isnt working maybe now it is				-
+* zobrist isnt working (disagrees w quor_hash)			-
+* flip (after zobrist fixed)							-

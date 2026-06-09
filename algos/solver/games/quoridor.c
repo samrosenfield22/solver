@@ -477,7 +477,15 @@ uint32_t quor_hash(void *key, size_t size)
 	int i=0;
 	for(__int128 b=1; b; b<<=1)
 	{
-		if(p->horiz & b)
+		if(p->gates & b)
+		{
+			if(p->horiz & b)
+				zobrist_place(&h, i + 2*81);
+			else if(p->vert & b)
+				zobrist_place(&h, i + 2*81 + 64);
+		}
+
+		/*if(p->horiz & b)
 		{
 			//printf("horiz @ index %d\n", i + 2*81);
 			zobrist_place(&h, i + 2*81);
@@ -486,11 +494,11 @@ uint32_t quor_hash(void *key, size_t size)
 		{
 			//printf("vert @ index %d\n", i + 2*81+72);
 			zobrist_place(&h, i + 2*81+64);
-		}
+		}*/
 
 		i++;
-		//if(i > 72)
-		//	break;
+		if(i >= 64)
+			break;
 	}
 
 	return h;
@@ -914,19 +922,39 @@ solver_t QUOR_SOLVER =
 	.transtbl_buckets_ct = (1<<28),
 	.iddfs_increment = 2,
 	.aspiration_default_width = 1,
-	/*.default_order = (uint8_t[])
+	.default_order = (uint8_t[])
 	{
-		3, 2, 4, 1, //token moves
-		, , , , , , ,
-	},*/
-	.default_order = NULL,
+		4, 3, 2, 1, //token moves
+
+		//horiz
+		0.1, 0.5, 0.7, 0.9, 0.8, 0.6, 0.4, 0.1,
+		0.3, 0.5, 0.7, 0.9, 0.8, 0.6, 0.4, 0.2,
+		0.3, 0.5, 0.7, 0.9, 0.8, 0.6, 0.4, 0.2,
+		0.35, 0.55, 0.75, 0.95, 0.85, 0.65, 0.45, 0.25,
+		0.35, 0.55, 0.75, 0.95, 0.85, 0.65, 0.45, 0.25,
+		0.3, 0.5, 0.7, 0.9, 0.8, 0.6, 0.4, 0.2,
+		0.3, 0.5, 0.7, 0.9, 0.8, 0.6, 0.4, 0.2,
+		0.1, 0.5, 0.7, 0.9, 0.8, 0.6, 0.4, 0.1,
+
+		//vert
+		0.1, 0.5, 0.7, 0.9, 0.8, 0.6, 0.4, 0.1,
+		0.3, 0.5, 0.7, 0.9, 0.8, 0.6, 0.4, 0.2,
+		0.3, 0.5, 0.7, 0.9, 0.8, 0.6, 0.4, 0.2,
+		0.35, 0.55, 0.75, 0.95, 0.85, 0.65, 0.45, 0.25,
+		0.35, 0.55, 0.75, 0.95, 0.85, 0.65, 0.45, 0.25,
+		0.3, 0.5, 0.7, 0.9, 0.8, 0.6, 0.4, 0.2,
+		0.3, 0.5, 0.7, 0.9, 0.8, 0.6, 0.4, 0.2,
+		0.1, 0.5, 0.7, 0.9, 0.8, 0.6, 0.4, 0.1,
+
+	},
+	//.default_order = NULL,
 	.flip_depth = 16,
 
 	.gameover = quor_gameover,
 	.whosemove = quor_whosemove,
 	.is_legal = quor_is_legal,
 	.make_move = quor_make_move,
-	//.make_movelist = quor_make_movelist,
+	.make_movelist = quor_make_movelist,
 	//.only_moves = quor_only_moves,
 	.draw_full = quor_draw_full,
 

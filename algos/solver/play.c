@@ -435,10 +435,20 @@ void print_sequence(solver_t *solver, int8_t *seq, FILE *stream)
 			printf("(");
 		//printf("%d, ", *move);
 
-		if(solver->iter_to_human)
-			fprintf(stream, "%s", solver->iter_to_human(seq[i]));
+		if(to_term)
+		{
+			if(solver->iter_to_human)
+				printf("%s", solver->iter_to_human(seq[i]));
+			else
+				printf("%d", seq[i]);
+		}
 		else
-			fprintf(stream, "%d", seq[i]);
+		{
+			if(solver->iter_to_human)
+				fprintf(stream, "%s", solver->iter_to_human(seq[i]));
+			else
+				fprintf(stream, "%d", seq[i]);
+		}
 
 		if(i==seq_entire-1)
 		{
