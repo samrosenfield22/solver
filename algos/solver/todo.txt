@@ -24,6 +24,7 @@ move indexes??)											-
 * multithread (lazy SMP approach - search root node
 w different	move orderings??)							-
 * widgets lib (bar, graph)								-
+* time controls/time mgmt								-
 
 c4:
 * endgame estimate										-

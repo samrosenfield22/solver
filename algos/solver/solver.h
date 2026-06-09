@@ -15,10 +15,10 @@
 #define PRINCIPAL_VAR_SEARCH
 //#define USE_MULTICORE
 
-//#define FORCE_SEARCH_DEPTH	(40)
+#define FORCE_SEARCH_DEPTH	(40)
 
 #define VARIATION_LENGTH	(4)
-#define DISPLAY_VAR_CT		(7)
+#define DISPLAY_VAR_CT		(1)
 
 
 typedef enum
@@ -31,8 +31,6 @@ typedef enum
 
 #define WIN_SCORE	(10000.0)
 #define MATE_LIMIT	(WIN_SCORE - 100)
-//#define INF			(10000.0)
-//#define INF		(100.0)
 
 enum
 {
