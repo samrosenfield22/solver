@@ -271,7 +271,12 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 		}
 		else	//COMPUTER_PLAYER
 		{
-			move = solve(solver, pos, seq_ct, COMP_TIME, true);
+			#ifdef FORCE_SEARCH_DEPTH
+			int time_lim = 0;
+			#else
+			int time_lim = COMP_TIME;
+			#endif
+			move = solve(solver, pos, seq_ct, time_lim, true);
 			solver->make_move(pos, move, NULL);
 		}
 

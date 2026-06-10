@@ -62,6 +62,7 @@ bool alphabeta_cutoff(float cscore, float prune,
 	float *best_so_far, int depth);
 float max(float x, float y);
 float min(float x, float y);
+bool time_up(void);
 void print_score(float score);
 
 
@@ -82,7 +83,7 @@ hashmap_t *trans_tbl = NULL;
 bool who_goes_first = true;
 uint32_t position_ct = 0, max_node_ct = 0;
 int iddfs_depth;
-
+int time_lim;
 
 size_t gdata_size, gdata_hash_size;
 
@@ -273,6 +274,7 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 	solver_check(game_solver);
 
 	solver = game_solver;
+	time_lim = time_lim_ms;
 
 	if(!solver->hash_size)
 		solver->hash_size = solver->pos_size;
@@ -342,7 +344,7 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 	HISTORY_VALS = history_scores;
 	#endif
 
-	result_t result;
+	result_t result, last_result;
 	float asp_window[] = {-WIN_SCORE, WIN_SCORE};
 	float last_iddfs_score = 0;
 
@@ -363,13 +365,8 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 		incr = 2;
 	for(iddfs=0;; iddfs+=incr)
 	{
-		//iddfs_depth = iddfs + init_depth;
 		iddfs_depth = iddfs;
 
-		//if(verbose)
-		//	printf("\niddfs depth=%d\n", iddfs);
-
-		//tree_set_search_depth(gt, iddfs);
 		uint32_t last = toc_ms();
 
 
@@ -410,6 +407,10 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 					true);
 			}
 
+
+			if(time_up())
+				break;
+
 			bool in_window = true;
 			#ifdef ASPIRATION_WINDOW
 			in_window = set_aspiration_window(asp_window,
@@ -418,13 +419,16 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 			#endif
 			if(in_window)
 				break;
-
 			//asp window failed
-			//clear the tree
-			//tnode_t *h = tree_get(gt, gt->head);
-			//while(h->child_ct)
-			//	tree_delete_child(gt, 0);
 		}
+
+		if(time_up())
+		{
+			result = last_result;
+			break;
+		}
+		else
+			last_result = result;
 
 		//print info
 		if(verbose)
@@ -443,19 +447,6 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 				//print variation(s)
 				int var_len = min(iddfs, 2*VARIATION_LENGTH);
 				print_variations(gd, var_len);
-				/*for(int i=0; i<var_len; i++)
-				{
-					if(i)
-						printf(", ");
-
-					uint8_t var_move = variation[i];
-					if(var_move == -1)
-						break;
-					if(solver->iter_to_human)
-						printf(solver->iter_to_human(var_move));
-					else
-						printf("%d", var_move);
-				}*/
 
 				uint32_t now = toc_ms();
 				window_focus(analysis_hdl);
@@ -467,15 +458,14 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 		//printf("      ");
 		window_focus(analysis_hdl);
 
+
+
 		//conditions for ending the search
 		if(result.full)
 			break;
 
 		#ifdef FORCE_SEARCH_DEPTH
 			if(iddfs >= FORCE_SEARCH_DEPTH)
-				break;
-		#else
-			if((toc_ms() >= time_lim_ms) && !(iddfs & 0b1))
 				break;
 		#endif
 
@@ -492,9 +482,11 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 
 	//count time
 	uint32_t us = toc();
-	uint32_t sec_total = us/1000000;
+	uint32_t ms = us/1000;
+	uint32_t sec_total = ms/1000;
 	uint32_t min = sec_total/60;
 	uint32_t sec = sec_total - (60*min);
+
 
 	//int best_move = gt->head->children[0]->move_index;
 	int best_move = result.best_move;
@@ -520,7 +512,11 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 	if(verbose)
 	{
 		//printf("eval: %+.1f\n", gt->head->children[0]->score);
-		printf("\n\nposition solved in %d m, %d sec\n", min, sec);
+		//
+		if(ms < 1500)
+			printf("\n\nposition solved in %d ms\n", ms);
+		else
+			printf("\n\nposition solved in %d m, %d sec\n", min, sec);
 		printf("time per position: %.2f us\n", ((float)us)/position_ct);
 		printf("evaluated %s unique positions\n", sprintbig(position_ct, "%d"));
 		//printf("greatest number of nodes stored in tree: %u\n", max_node_ct);
@@ -625,6 +621,8 @@ bool set_aspiration_window(float *asp_window,
 result_t eval(gdata_t *gd, int depth,
 	float alpha, float beta, bool is_pv)
 {
+	if(time_up())
+		return (result_t){.score=0, .full=false, .best_move=-1};
 
 	/*term_move_cursor(0, 12);
 	solver->draw_full(gd->pos);
@@ -1366,6 +1364,14 @@ float min(float x, float y)
 float abs_f(float a)
 {
 	return (a>=0)? a : -a;
+}
+
+bool time_up(void)
+{
+	if(time_lim == 0)
+		return false;
+	else
+		return (toc_ms() >= time_lim);
 }
 
 void print_score(float score)
