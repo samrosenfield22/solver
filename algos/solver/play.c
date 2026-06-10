@@ -91,6 +91,8 @@ void play_menu(void)
 		else
 			printf("invalid game selection (must be between 0 and %d)!\n",
 				len-1);
+
+
 	}
 
 
@@ -154,6 +156,8 @@ void play_menu(void)
 
 void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 {
+	solver_init(solver);
+
 	int move;
 
 	printf("starting %s! %s goes first.\n\n",

@@ -211,8 +211,9 @@ typedef struct
 
 //float test_pos(solver_t *game_solver, int *seq, int len);
 //void *construct_pos(solver_t *game_solver, char *seq);
+void solver_init(solver_t *game_solver);
 float solve(solver_t *solver, void *pos, int init_depth,
 	int time_lim_ms, bool verbose);
-
+void solver_check(solver_t *s);
 
 #endif	//SOLVER_H_

@@ -78,6 +78,9 @@ void *node_get_pos(tnode_t *n);
 uint32_t *node_get_hash(tnode_t *n);
 uint32_t *gdata_get_hash(gdata_t *gd);
 
+void print_eval_bar(float score);
+void print_variations(gdata_t *gd, int len);
+
 solver_t *solver;
 hashmap_t *trans_tbl = NULL;
 bool who_goes_first = true;
@@ -98,16 +101,38 @@ uint8_t killers[MAX_PLY][NUM_KILLERS] = {0};
 
 //uint32_t passed=0, checked=0;
 
+void print_evaluation(gdata_t *gd, result_t result)
+{
+	static float last_score = 111111;
+
+	window_focus(eval_hdl);
+	if(result.score == last_score)
+		window_cursor_set(3);
+	else
+	{
+		last_score = result.score;
+		window_cursor_set(0);
+		print_eval_bar(result.score);
+	}
+	if(iddfs_depth >= 1)
+	{
+		printf("\t\t  (depth: %d)\n\n", iddfs_depth);
+
+		//print variation(s)
+		#ifdef USE_TRANSPOSITION_TABLE
+		int var_len = min(iddfs_depth, 2*VARIATION_LENGTH);
+		print_variations(gd, var_len);
+		#endif
+	}
+}
+
 void print_eval_bar(float score)
 {
 
-
-	window_focus(eval_hdl);
-	//window_clear();
-	window_cursor_set(0);
+	//window_cursor_set(0);
 
 	int len = 40;
-	char *indent = "  ";
+	char *indent = "   ";
 
 	printf(indent);
 	for(int i=0; i<len/2-1; i++)
@@ -137,7 +162,6 @@ void print_eval_bar(float score)
 		printf(" ");
 	printf("^\n");
 
-	window_focus(analysis_hdl);
 }
 
 bool asp_window_rerun = false;
@@ -268,28 +292,23 @@ void print_variations(gdata_t *gd, int len)
 	mem_free(var_walker);
 }
 
-float solve(solver_t *game_solver, void *pos, int init_depth,
-	int time_lim_ms, bool verbose)
+void solver_init(solver_t *game_solver)
 {
 	solver_check(game_solver);
 
 	solver = game_solver;
-	time_lim = time_lim_ms;
-
 	if(!solver->hash_size)
 		solver->hash_size = solver->pos_size;
-
-	position_ct = 0;
-
 	gdata_size = sizeof(gdata_t) + solver->pos_size;
+}
 
-	/*
-	//make the tree
-	//tree_t *gt = tree_create(solver->pos_size);
-	tree_t *gt = tree_create(gdata_size);
-	tree_clear_search_depth(gt);
-	tree_attach_print_fn(gt, solver->print_pos);
-	*/
+float solve(solver_t *game_solver, void *pos, int init_depth,
+	int time_lim_ms, bool verbose)
+{
+	tic();
+
+	time_lim = time_lim_ms;
+	position_ct = 0;
 
 	#ifdef USE_TRANSPOSITION_TABLE
 	if(!trans_tbl)
@@ -298,26 +317,17 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 
 	if(!pos)
 		pos = solver->initial_pos;
-	//tree_add(gt, pos);
 	gdata_t *gd = mem_malloc(gdata_size);
-	//gdata_t gd;
 	gd->hash = solver->hash(pos, solver->pos_size);
 	memcpy(&(gd->pos), pos, solver->pos_size);
-	//tree_add(gt, &gd);
-	//mem_free(gd);
 
-	//term_clear();
 
-	window_focus(eval_hdl);
-	window_clear();
 	window_focus(analysis_hdl);
 	window_clear();
 
 
 	who_goes_first = solver->whosemove(pos);
 	printf("player %d to move\n", who_goes_first? 1 : 2);
-	//exit(0);
-
 
 
 	if(solver->print_pos)
@@ -335,6 +345,7 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 	#endif
 	printf("\n");
 
+	printf("pre setup time = %d ms\n", toc_ms());
 	tic();
 
 	#ifdef USE_HISTORY_HEURISTIC
@@ -359,7 +370,7 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 	}
 
 	//iddfs
-	int iddfs;
+	int iddfs, iddfs_complete=0;
 	int incr = solver->iddfs_increment;
 	if(!incr)
 		incr = 2;
@@ -425,35 +436,23 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 		if(time_up())
 		{
 			result = last_result;
+			printf("(time up)\n");
 			break;
 		}
-		else
-			last_result = result;
+
+
+		last_result = result;
+		iddfs_complete = iddfs;
 
 		//print info
 		if(verbose)
 		{
-			window_focus(eval_hdl);
-			//window_clear();
-			window_cursor_set(0);
-			print_eval_bar(result.score);
-			window_focus(eval_hdl);
-			if(iddfs >= 1)
-			{
-				//window_cursor_set(4);
-				printf("\t\t   (depth: %d)\n\n", iddfs);
-				//printf("  %+.2f   ", result.score);
+			print_evaluation(gd, result);
 
-				//print variation(s)
-				int var_len = min(iddfs, 2*VARIATION_LENGTH);
-				print_variations(gd, var_len);
-
-				uint32_t now = toc_ms();
-				window_focus(analysis_hdl);
-				printf("(%u ms)", now-last);
-				window_focus(eval_hdl);
-				last = now;
-			}
+			uint32_t now = toc_ms();
+			window_focus(analysis_hdl);
+			printf("(%u ms)", now-last);
+			last = now;
 		}
 		//printf("      ");
 		window_focus(analysis_hdl);
@@ -496,8 +495,8 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 
 	if(verbose)
 	{
-		printf("\n\n--- search ran to depth = %d%s ---\n", iddfs,
-			result.full? " (full solve)":"");
+		printf("\n\n--- search ran to depth = %d%s ---\n",
+			iddfs_complete, result.full? " (full solve)":"");
 	}
 
 	printf("best move: \t");

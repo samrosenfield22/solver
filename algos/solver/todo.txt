@@ -29,6 +29,7 @@ w different	move orderings??)							-
 c4:
 * endgame estimate										-
 * make a general m,n,k solver							-
+* highlight 4 in row for draw							-
 
 quoridor:
 * A*? pathfinding										-
