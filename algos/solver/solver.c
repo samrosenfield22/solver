@@ -115,7 +115,7 @@ void print_evaluation(gdata_t *gd, result_t result)
 		print_eval_bar(result.score);
 	}
 
-	printf("\t\t  (depth: %d)\n\n", iddfs_depth);
+	printf("\t\t  (depth: %d) \n\n", iddfs_depth);
 
 	//print variation(s)
 	#ifdef USE_TRANSPOSITION_TABLE
@@ -295,7 +295,7 @@ void print_variations(gdata_t *gd, int len)
 		}
 
 		for(; i<2*VARIATION_LENGTH; i++)
-			printf("   ");
+			printf("    ");
 		printf("\n");
 	}
 
@@ -650,12 +650,11 @@ result_t eval(gdata_t *gd, int depth,
 	#ifdef USE_TRANSPOSITION_TABLE
 	//check if position was already analyzed
 	ttval = tt_get(gd, depth);
-	//if(val && (val->iddfs == iddfs))
-	//	return n->score;
 	if(ttval)
 	{
 		gd->score = ttval->score;
-		if(ttval->full)
+		//if(ttval->full)
+		if(ttval->full && ttval->bound==BOUND_EXACT)
 		{
 			assert(gd->score > MATE_LIMIT
 				|| gd->score < -MATE_LIMIT
@@ -664,6 +663,7 @@ result_t eval(gdata_t *gd, int depth,
 		}
 		//if(ttval->iddfs >= iddfs_depth && !asp_window_rerun)
 		//if(ttval->iddfs >= iddfs_depth && ttval->bound==BOUND_EXACT)
+		//assert(!ttval->full);
 		if(ttval->search_depth >= (iddfs_depth - depth)
 			&& ttval->bound==BOUND_EXACT)
 		//if(val->iddfs >= iddfs_depth
@@ -697,13 +697,11 @@ result_t eval(gdata_t *gd, int depth,
 			gd->score = solver->estimate(pos);
 		else
 			gd->score = 0;
-		assert(-WIN_SCORE < gd->score && gd->score < WIN_SCORE);
+		assert(-MATE_LIMIT < gd->score && gd->score < MATE_LIMIT);
 		return (result_t){.score=gd->score, .full=false, .best_move=-1};
 	}
 
-	//float score;
-
-	//make move order
+	//make movelist
 	//if there's only one move (that wins or loses),
 	//just play that
 	sorter_t movelist[solver->possible_moves];
@@ -714,23 +712,12 @@ result_t eval(gdata_t *gd, int depth,
 
 	if(!len)
 	{
-		//assert(n->child_ct == 0);
-
 		if(solver->make_movelist)
 			len = solver->make_movelist(movelist, pos);
 		else
 			len = build_movelist(movelist, pos);
 
 		sort_movelist(movelist, len, gd, depth);
-		//printf("movelist:\n");
-		//for(int m=0; m<len; m++)
-		//	printf("%d, ", movelist[m].move);
-		//len = build_order(order, gt, n, depth);
-		//assert(n->child_ct == 0);
-
-
-
-		//len = solver->possible_moves;
 	}
 
 	//main analysis -- recursive tree search
@@ -740,32 +727,39 @@ result_t eval(gdata_t *gd, int depth,
 
 	//assert(n->child_ct);
 	//int best_move = n->children[0]->move_index;
-	if(is_win_score(result.score, depth))
+	bool win = is_win_score(result.score, depth);
+	if(win)
 	{
 		result.score -= (max_or_min(depth)==MAX_LAYER)? 1: -1;
-		//
 	}
-	gd->score = result.score;	//might not even need
 
 	//int best_move = n->child_ct? n->children[0]->move_index : -1;
 
 	#ifdef USE_TRANSPOSITION_TABLE
-	int bound;
-	if(alpha < result.score
-		&& result.score < beta)
-		bound = BOUND_EXACT;
-	else if(result.score < alpha)
-		bound = BOUND_UPPER;
-	else
-		bound = BOUND_LOWER;
+	int bound = BOUND_EXACT;
+	if(!win)
+	{
+		if(alpha < result.score
+			&& result.score < beta)
+			bound = BOUND_EXACT;
+		else if(result.score <= alpha)
+		{
+			bound = BOUND_UPPER;
+			//result.full = false;
+		}
+		else
+		{
+			bound = BOUND_LOWER;
+			//result.full = false;
+		}
+	}
 	tt_add(gd, &result, depth, bound, result.best_move);
 	#endif
 
-	//gd->score = result.score;
-	//assert(result.score == gd->score);
-	//return n->score;
 
 
+
+	gd->score = result.score;	//might not even need
 
 	assert(result.best_move != -1);
 	return result;
@@ -849,7 +843,7 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 	}
 	if(alpha >= beta)	//bail immediately
 	{
-		assert(ttval->full == false);
+		//assert(ttval->full == false);
 		return (result_t){.score=ttval->score, .full=false, .best_move=ttval->best_move};
 	}
 
