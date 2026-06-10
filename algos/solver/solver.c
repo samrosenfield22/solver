@@ -226,7 +226,7 @@ void print_variations(gdata_t *gd, int len)
 			memcpy(var_walker, gd, gdata_size);
 
 			//get tt info of the nth move
-			if(solver->is_legal(gd->pos, i))
+			if(solver->is_legal(&gd->pos, i))
 			{
 				make_new_move(var_walker, var_walker, i);
 				from_root[i].tv = tt_get(var_walker, 0);
@@ -254,7 +254,12 @@ void print_variations(gdata_t *gd, int len)
 	for(int v=0; v<vars; v++)
 	{
 		if(!from_root[v].tv)
+		{
+			for(int i=0; i<2*VARIATION_LENGTH; i++)
+				printf("     ");
+			printf("\n");
 			continue;
+		}
 
 		int spaces = printf("  #%d %+.1f", v+1, from_root[v].tv->score);
 		for(int s=spaces; s<13; s++)
@@ -725,15 +730,12 @@ result_t eval(gdata_t *gd, int depth,
 		depth, alpha, beta, is_pv);
 
 
-	//assert(n->child_ct);
-	//int best_move = n->children[0]->move_index;
 	bool win = is_win_score(result.score, depth);
-	if(win)
+	if(win && depth)
 	{
 		result.score -= (max_or_min(depth)==MAX_LAYER)? 1: -1;
 	}
 
-	//int best_move = n->child_ct? n->children[0]->move_index : -1;
 
 	#ifdef USE_TRANSPOSITION_TABLE
 	int bound = BOUND_EXACT;
@@ -757,9 +759,7 @@ result_t eval(gdata_t *gd, int depth,
 	#endif
 
 
-
-
-	gd->score = result.score;	//might not even need
+	//gd->score = result.score;	//might not even need
 
 	assert(result.best_move != -1);
 	return result;
@@ -844,7 +844,7 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 	if(alpha >= beta)	//bail immediately
 	{
 		//assert(ttval->full == false);
-		return (result_t){.score=ttval->score, .full=false, .best_move=ttval->best_move};
+		return (result_t){.score=ttval->score, .full=ttval->full, .best_move=ttval->best_move};
 	}
 
 	float alpha_init = alpha, beta_init = beta;
