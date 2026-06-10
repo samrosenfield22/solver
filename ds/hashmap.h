@@ -1,12 +1,14 @@
 
 
+#include <omp.h>
 
 #define hashmap(ktype, vtype, len)		\
 	hashmap_create(sizeof(ktype), sizeof(vtype), len)
 
 typedef struct
 {
-	bool lock;
+	//bool lock;
+	//omp_lock_t lock;
 
 	void *key;
 	void *value;

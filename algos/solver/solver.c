@@ -391,16 +391,17 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 					int tid = omp_get_thread_num();
 					//solver = alt_solvers[tid];
 					solver = (tid==0)? game_solver : &alt_solvers[tid-1];
-					window_unfocus();
+					/*window_unfocus();
 					term_move_cursor(5, 20+3*tid);
 					printf("\nsolver in thread %d w default order:", tid);
 					for(int m=0; m<solver->possible_moves; m++)
 						printf("%d, ", solver->default_order[m]);
-					//result = eval(gd, 0,
-					//	asp_window[0], asp_window[1],
-					//	true);
+					*/
+					result = eval(gd, 0,
+						asp_window[0], asp_window[1],
+						true);
 				}
-				exit(0);
+				//exit(0);
 			}
 			else
 			{
