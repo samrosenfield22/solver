@@ -114,16 +114,15 @@ void print_evaluation(gdata_t *gd, result_t result)
 		window_cursor_set(0);
 		print_eval_bar(result.score);
 	}
-	if(iddfs_depth >= 1)
-	{
-		printf("\t\t  (depth: %d)\n\n", iddfs_depth);
 
-		//print variation(s)
-		#ifdef USE_TRANSPOSITION_TABLE
-		int var_len = min(iddfs_depth, 2*VARIATION_LENGTH);
-		print_variations(gd, var_len);
-		#endif
-	}
+	printf("\t\t  (depth: %d)\n\n", iddfs_depth);
+
+	//print variation(s)
+	#ifdef USE_TRANSPOSITION_TABLE
+	//int var_len = min(iddfs_depth, 2*VARIATION_LENGTH);
+	//print_variations(gd, var_len);
+	print_variations(gd, 2*VARIATION_LENGTH);
+	#endif
 }
 
 void print_eval_bar(float score)
@@ -211,8 +210,11 @@ void print_variations(gdata_t *gd, int len)
 
 	int vars = DISPLAY_VAR_CT;
 
-	memcpy(var_walker, gd, gdata_size);
-	pv_var_move = tt_get(var_walker, 0)->best_move;
+	//memcpy(var_walker, gd, gdata_size);
+	/*trans_value_t *tv = tt_get(var_walker, 0);
+	if(!tv)
+		return;
+	pv_var_move = tv->best_move;*/
 
 	//load and sort the moves from root
 	tv_with_last_move_t from_root[solver->possible_moves];
@@ -243,6 +245,8 @@ void print_variations(gdata_t *gd, int len)
 	{
 		memcpy(var_walker, gd, gdata_size);
 		from_root[0].tv = tt_get(var_walker, 0);
+		if(!from_root[0].tv)
+			return;
 		from_root[0].move = from_root[0].tv->best_move;
 	}
 	//assert(from_root[0].move == )
@@ -257,6 +261,7 @@ void print_variations(gdata_t *gd, int len)
 			printf(" ");
 
 		int vmove = from_root[v].move;	//nth best
+		float vscore = from_root[v].tv->score;
 
 		//copy original gd
 		memcpy(var_walker, gd, gdata_size);
@@ -272,7 +277,6 @@ void print_variations(gdata_t *gd, int len)
 				printf(solver->iter_to_human(vmove));
 			else
 				printf("%d", vmove);
-			if(i < len-1) printf(", ");
 
 			//make the move
 			make_new_move(var_walker, var_walker, vmove);
@@ -280,8 +284,14 @@ void print_variations(gdata_t *gd, int len)
 			//get the next one
 			trans_value_t *tv = tt_get(var_walker, 0);
 			if(!tv)
+			{
+				if(vscore==WIN_SCORE-1 || vscore==-WIN_SCORE+1)
+					printf("#");
 				break;
+			}
+			printf(", ");
 			vmove = tv->best_move;
+			vscore = tv->score;
 		}
 
 		for(; i<2*VARIATION_LENGTH; i++)
@@ -526,7 +536,7 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 	zobrist_free();
 
 
-	term_move_cursor(0, 15);
+	//term_move_cursor(0, 15);
 
 	#ifdef USE_HISTORY_HEURISTIC
 	window_unfocus();
