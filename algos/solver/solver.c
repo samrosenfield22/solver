@@ -472,11 +472,6 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 		for(int i=0; i<solver->possible_placements; i++)
 			HISTORY_VALS[i] /= 2;
 		#endif
-
-		//clear the tree
-		//tnode_t *h = tree_get(gt, gt->head);
-		//while(h->child_ct)
-		//	tree_delete_child(gt, 0);
 	}
 
 	//count time
@@ -487,10 +482,8 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 	uint32_t sec = sec_total - (60*min);
 
 
-	//int best_move = gt->head->children[0]->move_index;
+
 	int best_move = result.best_move;
-	//if(result.full)
-	//	printf("full!\n");
 	assert(best_move != -1);
 
 	if(verbose)
@@ -504,19 +497,19 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 		printf("%s\n", solver->iter_to_human(best_move));
 	else
 		printf("%d\n", best_move);
-	printf("evaluation:\t%.1f\n", result.score);
-	//print_eval_bar(gt->head->children[0]->score);
-	//printf("\n\n");
+	printf("evaluation:\t%+.1f\n", result.score);
 
 	if(verbose)
 	{
-		//printf("eval: %+.1f\n", gt->head->children[0]->score);
-		//
 		if(ms < 1500)
 			printf("\n\nposition solved in %d ms\n", ms);
 		else
 			printf("\n\nposition solved in %d m, %d sec\n", min, sec);
-		printf("time per position: %.2f us\n", ((float)us)/position_ct);
+		printf("time per position: ");
+		if(position_ct)
+			printf("%.2f us\n", ((float)us)/position_ct);
+		else
+			printf("N/A\n");
 		printf("evaluated %s unique positions\n", sprintbig(position_ct, "%d"));
 		//printf("greatest number of nodes stored in tree: %u\n", max_node_ct);
 		#ifdef USE_TRANSPOSITION_TABLE
@@ -526,11 +519,12 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 	}
 
 
-	//tree_destroy(gt);
+	//clean up
 	mem_free(gd);
-	hashmap_destroy(trans_tbl);
+	//hashmap_destroy(trans_tbl);
+	//trans_tbl = NULL;
 	zobrist_free();
-	trans_tbl = NULL;
+
 
 	term_move_cursor(0, 15);
 
