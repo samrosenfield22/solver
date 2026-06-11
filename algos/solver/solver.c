@@ -198,8 +198,8 @@ int vars_from_root_compare(const void *aa, const void *bb)
 
 	if(!a->tv)	return 1;
 	if(!b->tv)	return -1;
-	if(a->move == pv_var_move) return -1;
-	if(b->move == pv_var_move) return 1;
+	//if(a->move == pv_var_move) return -1;
+	//if(b->move == pv_var_move) return 1;
 	return b->tv->score - a->tv->score;
 }
 
@@ -731,7 +731,7 @@ result_t eval(gdata_t *gd, int depth,
 
 
 	bool win = is_win_score(result.score, depth);
-	if(win && depth)
+	if(win)
 	{
 		result.score -= (max_or_min(depth)==MAX_LAYER)? 1: -1;
 	}
