@@ -3,6 +3,7 @@
 #include "play.h"
 #include "play_windows.h"
 #include "../../utils.h"
+#include "clock.h"
 
 #include "games/nim.h"
 #include "games/ttt.h"
@@ -13,6 +14,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <conio.h>
 
 #define PGN_DIR	"algos/solver/pgns"
 #define LAST_PGN_DIR	"algos/solver/pgns/repeat.txt"
@@ -158,6 +160,8 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 {
 	solver_init(solver);
 
+	clocks_init(5*60, 5*60);
+
 	int move;
 
 	printf("starting %s! %s goes first.\n\n",
@@ -184,14 +188,12 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 
 		window_focus(analysis_hdl);
 
-
-
-
 		//term_move_cursor(0, 35);
 		//printf(TERM_RESET);
 
 
 		bool player = turn? p1 : p2;
+		clock_resume(player);
 		if(player == HUMAN_PLAYER)
 		{
 			/*
@@ -200,13 +202,52 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 			make move, update pos
 			*/
 			//solver->draw_full(pos);
+
+
+
 			print_sequence(solver, seq, stdout);
 			printf("\n\nenter your move, [b]ack, [f]orward, [s]ave, [q]uit game, or e[x]it:\n> ");
 			char buf[160];
-			fgets(buf, 159, stdin);
+			char *bp = buf;
+			bool end = false;
+			while(1)
+			{
+				clock_update(player);
+
+				if(_kbhit())
+				{
+					char ch = _getch();
+					switch(ch)
+					{
+						case '\n':
+						case '\r':
+							*bp = '\0';
+							end = true;
+							break;
+						case '\b':
+							if(bp > buf)
+							{
+								bp--;
+								printf("\b \b");
+							}
+							break;
+						default:
+							if(bp < buf+159)
+							{
+								*bp++ = ch;
+								printf("%c", ch);
+							}
+					}
+
+				}
+
+				if(end)
+					break;
+			}
+			/*fgets(buf, 159, stdin);
 			char *end = &buf[strlen(buf)-1];
 			if(*end == '\n')
-				*end = '\0';
+				*end = '\0';*/
 
 			if(strcmp(buf, "b")==0 || strcmp(buf, "back")==0)
 			{

@@ -315,6 +315,11 @@ void solver_init(solver_t *game_solver)
 	if(!solver->hash_size)
 		solver->hash_size = solver->pos_size;
 	gdata_size = sizeof(gdata_t) + solver->pos_size;
+
+	#ifdef USE_TRANSPOSITION_TABLE
+	if(!trans_tbl)
+		tt_create();
+	#endif	//USE_TRANSPOSITION_TABLE
 }
 
 float solve(solver_t *game_solver, void *pos, int init_depth,
@@ -325,10 +330,10 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 	time_lim = time_lim_ms;
 	position_ct = 0;
 
-	#ifdef USE_TRANSPOSITION_TABLE
+	/*#ifdef USE_TRANSPOSITION_TABLE
 	if(!trans_tbl)
 		tt_create();
-	#endif	//USE_TRANSPOSITION_TABLE
+	#endif	//USE_TRANSPOSITION_TABLE*/
 
 	if(!pos)
 		pos = solver->initial_pos;
@@ -342,25 +347,30 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 
 
 	who_goes_first = solver->whosemove(pos);
-	printf("player %d to move\n", who_goes_first? 1 : 2);
 
-
-	if(solver->print_pos)
+	if(verbose)
 	{
-		printf("solving game position: ");
-		solver->print_pos(gd->pos);
-		printf("\n");
-	}
-	else
-		printf("solving ");
-	#ifdef FORCE_SEARCH_DEPTH
-	printf("(force search depth %d)", FORCE_SEARCH_DEPTH);
-	#else
-	printf("(time limit %d ms)", time_lim_ms);
-	#endif
-	printf("\n");
 
-	printf("pre setup time = %d ms\n", toc_ms());
+
+		printf("player %d to move\n", who_goes_first? 1 : 2);
+
+		if(solver->print_pos)
+		{
+			printf("solving game position: ");
+			solver->print_pos(gd->pos);
+			printf("\n");
+		}
+		else
+			printf("solving ");
+		#ifdef FORCE_SEARCH_DEPTH
+		printf("(force search depth %d)", FORCE_SEARCH_DEPTH);
+		#else
+		printf("(time limit %d ms)", time_lim_ms);
+		#endif
+		printf("\n");
+
+		printf("pre setup time = %d ms\n", toc_ms());
+	}
 	tic();
 
 	#ifdef USE_HISTORY_HEURISTIC
@@ -445,7 +455,6 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 			#endif
 			if(in_window)
 				break;
-			//asp window failed
 		}
 
 		if(time_up())

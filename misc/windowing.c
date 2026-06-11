@@ -321,6 +321,18 @@ void window_add_char(text_window_t *win, char c)
 			window_add_char(win, ' ');
 		return;
 	}
+	else if(c == '\b')
+	{
+		if(win->cursor_x)
+			win->cursor_x--;
+		else if(win->cursor_y)
+		{
+			win->cursor_x = win->w-1;
+			win->cursor_y--;
+		}
+		
+		term_move_cursor(win->x+win->cursor_x, win->y+win->cursor_y);
+	}
 	else
 	{
 		putchar(c);
