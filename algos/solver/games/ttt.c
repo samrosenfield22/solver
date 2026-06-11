@@ -128,6 +128,16 @@ uint32_t ttt_hash(void *key, size_t size)
 	return h;
 }
 
+int ttt_moves_remaining(void *pos)
+{
+	ttt_pos_t *p = pos;
+	int played = 0;
+	for(int i=0; i<9; i++)
+		if(p->spaces[i] != EMPTY)
+			played++;
+	return (9-played)/2;
+}
+
 bool ttt_keys_match(void *k1, void *k2)
 {
 	ttt_pos_t *n1 = k1, *n2 = k2;
@@ -182,7 +192,7 @@ void ttt_draw_full(void *pos, int last_move)
 				case EMPTY: putchar(' '); break;
 			}
 			printf(TERM_BLACK_BG);
-			
+
 			if(c != 2)
 				printf(" | ");
 		}
@@ -229,6 +239,7 @@ solver_t TTT_SOLVER =
 
 	.print_pos = ttt_print_pos,
 	.hash = ttt_hash,
+	.moves_remaining = ttt_moves_remaining,
 	.uses_zobrist = false,
 	.keys_match = ttt_keys_match,
 	//.normalize_position = ttt_normalize,

@@ -165,6 +165,8 @@ typedef struct
 	(although it doesn't really need to be)*/
 	uint32_t (*hash)(void *key, size_t size);
 
+	int (*moves_remaining)(void *pos);
+
 
 	bool uses_zobrist;
 

@@ -272,6 +272,7 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 						case '\r':
 							*bp = '\0';
 							end = true;
+							printf("\n");
 							break;
 						case '\b':
 							if(bp > buf)
@@ -361,11 +362,15 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 		}
 		else	//COMPUTER_PLAYER
 		{
+			int time_lim;
 			#ifdef FORCE_SEARCH_DEPTH
-			int time_lim = 0;
+			time_lim = 0;
 			#else
 			//int time_lim = 1000;
-			int time_lim = clock_get_time() / ((42-seq_ct)/2);
+			if(solver->moves_remaining)
+				time_lim = clock_get_time() / solver->moves_remaining(pos);
+			else
+				time_lim = clock_get_time() / 50;	//idk
 			#endif
 			window_focus(analysis_hdl);
 			window_clear();

@@ -738,7 +738,12 @@ uint32_t c4_hash(void *key, size_t size)
 	return h;
 }
 
-
+int c4_moves_remaining(void *pos)
+{
+	c4_pos_t *p = pos;
+	int played = __builtin_popcount(p->filled);
+	return (42-played)/2;
+}
 
 bool c4_keys_match(void *k1, void *k2)
 {
@@ -1138,6 +1143,7 @@ solver_t C4_SOLVER =
 
 	.print_pos = NULL,
 	.hash = c4_hash,
+	.moves_remaining = c4_moves_remaining,
 	.uses_zobrist = true,
 	//.hash = NULL,
 	.keys_match = c4_keys_match,

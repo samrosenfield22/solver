@@ -96,6 +96,15 @@ uint32_t nim_hash(void *key, size_t size)
 	return h;
 }
 
+int nim_moves_remaining(void *pos)
+{
+	nim_pos_t *p = pos;
+	int left = 0;
+	for(int i=0; i<3; i++)
+		left += p->piles[i];
+	return left/2;
+}
+
 bool nim_keys_match(void *k1, void *k2)
 {
 	nim_pos_t *n1 = k1, *n2 = k2;
@@ -236,6 +245,7 @@ solver_t NIM_SOLVER =
 
 	.print_pos = nim_print_pos,
 	.hash = nim_hash,
+	.moves_remaining = nim_moves_remaining,
 	.uses_zobrist = false,
 	.keys_match = nim_keys_match,
 	//.normalize_position = nim_normalize,
