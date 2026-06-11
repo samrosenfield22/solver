@@ -349,8 +349,7 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 	memcpy(&(gd->pos), pos, solver->pos_size);
 
 
-	window_focus(analysis_hdl);
-	window_clear();
+	
 
 
 	who_goes_first = solver->whosemove(pos);

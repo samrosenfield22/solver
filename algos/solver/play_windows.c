@@ -4,7 +4,7 @@
 #include "solver.h"
 #include "../../utils.h"
 
-int analysis_hdl = -1, eval_hdl = -1, notation_win_hdl = -1;
+int analysis_hdl = -1, eval_hdl = -1, notation_win_hdl = -1, p1_window_hdl=-1, p2_window_hdl=-1;
 
 void init_play_windows(void)
 {
@@ -17,6 +17,17 @@ void init_play_windows(void)
 	{
 		notation_win_hdl = window_wh(18, 3, 20, 20);
 		window_set_colors(TERM_CYAN, TERM_BLACK_BG);
+	}
+
+	if(p1_window_hdl == -1)
+	{
+		p1_window_hdl = window_wh(56, 38, 10, 8);
+		window_set_colors(TERM_YELLOW, TERM_BLACK_BG);
+	}
+	if(p2_window_hdl == -1)
+	{
+		p2_window_hdl = window_wh(56+25, 38, 10, 8);
+		window_set_colors(TERM_YELLOW, TERM_BLACK_BG);
 	}
 
 	//default window

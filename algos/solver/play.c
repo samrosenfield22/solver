@@ -14,13 +14,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <assert.h>
 #include <conio.h>
 
 #define PGN_DIR	"algos/solver/pgns"
 #define LAST_PGN_DIR	"algos/solver/pgns/repeat.txt"
 
 
-#define COMP_TIME	(1 * 1000)
+//#define COMP_TIME	(1 * 1000)
+#define TIME_ODDS	(100)
+
 #define DEV_MODE	(true)
 //#define DEV_MODE	(false)
 
@@ -136,16 +139,49 @@ void play_menu(void)
 
 		init_play_windows();
 
-		if(DEV_MODE)
-			play(game, pos, COMPUTER_PLAYER, HUMAN_PLAYER);
-			//play(game, pos, HUMAN_PLAYER, COMPUTER_PLAYER);
-		else
+		//choose who goes first
+		bool p1=COMPUTER_PLAYER, p2=HUMAN_PLAYER;
+		if(!DEV_MODE && (rand() & 0b1))
 		{
-			if(rand() & 0b1)
-				play(game, NULL, HUMAN_PLAYER, COMPUTER_PLAYER);
-			else
-				play(game, NULL, COMPUTER_PLAYER, HUMAN_PLAYER);
+			p1 = HUMAN_PLAYER;
+			p2 = COMPUTER_PLAYER;
 		}
+
+		game_outcome_t outcome = play(game, NULL,
+			COMPUTER_PLAYER, HUMAN_PLAYER);
+
+		bool win_player;
+		printf("game over!\n");
+		switch(outcome.reason)
+		{
+			case GAME_UNFINISHED:
+				break;
+			case WIN_BY_CHECKMATE:
+			case WIN_BY_TIMEOUT:
+				win_player = (outcome.winner)? p1 : p2;
+				printf("player %d (%s) wins by %s\n",
+					outcome.winner,
+					(win_player==HUMAN_PLAYER)? "human":"computer",
+					(outcome.reason==WIN_BY_CHECKMATE)? "checkmate":"timeout");
+				break;
+			case DRAW_BY_STALEMATE:	printf("draw!\n");	break;
+			default:	assert(0);
+		}
+		if(!outcome.reason==GAME_UNFINISHED)
+		{
+			window_focus(p1_window_hdl);
+			window_cursor_set(4);
+			printf("\n\n   %.1f", outcome.score);
+			window_focus(p2_window_hdl);
+			window_cursor_set(4);
+			printf("\n\n   %.1f", 1-outcome.score);
+		}
+		window_unfocus();
+		term_move_cursor(0, 12);
+		game->draw_full(pos, -1);
+		window_focus(analysis_hdl);
+		print_sequence(game, seq, stdout);
+
 
 		printf("clearing game memory, wait a sec...\n");
 		solver_clear();
@@ -159,7 +195,7 @@ void play_menu(void)
 	}
 }
 
-void play(solver_t *solver, void *start_pos, bool p1, bool p2)
+game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 {
 	solver_init(solver);
 
@@ -179,13 +215,15 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 
 	bool turn = !(seq_ct & 0b1);
 	window_term_clear();
-	clocks_init(5*60, 5*60);
+	clocks_init(5*60 / TIME_ODDS, 5*60);
 
 	while(1)
 	{
 		term_move_cursor(0, 12);
 		solver->draw_full(pos, seq_ct? seq[seq_ct-1] : -1);
 		print_sequence_fancy(solver, seq, stdout);
+
+
 
 
 		//for(int i=0; i<solver->possible_moves; i++)
@@ -198,6 +236,7 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 
 
 		bool player = turn? p1 : p2;
+
 		clock_resume(player);
 		if(player == HUMAN_PLAYER)
 		{
@@ -217,12 +256,10 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 			bool end = false;
 			while(1)
 			{
-				bool clock_flag = clock_update();
-				if(clock_flag)
-				{
-					printf("human lost on time\n");
-					return;
-				}
+				bool clock_flagged = clock_update();
+				if(clock_flagged)
+					return (game_outcome_t)
+						{.score=1-player, .winner=player, .reason=WIN_BY_TIMEOUT};
 
 				if(_kbhit())
 				{
@@ -296,7 +333,7 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 			}
 			else if(strcmp(buf, "q")==0 || strcmp(buf, "quit game")==0)
 			{
-				return;
+				return (game_outcome_t){.reason=GAME_UNFINISHED};
 			}
 			else if(strcmp(buf, "x")==0 || strcmp(buf, "exit")==0)
 			{
@@ -319,44 +356,35 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 				continue;
 			}
 			solver->make_move(pos, move, NULL);
-
-
-			/*printf("enter to continue   ");
-			getchar();*/
 		}
 		else	//COMPUTER_PLAYER
 		{
 			#ifdef FORCE_SEARCH_DEPTH
 			int time_lim = 0;
 			#else
-			//int time_lim = COMP_TIME;
+			//int time_lim = 1000;
 			int time_lim = clock_get_time() / ((42-seq_ct)/2);
 			#endif
+			window_focus(analysis_hdl);
+			window_clear();
 			move = solve(solver, pos, seq_ct, time_lim, true);
 			solver->make_move(pos, move, NULL);
 		}
 
+		bool clock_flagged = clock_flag();
+		if(clock_flagged)
+			return (game_outcome_t){.score=1-player, .winner=player, .reason=WIN_BY_TIMEOUT};
+
 		endstate_t game_end_state = solver->gameover(pos);
 		if(game_end_state != END_NOT_OVER)
 		{
-			printf("game over!\n");
-			switch(game_end_state)
+			if(game_end_state == END_DRAW)
+				return (game_outcome_t){.score=0.5, .winner=player, .reason=DRAW_BY_STALEMATE};
+			else
 			{
-				case END_P1_WON:
-					printf("player 1 (%s) wins!\n",
-						(p1==HUMAN_PLAYER)? "human":"computer");
-					break;
-				case END_P2_WON:
-					printf("player 2 (%s) wins!\n",
-						(p2==HUMAN_PLAYER)? "human":"computer");
-					break;
-				case END_DRAW:		printf("draw!\n");	break;
-				case END_NOT_OVER:	break;
+				int winscore = (game_end_state==END_P1_WON)? 1 : 0;
+				return (game_outcome_t){.score=winscore, .winner=player, .reason=WIN_BY_CHECKMATE};
 			}
-			term_move_cursor(0, 12);
-			solver->draw_full(pos, -1);
-			print_sequence(solver, seq, stdout);
-			break;
 		}
 
 		turn = !turn;
