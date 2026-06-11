@@ -11,6 +11,8 @@
 
 #include "../../../utils.h"
 
+//#define SHOW_WIN_TILES
+
 float estimate_color(uint64_t x, uint64_t opp, uint64_t filled,
 	uint64_t wmap, bool verbose);
 void get_win_maps(c4_pos_t *p);
@@ -925,12 +927,32 @@ void c4_draw_full(void *pos, int last_move)
 		//yel = p->x;
 	}
 
+	uint64_t wb = 0;
+	//if(p->won)
+	{
+		uint64_t x = p->x ^ p->filled;
+
+		uint8_t shifts[] = {1, 6, 7, 8};
+		for(int i=0; i<4; i++)
+		{
+			uint8_t sh = shifts[i];
+			uint64_t mask = x & (x<<(sh)) & (x<<(2*sh)) & (x<<(3*sh));
+			if(mask)
+			{
+				wb = mask | (mask>>(sh)) | (mask>>(2*sh)) | (mask>>(3*sh));
+				break;
+			}
+		}
+	}
+
 	//uint64_t filled = p->filled;
 	//uint64_t = ;
 	get_win_maps(p);
 	//get_win_map(&p->x_wmap, p->x, p->filled);
 	//get_win_map(&p->opp_wmap, p->x ^ p->filled, p->filled);
 	uint64_t rwm, ywm;
+	(void)rwm;
+	(void)ywm;
 	if(c4_whosemove(p))
 	{
 		rwm = p->x_wmap;
@@ -948,12 +970,13 @@ void c4_draw_full(void *pos, int last_move)
 	if(last_move != -1)
 	{
 		uint8_t rec_col = get_col(p->filled, last_move);
-		for(uint8_t i=1; ; i<<=1)
+		for(uint8_t i=1; i<=0b1000000; i<<=1)
 		{
 			if(!(i & rec_col))
 			{
 				i>>=1;
-				recent |= i << (7*last_move);
+				recent = i;
+				recent <<= (7*last_move);
 				break;
 			}
 		}
@@ -990,10 +1013,13 @@ void c4_draw_full(void *pos, int last_move)
 
 				if(bit_m & recent)
 					bg = TERM_BLUE_BG;
+				else if(bit_m & wb)
+					bg = TERM_WHITE_BG;
 
 				//if(wm & bit_m)
 				//	assert(0);
 			}
+			#ifdef SHOW_WIN_TILES
 			else if((rwm | ywm) & bit_m)
 			{
 				c = '!';
@@ -1001,6 +1027,7 @@ void c4_draw_full(void *pos, int last_move)
 				if(rwm & bit_m)	color = TERM_RED;
 				if(ywm & bit_m)	color = TERM_YELLOW;
 			}
+			#endif
 			//term_fg(color);
 			printf("%s%s%c%s   ", bg, color, c, TERM_RESET);
 			//term_clear();
