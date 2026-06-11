@@ -332,7 +332,7 @@ void solver_clear(void)
 float solve(solver_t *game_solver, void *pos, int init_depth,
 	int time_lim_ms, bool verbose)
 {
-	tic();
+	//tic();
 
 	time_lim = time_lim_ms;
 	position_ct = 0;
@@ -348,16 +348,10 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 	gd->hash = solver->hash(pos, solver->pos_size);
 	memcpy(&(gd->pos), pos, solver->pos_size);
 
-
-
-
-
 	who_goes_first = solver->whosemove(pos);
 
 	if(verbose)
 	{
-
-
 		printf("player %d to move\n", who_goes_first? 1 : 2);
 
 		if(solver->print_pos)
@@ -375,7 +369,7 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 		#endif
 		printf("\n");
 
-		printf("pre setup time = %d ms\n", toc_ms());
+		//printf("pre setup time = %d ms\n", toc_ms());
 	}
 	tic();
 
