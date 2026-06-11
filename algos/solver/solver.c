@@ -5,6 +5,7 @@
 #include "../../utils.h"
 
 #include "play_windows.h"
+#include "clock.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -322,6 +323,12 @@ void solver_init(solver_t *game_solver)
 	#endif	//USE_TRANSPOSITION_TABLE
 }
 
+void solver_clear(void)
+{
+	hashmap_destroy(trans_tbl);
+	trans_tbl = NULL;
+}
+
 float solve(solver_t *game_solver, void *pos, int init_depth,
 	int time_lim_ms, bool verbose)
 {
@@ -384,7 +391,7 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 	float asp_window[] = {-WIN_SCORE, WIN_SCORE};
 	float last_iddfs_score = 0;
 
-	int cores = MULTICORE_CT;
+	/*int cores = MULTICORE_CT;
 	solver_t alt_solvers[cores-1];
 	for(int i=0; i<cores-1; i++)
 	{
@@ -392,7 +399,7 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 		alt_solvers[i].default_order = mem_malloc(solver->possible_moves);
 		for(int m=0; m<solver->possible_moves; m++)
 			alt_solvers[i].default_order[m] = rand() / 2000;
-	}
+	}*/
 
 	//iddfs
 	int iddfs, iddfs_complete=0;
@@ -418,22 +425,16 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 
 			if(MULTICORE_CT > 1)
 			{
-				#pragma omp parallel for private(solver)
+				/*#pragma omp parallel for private(solver)
 				for(int mp=0; mp<MULTICORE_CT; mp++)
 				{
 					int tid = omp_get_thread_num();
 					//solver = alt_solvers[tid];
 					solver = (tid==0)? game_solver : &alt_solvers[tid-1];
-					/*window_unfocus();
-					term_move_cursor(5, 20+3*tid);
-					printf("\nsolver in thread %d w default order:", tid);
-					for(int m=0; m<solver->possible_moves; m++)
-						printf("%d, ", solver->default_order[m]);
-					*/
 					result = eval(gd, 0,
 						asp_window[0], asp_window[1],
 						true);
-				}
+				}*/
 				//exit(0);
 			}
 			else
@@ -1374,6 +1375,11 @@ float abs_f(float a)
 
 bool time_up(void)
 {
+	bool clock_flag = clock_update();
+	if(clock_flag)
+	{
+		return true;
+	}
 	if(time_lim == 0)
 		return false;
 	else

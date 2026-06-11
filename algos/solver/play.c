@@ -147,6 +147,9 @@ void play_menu(void)
 				play(game, NULL, COMPUTER_PLAYER, HUMAN_PLAYER);
 		}
 
+		printf("clearing game memory, wait a sec...\n");
+		solver_clear();
+
 		printf("play again? y/n\n");
 		char opt = getchar();
 		if(opt != 'y')
@@ -160,7 +163,7 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 {
 	solver_init(solver);
 
-	clocks_init(5*60, 5*60);
+
 
 	int move;
 
@@ -176,6 +179,8 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 
 	bool turn = !(seq_ct & 0b1);
 	window_term_clear();
+	clocks_init(5*60, 5*60);
+
 	while(1)
 	{
 		term_move_cursor(0, 12);
@@ -212,7 +217,12 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 			bool end = false;
 			while(1)
 			{
-				clock_update(player);
+				bool clock_flag = clock_update();
+				if(clock_flag)
+				{
+					printf("human lost on time\n");
+					return;
+				}
 
 				if(_kbhit())
 				{
@@ -319,7 +329,8 @@ void play(solver_t *solver, void *start_pos, bool p1, bool p2)
 			#ifdef FORCE_SEARCH_DEPTH
 			int time_lim = 0;
 			#else
-			int time_lim = COMP_TIME;
+			//int time_lim = COMP_TIME;
+			int time_lim = clock_get_time() / ((42-seq_ct)/2);
 			#endif
 			move = solve(solver, pos, seq_ct, time_lim, true);
 			solver->make_move(pos, move, NULL);
