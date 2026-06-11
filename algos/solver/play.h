@@ -21,6 +21,7 @@ typedef struct
 	float score;	//0, 1/2, 1
 	bool winner;	//false=p1, true=p2
 	int reason;
+	void *pos;
 } game_outcome_t;
 
 enum

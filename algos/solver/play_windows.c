@@ -23,11 +23,13 @@ void init_play_windows(void)
 	{
 		p1_window_hdl = window_wh(56, 38, 10, 8);
 		window_set_colors(TERM_YELLOW, TERM_BLACK_BG);
+		window_set_border(NO_BORDER_STYLE);
 	}
 	if(p2_window_hdl == -1)
 	{
 		p2_window_hdl = window_wh(56+25, 38, 10, 8);
 		window_set_colors(TERM_YELLOW, TERM_BLACK_BG);
+		window_set_border(NO_BORDER_STYLE);
 	}
 
 	//default window

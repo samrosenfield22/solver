@@ -23,9 +23,13 @@ typedef struct
 
 
 
-
-char DEFAULT_BORDER_STYLE[6] = {205, 186, 201, 187, 200, 188};
-char NO_BORDER_STYLE[6] = {0, 0, 0, 0, 0, 0};
+char BORDER_STYLES[][6] =
+{
+	[DEFAULT_BORDER_STYLE]	= {205, 186, 201, 187, 200, 188},
+	[NO_BORDER_STYLE]		= {0, 0, 0, 0, 0, 0},
+};
+//char DEFAULT_BORDER_STYLE[6] = {205, 186, 201, 187, 200, 188};
+//char NO_BORDER_STYLE[6] = {0, 0, 0, 0, 0, 0};
 
 
 //
@@ -70,7 +74,8 @@ int window_wh(int x, int y, int w, int h)
 	win->bg = TERM_BLACK_BG;
 	win->cursor_x = 0;
 	win->cursor_y = 0;
-	win->border_style = DEFAULT_BORDER_STYLE;
+	//win->border_style = DEFAULT_BORDER_STYLE;
+	win->border_style = BORDER_STYLES[DEFAULT_BORDER_STYLE];
 	win->buf = malloc(win->w * win->h);
 	win->wp = win->buf;
 	*win->wp = '\0';
@@ -104,6 +109,11 @@ void window_set_colors(char *fg, char *bg)
 	win->bg = bg;
 
 	window_draw(win);
+}
+
+void window_set_border(int style)
+{
+	CURRENT_WINDOW->border_style = BORDER_STYLES[style];
 }
 
 
@@ -330,7 +340,7 @@ void window_add_char(text_window_t *win, char c)
 			win->cursor_x = win->w-1;
 			win->cursor_y--;
 		}
-		
+
 		term_move_cursor(win->x+win->cursor_x, win->y+win->cursor_y);
 	}
 	else

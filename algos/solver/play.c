@@ -22,7 +22,7 @@
 
 
 //#define COMP_TIME	(1 * 1000)
-#define TIME_ODDS	(100)
+#define TIME_ODDS	(30)
 
 #define DEV_MODE	(true)
 //#define DEV_MODE	(false)
@@ -178,9 +178,10 @@ void play_menu(void)
 		}
 		window_unfocus();
 		term_move_cursor(0, 12);
-		game->draw_full(pos, -1);
+		game->draw_full(outcome.pos, -1);
 		window_focus(analysis_hdl);
 		print_sequence(game, seq, stdout);
+		mem_free(outcome.pos);
 
 
 		printf("clearing game memory, wait a sec...\n");
@@ -198,20 +199,16 @@ void play_menu(void)
 game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 {
 	solver_init(solver);
-
-
-
 	int move;
 
 	printf("starting %s! %s goes first.\n\n",
 		solver->name, (p1==HUMAN_PLAYER)? "human":"computer");
 
-	uint8_t pos[solver->pos_size];
+	//uint8_t pos[solver->pos_size];
+	void *pos = mem_malloc(solver->pos_size);
 	if(!start_pos)
 		start_pos = solver->initial_pos;
 	memcpy(pos, start_pos, solver->pos_size);
-	//if(!pos)
-	//	pos = solver->initial_pos;
 
 	bool turn = !(seq_ct & 0b1);
 	window_term_clear();
@@ -259,7 +256,12 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 				bool clock_flagged = clock_update();
 				if(clock_flagged)
 					return (game_outcome_t)
-						{.score=1-player, .winner=player, .reason=WIN_BY_TIMEOUT};
+						{
+							.score=1-player,
+							.winner=player,
+							.reason=WIN_BY_TIMEOUT,
+							.pos=pos
+						};
 
 				if(_kbhit())
 				{
@@ -333,7 +335,7 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 			}
 			else if(strcmp(buf, "q")==0 || strcmp(buf, "quit game")==0)
 			{
-				return (game_outcome_t){.reason=GAME_UNFINISHED};
+				return (game_outcome_t){.reason=GAME_UNFINISHED, .pos=pos};
 			}
 			else if(strcmp(buf, "x")==0 || strcmp(buf, "exit")==0)
 			{
@@ -373,18 +375,31 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 
 		bool clock_flagged = clock_flag();
 		if(clock_flagged)
-			return (game_outcome_t){.score=1-player, .winner=player, .reason=WIN_BY_TIMEOUT};
+			return (game_outcome_t)
+				{
+					.score=1-player,
+					.winner=player,
+					.reason=WIN_BY_TIMEOUT,
+					.pos=pos
+				};
 
 		endstate_t game_end_state = solver->gameover(pos);
 		if(game_end_state != END_NOT_OVER)
 		{
-			if(game_end_state == END_DRAW)
-				return (game_outcome_t){.score=0.5, .winner=player, .reason=DRAW_BY_STALEMATE};
-			else
+			int winscore = 0.5;
+			int reason = DRAW_BY_STALEMATE;
+			if(game_end_state != END_DRAW)
 			{
-				int winscore = (game_end_state==END_P1_WON)? 1 : 0;
-				return (game_outcome_t){.score=winscore, .winner=player, .reason=WIN_BY_CHECKMATE};
+				winscore = (game_end_state==END_P1_WON)? 1 : 0;
+				reason = WIN_BY_CHECKMATE;
 			}
+			return (game_outcome_t)
+				{
+					.score=winscore,
+					.winner=player,
+					.reason=reason,
+					.pos=pos
+				};
 		}
 
 		turn = !turn;
