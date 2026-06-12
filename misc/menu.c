@@ -116,10 +116,50 @@ void menu_right(menu_t *m)
 	printf("cursor at %d,%d\n", cursor_x, cursor_y);*/
 }
 
+void menu_up(menu_t *m)
+{
+	if(m->select_y <= 0)
+		return;
+
+	menu_draw_cursor(m, true);	//erase
+	m->select_y--;
+	menu_draw_cursor(m, false);	//draw
+
+	/*int cursor_x, cursor_y;
+	menu_opt_xy(m, menu_get(m), &cursor_x, &cursor_y);
+	printf("cursor at %d,%d\n", cursor_x, cursor_y);*/
+}
+
+void menu_down(menu_t *m)
+{
+	if(m->select_y >= m->rows-1)
+		return;
+
+	menu_draw_cursor(m, true);	//erase
+	m->select_y++;
+	menu_draw_cursor(m, false);	//draw
+}
+
+void menu_move_cursor(menu_t *menu, int dir)
+{
+	//if(dir == ARROW_UP)
+	//	printf("up!!!\n");
+	switch(dir)
+	{
+		case ARROW_UP:		menu_up(menu);	break;
+		case ARROW_DOWN:	menu_down(menu);	break;
+		case ARROW_LEFT:	menu_left(menu);	break;
+		case ARROW_RIGHT:	menu_right(menu);	break;
+		default:	return;
+	}
+}
+
 void menu_set(menu_t *m, int s)
 {
 	if(s >= m->rows * m->columns)
 		return;
+
+	menu_draw_cursor(m, true);	//erase
 	m->select_x = s % m->columns;
 	m->select_y = s / m->columns;
 	menu_draw_cursor(m, false);	//draw

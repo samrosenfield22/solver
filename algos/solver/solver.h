@@ -200,7 +200,7 @@ typedef struct
 	void (*draw_full)(void *pos, int last_move);
 
 	void *(*menu_define)(void);
-	void (*menu_update)(void *menu, int key);
+	void (*menu_update)(void *menu, void *pos, int key);
 
 	/*optional:
 	converts a human-friendly expression of a move (i.e. Nc3)

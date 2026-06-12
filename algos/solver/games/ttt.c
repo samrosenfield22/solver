@@ -201,6 +201,57 @@ void ttt_draw_full(void *pos, int last_move)
 	}
 }
 
+void *ttt_menu_define(void)
+{
+	menu_t *m = menu_grid(68, 19,	//x,y
+		3, 3,	//rows,columns
+		2, 4,	//r/c spacing
+		" <");
+
+	//for(int i=0; )
+	menu_set(m, 4);
+	return m;
+}
+
+void ttt_menu_update(void *menu, void *pos, int key)
+{
+	ttt_pos_t *p = pos;
+	int current = menu_get(menu);
+
+	int d;
+	switch(key)
+	{
+		case ARROW_UP:		d=-3;	break;
+		case ARROW_DOWN:	d=3;	break;
+		case ARROW_LEFT:	d=-1;	break;
+		case ARROW_RIGHT:	d=1;	break;
+		default:
+			if(p->spaces[current]==EMPTY)
+				return;
+			for(int i=0; i<9; i++)
+				if(p->spaces[i]==EMPTY)
+				{
+					menu_set(menu, i);
+					return;
+				}
+			return;
+	}
+	int i;
+	for(i=current+d; ; i+=d)
+	{
+		if(p->spaces[i]==EMPTY)
+			break;
+		if(i<0 || i>=9)
+		{
+			i = -1;
+			break;
+		}
+	}
+
+	if(i != -1)
+		menu_set(menu, i);
+}
+
 int ttt_human_to_iter(char *human)
 {
 	if(human[0] >= 'a')
@@ -246,6 +297,8 @@ solver_t TTT_SOLVER =
 	//.normalize_position = NULL,
 
 	.draw_full = ttt_draw_full,
-	.human_to_iter = ttt_human_to_iter,
+	.menu_define = ttt_menu_define,
+	.menu_update = ttt_menu_update,
+	//.human_to_iter = ttt_human_to_iter,
 	.iter_to_human = ttt_iter_to_human,
 };

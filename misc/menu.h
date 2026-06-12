@@ -50,6 +50,9 @@ menu_opt_t *menu_make_options(int *locs, int r, int c);
 //menu operations
 void menu_left(menu_t *m);
 void menu_right(menu_t *m);
+void menu_up(menu_t *m);
+void menu_down(menu_t *m);
+void menu_move_cursor(menu_t *menu, int dir);
 void menu_set(menu_t *m, int s);
 
 //menu access

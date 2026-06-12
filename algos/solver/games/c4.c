@@ -1078,16 +1078,9 @@ void *c4_menu_define(void)
 	return m;
 }
 
-void c4_menu_update(void *menu, int key)
+void c4_menu_update(void *menu, void *pos, int key)
 {
-	switch(key)
-	{
-		//case ARROW_:	menu_(menu);	break;
-		//case ARROW_:	menu_(menu);	break;
-		case ARROW_LEFT:	menu_left(menu);	break;
-		case ARROW_RIGHT:	menu_right(menu);	break;
-		default:	return;
-	}
+	menu_move_cursor(menu, key);
 }
 
 /*int c4_human_to_iter(char *human)

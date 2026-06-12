@@ -197,8 +197,6 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 	solver_init(solver);
 	int move;
 
-	menu_t *move_sel_menu = solver->menu_define();
-
 	printf("starting %s! %s goes first.\n\n",
 		solver->name, (p1==HUMAN_PLAYER)? "human":"computer");
 
@@ -210,6 +208,12 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 
 	bool turn = !(seq_ct & 0b1);
 	window_term_clear();
+	menu_t *move_sel_menu = solver->menu_define();
+
+	window_focus(p1_window_hdl);
+	window_clear();
+	window_focus(p2_window_hdl);
+	window_clear();
 	clocks_init(5*60 / TIME_ODDS, 5*60);
 
 	while(1)
@@ -286,7 +290,7 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 								case 75: ch = ARROW_LEFT;	break;
 								case 77: ch = ARROW_RIGHT;	break;
 							}
-							solver->menu_update(move_sel_menu, ch);
+							solver->menu_update(move_sel_menu, pos, ch);
 							//menu_left(move_sel_menu);
 							break;
 
