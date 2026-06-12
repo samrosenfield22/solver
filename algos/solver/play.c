@@ -22,7 +22,7 @@
 
 
 //#define COMP_TIME	(1 * 1000)
-#define TIME_ODDS	(100)
+#define TIME_ODDS	(1)
 
 #define DEV_MODE	(true)
 //#define DEV_MODE	(false)
@@ -219,9 +219,6 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 		term_move_cursor(0, 12);
 		solver->draw_full(pos, seq_ct? seq[seq_ct-1] : -1);
 		print_sequence_fancy(solver, seq, stdout);
-
-
-
 
 		//for(int i=0; i<solver->possible_moves; i++)
 		//	printf("move %d has placement %d\n", i, solver->get_placement(pos, i));

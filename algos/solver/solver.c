@@ -138,7 +138,7 @@ void print_eval_bar(float score)
 	for(int i=0; i<len/2-1; i++)
 		printf(" ");
 	print_score(score);
-	printf("\n");
+	printf("        \n");
 
 	printf(indent);
 	printf("[");

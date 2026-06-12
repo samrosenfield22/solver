@@ -11,6 +11,7 @@
 #include "misc/winterm.h"
 #include "misc/printnum.h"
 #include "misc/windowing.h"
+#include "misc/menu.h"
 
 #include "memory/slab.h"
 //#include "memory/block.h"
