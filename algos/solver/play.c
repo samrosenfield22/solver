@@ -22,7 +22,7 @@
 
 
 //#define COMP_TIME	(1 * 1000)
-#define TIME_ODDS	(1)
+#define TIME_ODDS	(50)
 
 #define DEV_MODE	(true)
 //#define DEV_MODE	(false)
@@ -133,10 +133,6 @@ void play_menu(void)
 		if(!valid)
 			return;
 
-
-
-
-
 		init_play_windows();
 
 		//choose who goes first
@@ -201,6 +197,8 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 	solver_init(solver);
 	int move;
 
+	menu_t *move_sel_menu = solver->menu_define();
+
 	printf("starting %s! %s goes first.\n\n",
 		solver->name, (p1==HUMAN_PLAYER)? "human":"computer");
 
@@ -262,7 +260,7 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 
 				if(_kbhit())
 				{
-					char ch = _getch();
+					int ch = _getch(), arrow;
 					switch(ch)
 					{
 						case '\n':
@@ -278,6 +276,20 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 								printf("\b \b");
 							}
 							break;
+						case 0:
+						case 224:
+							arrow = getch();
+							switch(arrow)
+							{
+								case 72: ch = ARROW_UP;		break;
+								case 80: ch = ARROW_DOWN;	break;
+								case 75: ch = ARROW_LEFT;	break;
+								case 77: ch = ARROW_RIGHT;	break;
+							}
+							solver->menu_update(move_sel_menu, ch);
+							//menu_left(move_sel_menu);
+							break;
+
 						default:
 							if(bp < buf+159)
 							{
@@ -291,12 +303,14 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 				if(end)
 					break;
 			}
+
+			snprintf(buf, 159, "%d", menu_get(move_sel_menu));
 			/*fgets(buf, 159, stdin);
 			char *end = &buf[strlen(buf)-1];
 			if(*end == '\n')
 				*end = '\0';*/
 
-			if(strcmp(buf, "b")==0 || strcmp(buf, "back")==0)
+			/*if(strcmp(buf, "b")==0 || strcmp(buf, "back")==0)
 			{
 				seq_ct -= 2;
 				//pos = solver->initial_pos;
@@ -339,7 +353,7 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 			{
 				printf("ggs\n");
 				exit(0);
-			}
+			}*/
 
 
 

@@ -20,7 +20,7 @@ int main(void)
 {
 	//int locs[] = {0, 0, 3, 0, 5, }
 	//void *opt = menu_make_options()
-	menu_t *m = menu_grid(20, 20,	//x,y
+	/*menu_t *m = menu_grid(20, 20,	//x,y
 		1, 7,	//rows,columns
 		1, 3,	//r/c spacing
 		"\n^\n^");
@@ -38,7 +38,7 @@ int main(void)
 		//printf("\n\nselect=%d", menu_get(m));
 	}
 
-	return 0;
+	return 0;*/
 
 	//winterm_init_ansi();
 

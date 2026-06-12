@@ -24,6 +24,8 @@ menu_t *menu_custom(int x, int y, int r, int c,
 	m->select_y = 0;
 	m->cursor = cursor;
 
+	menu_draw_cursor(m, false);	//draw
+
 	return m;
 }
 
@@ -90,7 +92,7 @@ void menu_left(menu_t *m)
 {
 	if(m->select_x <= 0)
 		return;
-	printf("going left!\n");
+	//printf("going left!\n");
 	menu_draw_cursor(m, true);	//erase
 	m->select_x--;
 	menu_draw_cursor(m, false);	//draw
@@ -104,7 +106,7 @@ void menu_right(menu_t *m)
 {
 	if(m->select_x >= m->columns-1)
 		return;
-	printf("going right!\n");
+	//printf("going right!\n");
 	menu_draw_cursor(m, true);	//erase
 	m->select_x++;
 	menu_draw_cursor(m, false);	//draw
@@ -112,6 +114,15 @@ void menu_right(menu_t *m)
 	/*int cursor_x, cursor_y;
 	menu_opt_xy(m, menu_get(m), &cursor_x, &cursor_y);
 	printf("cursor at %d,%d\n", cursor_x, cursor_y);*/
+}
+
+void menu_set(menu_t *m, int s)
+{
+	if(s >= m->rows * m->columns)
+		return;
+	m->select_x = s % m->columns;
+	m->select_y = s / m->columns;
+	menu_draw_cursor(m, false);	//draw
 }
 
 int menu_get(menu_t *m)

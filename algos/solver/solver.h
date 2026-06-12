@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+
 #define USE_ALPHABETA_PRUNING
 #define USE_TRANSPOSITION_TABLE
 //#define RETURN_FIRST_WIN_FOUND
@@ -197,6 +198,9 @@ typedef struct
 	/*required:
 	draws the position, make it nice looking*/
 	void (*draw_full)(void *pos, int last_move);
+
+	void *(*menu_define)(void);
+	void (*menu_update)(void *menu, int key);
 
 	/*optional:
 	converts a human-friendly expression of a move (i.e. Nc3)

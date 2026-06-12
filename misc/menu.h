@@ -11,6 +11,14 @@
 } rowspec_t;
 */
 
+enum
+{
+	ARROW_UP	= 1,
+	ARROW_DOWN	= 2,
+	ARROW_LEFT	= 3,
+	ARROW_RIGHT	= 4,
+};
+
 typedef struct
 {
 	int x, y;	//relative to menu x/y
@@ -42,6 +50,7 @@ menu_opt_t *menu_make_options(int *locs, int r, int c);
 //menu operations
 void menu_left(menu_t *m);
 void menu_right(menu_t *m);
+void menu_set(menu_t *m, int s);
 
 //menu access
 int menu_get(menu_t *m);

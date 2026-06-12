@@ -990,9 +990,9 @@ void c4_draw_full(void *pos, int last_move)
 
 	//header
 	printf("\n\n\n\n\n");
-	printf(indent);
-	for(int c=0; c<7; c++)
-		printf("%d   ", c);
+	//printf(indent);
+	//for(int c=0; c<7; c++)
+	//	printf("%d   ", c);
 
 
 	for(int r=5; r>=0; r--)
@@ -1065,6 +1065,29 @@ void c4_draw_full(void *pos, int last_move)
 	//
 
 
+}
+
+void *c4_menu_define(void)
+{
+	menu_t *m = menu_grid(61, 17,	//x,y
+		1, 7,	//rows,columns
+		1, 4,	//r/c spacing
+		"v\nv");
+
+	menu_set(m, 3);
+	return m;
+}
+
+void c4_menu_update(void *menu, int key)
+{
+	switch(key)
+	{
+		//case ARROW_:	menu_(menu);	break;
+		//case ARROW_:	menu_(menu);	break;
+		case ARROW_LEFT:	menu_left(menu);	break;
+		case ARROW_RIGHT:	menu_right(menu);	break;
+		default:	return;
+	}
 }
 
 /*int c4_human_to_iter(char *human)
@@ -1154,6 +1177,8 @@ solver_t C4_SOLVER =
 	.replace_transpose = c4_replace_transpose,
 
 	.draw_full = c4_draw_full,
+	.menu_define = c4_menu_define,
+	.menu_update = c4_menu_update,
 	.human_to_iter = NULL,
 	.iter_to_human = NULL,
 };
