@@ -1162,6 +1162,7 @@ void sort_movelist(sorter_t *order, int len, gdata_t *gd, int depth)
 		#endif	//USE_HISTORY_HEURISTIC
 		else if(move_is_forcing(pos, move))
 			order[i].score += 800;
+
 		//else if(move == killers_ply[0]
 		//	|| move == killers_ply[1])
 		//	order[ct].score = 400;
@@ -1368,11 +1369,14 @@ float abs_f(float a)
 
 bool time_up(void)
 {
+	#ifndef FORCE_SEARCH_DEPTH
 	bool clock_flag = clock_update();
 	if(clock_flag)
 	{
 		return true;
 	}
+	#endif
+
 	if(time_lim == 0)
 		return false;
 	else

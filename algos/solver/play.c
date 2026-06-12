@@ -143,7 +143,7 @@ void play_menu(void)
 			p2 = COMPUTER_PLAYER;
 		}
 
-		game_outcome_t outcome = play(game, NULL,
+		game_outcome_t outcome = play(game, pos,
 			COMPUTER_PLAYER, HUMAN_PLAYER);
 
 		bool win_player;
@@ -214,7 +214,11 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 	window_clear();
 	window_focus(p2_window_hdl);
 	window_clear();
+	#ifdef FORCE_SEARCH_DEPTH
+	clocks_init(0, 0);
+	#else
 	clocks_init(5*60 / TIME_ODDS, 5*60);
+	#endif
 
 	while(1)
 	{
