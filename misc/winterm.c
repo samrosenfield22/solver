@@ -3,6 +3,7 @@
 #include "winterm.h"
 #include <stdio.h>
 #include <windows.h>
+#include <conio.h>
 
 // Manually define the flag if the current SDK lacks it
 #ifndef ENABLE_VIRTUAL_TERMINAL_PROCESSING
@@ -77,6 +78,31 @@ void term_clear(void)
 	printf("\033[H");	//home
 	printf("\033[2J");	//clear
 
+}
+
+int term_check_input(void)
+{
+	if(!_kbhit())
+		return 0;
+
+	int key = _getch();
+	switch(key)
+	{
+		case 0:
+		case 224:
+			key = getch();
+			switch(key)
+			{
+				case 72: key = ARROW_UP;	break;
+				case 80: key = ARROW_DOWN;	break;
+				case 75: key = ARROW_LEFT;	break;
+				case 77: key = ARROW_RIGHT;	break;
+			}
+			break;
+
+	}
+
+	return key;
 }
 
 void winterm_init_ansi(void)

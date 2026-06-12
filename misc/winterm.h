@@ -42,6 +42,14 @@
 //#define TERM_RED		("\033[0m")
 #define TERM_RESET		("\033[0m")
 
+enum
+{
+	ARROW_UP	= 1,
+	ARROW_DOWN	= 2,
+	ARROW_LEFT	= 3,
+	ARROW_RIGHT	= 4,
+};
+
 /*enum
 {
 	TERM_BLACK	= 30,
@@ -59,6 +67,7 @@ void term_bg(int bg);
 void term_clear(void);*/
 void winterm_init_ansi(void);
 void term_move_cursor(int x, int y);
+int term_check_input(void);
 void term_bottom(void);
 void term_clear(void);
 

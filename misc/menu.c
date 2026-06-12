@@ -58,6 +58,12 @@ menu_t *menu_grid(int x, int y, int r, int c,
 	return menu_custom(x, y, r, c, options, cursor);
 }
 
+menu_t *menu_vert(int x, int y, int len, int space)
+{
+	return menu_grid(x, y, len, 1,
+		space, 1, "> ");
+}
+
 /*row points to an array of row arrays, i.e.
 rowspec row_options[] =
 {
@@ -86,6 +92,42 @@ menu_opt_t *menu_make_options(int *locs, int r, int c)
 	}
 
 	return options;
+}
+
+int menu_control_loop(menu_t *m)
+{
+	int sel;
+	while(1)
+	{
+		int key = term_check_input();
+		if(key)
+		{
+			sel = menu_input_control(m, key);
+			if(sel != -1)
+			{
+				break;
+			}
+		}
+	}
+
+	return sel;
+}
+
+int menu_input_control(menu_t *m, int key)
+{
+	switch(key)
+	{
+		case ARROW_UP:		menu_up(m);		break;
+		case ARROW_DOWN:	menu_down(m);	break;
+		case ARROW_LEFT:	menu_left(m);	break;
+		case ARROW_RIGHT:	menu_right(m);	break;
+
+		case '\n':
+		case '\r':
+			return menu_get(m);
+	}
+
+	return -1;
 }
 
 void menu_left(menu_t *m)

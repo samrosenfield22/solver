@@ -17,7 +17,7 @@
 
 #define MULTICORE_CT	(1)
 
-#define FORCE_SEARCH_DEPTH	(40)
+//#define FORCE_SEARCH_DEPTH	(40)
 
 #define VARIATION_LENGTH	(4)
 #define DISPLAY_VAR_CT		(1)

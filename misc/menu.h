@@ -11,13 +11,7 @@
 } rowspec_t;
 */
 
-enum
-{
-	ARROW_UP	= 1,
-	ARROW_DOWN	= 2,
-	ARROW_LEFT	= 3,
-	ARROW_RIGHT	= 4,
-};
+
 
 typedef struct
 {
@@ -45,9 +39,12 @@ menu_t *menu_custom(int x, int y, int r, int c,
 	menu_opt_t *options, char *cursor);
 menu_t *menu_grid(int x, int y, int r, int c,
 	int r_space, int c_space, char *cursor);
+menu_t *menu_vert(int x, int y, int len, int space);
 menu_opt_t *menu_make_options(int *locs, int r, int c);
 
 //menu operations
+int menu_control_loop(menu_t *m);
+int menu_input_control(menu_t *m, int key);
 void menu_left(menu_t *m);
 void menu_right(menu_t *m);
 void menu_up(menu_t *m);

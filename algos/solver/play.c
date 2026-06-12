@@ -15,7 +15,7 @@
 #include <string.h>
 #include <time.h>
 #include <assert.h>
-#include <conio.h>
+
 
 #define PGN_DIR	"algos/solver/pgns"
 #define LAST_PGN_DIR	"algos/solver/pgns/repeat.txt"
@@ -76,7 +76,37 @@ void play_menu(void)
 	};
 	//bool game_selected = false;
 	solver_t *game = NULL;
-	while(1)
+	term_clear();
+	term_move_cursor(50, 20);
+	printf("select a game!");
+
+	int len = sizeof(gamelist)/sizeof(gamelist[0]);
+	//int gamechoice;
+	for(int i=0; i<len; i++)
+	{
+		term_move_cursor(50, 22+i);
+		printf("%s\n", gamelist[i].name);
+	}
+	//exit(0);
+	menu_t *m = menu_vert(48, 22, len, 1);
+	menu_set(m, 2);	//default to c4
+	int sel = menu_control_loop(m);
+	game = &gamelist[sel];
+	/*while(1)
+	{
+		int key = term_check_input();
+		if(key)
+		{
+			int sel = menu_input_control(m, key);
+			if(sel != -1)
+			{
+				game = &gamelist[sel];
+				break;
+			}
+		}
+	}*/
+
+	/*while(1)
 	{
 		printf("select a game!\n\n");
 		int len = sizeof(gamelist)/sizeof(gamelist[0]);
@@ -98,13 +128,13 @@ void play_menu(void)
 				len-1);
 
 
-	}
+	}*/
 
 
 
 	while(1)
 	{
-		printf("enter pgn, (r) for repeat, or press enter for a new game:\n");
+		printf("\n\n\n\n\nenter pgn, (r) for repeat, or press enter for a new game:\n");
 		char pgn[640];
 		fgets(pgn, 639, stdin);
 
@@ -266,46 +296,40 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 							.pos=pos
 						};
 
-				if(_kbhit())
+				int key = term_check_input();
+				int sel = menu_input_control(move_sel_menu, key);
+				if(sel != -1)
 				{
-					int ch = _getch(), arrow;
-					switch(ch)
-					{
-						case '\n':
-						case '\r':
-							*bp = '\0';
-							end = true;
-							printf("\n");
-							break;
-						case '\b':
-							if(bp > buf)
-							{
-								bp--;
-								printf("\b \b");
-							}
-							break;
-						case 0:
-						case 224:
-							arrow = getch();
-							switch(arrow)
-							{
-								case 72: ch = ARROW_UP;		break;
-								case 80: ch = ARROW_DOWN;	break;
-								case 75: ch = ARROW_LEFT;	break;
-								case 77: ch = ARROW_RIGHT;	break;
-							}
-							solver->menu_update(move_sel_menu, pos, ch);
-							//menu_left(move_sel_menu);
-							break;
+					*bp = '\0';
+					end = true;
+					printf("\n");
+					break;
+				}
 
-						default:
-							if(bp < buf+159)
-							{
-								*bp++ = ch;
-								printf("%c", ch);
-							}
-					}
+				switch(key)
+				{
+					case '\n':
+					case '\r':
+						*bp = '\0';
+						end = true;
+						printf("\n");
+						break;
+					case '\b':
+						if(bp > buf)
+						{
+							bp--;
+							printf("\b \b");
+						}
+						break;
 
+
+					default:
+						//solver->menu_update(move_sel_menu, pos, ch);
+						if(bp < buf+159)
+						{
+							*bp++ = key;
+							printf("%c", key);
+						}
 				}
 
 				if(end)
@@ -387,7 +411,13 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 			#else
 			//int time_lim = 1000;
 			if(solver->moves_remaining)
-				time_lim = clock_get_time() / solver->moves_remaining(pos);
+			{
+				int remaining = solver->moves_remaining(pos);
+				if(remaining)
+					time_lim = clock_get_time() / remaining;
+				else
+					time_lim = clock_get_time();
+			}
 			else
 				time_lim = clock_get_time() / 50;	//idk
 			#endif
