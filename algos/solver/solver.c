@@ -352,8 +352,6 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 
 	if(verbose)
 	{
-		printf("player %d to move\n", who_goes_first? 1 : 2);
-
 		if(solver->print_pos)
 		{
 			printf("solving game position: ");
@@ -384,7 +382,7 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 	float asp_window[] = {-WIN_SCORE, WIN_SCORE};
 	float last_iddfs_score = 0;
 
-	/*int cores = MULTICORE_CT;
+	int cores = MULTICORE_CT;
 	solver_t alt_solvers[cores-1];
 	for(int i=0; i<cores-1; i++)
 	{
@@ -392,7 +390,7 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 		alt_solvers[i].default_order = mem_malloc(solver->possible_moves);
 		for(int m=0; m<solver->possible_moves; m++)
 			alt_solvers[i].default_order[m] = rand() / 2000;
-	}*/
+	}
 
 	//iddfs
 	int iddfs, iddfs_complete=0;
@@ -418,16 +416,17 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 
 			if(MULTICORE_CT > 1)
 			{
-				/*#pragma omp parallel for private(solver)
+				#pragma omp parallel for private(solver)
 				for(int mp=0; mp<MULTICORE_CT; mp++)
 				{
 					int tid = omp_get_thread_num();
+					printf("solving from thread %d\n", tid);
 					//solver = alt_solvers[tid];
 					solver = (tid==0)? game_solver : &alt_solvers[tid-1];
 					result = eval(gd, 0,
 						asp_window[0], asp_window[1],
 						true);
-				}*/
+				}
 				//exit(0);
 			}
 			else
@@ -1219,6 +1218,8 @@ void tt_create(void)
 		printf("failed to allocate transposition table\n");
 		exit(0);
 	}
+	if(MULTICORE_CT > 1)
+		hashmap_enable_multithread(trans_tbl);
 	if(solver->hash)
 		hashmap_attach_hash(trans_tbl, solver->hash);
 	if(solver->keys_match)

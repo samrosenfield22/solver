@@ -6,10 +6,12 @@
 #include <string.h>
 #include <assert.h>
 
+#define HM_LOCK_CT	(10000)
+
 //statics
 //void *copy_key_normalize(hashmap_t *h, void *key);
 void *hashmap_key_get_bucket(hashmap_t *h, void *key, uint32_t *hash);
-uint32_t hashmap_key_get_index(hashmap_t *h, void *key);
+uint32_t hashmap_key_get_index(hashmap_t *h, void *key, uint32_t *hash);
 //void *pairlist_find_matching_key(hashmap_t *h,
 //	list_t *pairlist, void *key);
 bool keys_match(hashmap_t *h, void *k1, void *k2);
@@ -17,6 +19,8 @@ kvpair_t *alloc_kvpair(hashmap_t *h);
 void free_kvpair(kvpair_t *kv);
 
 uint32_t default_hash(void *key, size_t size);
+void hashmap_set_lock(hashmap_t *h, int index);
+void hashmap_unset_lock(hashmap_t *h, int index);
 
 
 hashmap_t *hashmap_create(size_t ksize, size_t vsize, uint32_t len)
@@ -33,6 +37,7 @@ hashmap_t *hashmap_create(size_t ksize, size_t vsize, uint32_t len)
 	h->hash = default_hash;
 	h->compare_keys_fp = NULL;
 	h->normalize_key = NULL;
+	h->multithread = false;
 
 	h->p2_mask = 0;
 	uint32_t b = 0b1;
@@ -57,6 +62,11 @@ hashmap_t *hashmap_create(size_t ksize, size_t vsize, uint32_t len)
 void hashmap_destroy(hashmap_t *h)
 {
 	hashmap_clear(h);
+	if(h->multithread)
+	{
+		for(int i=0; i<HM_LOCK_CT; i++)
+			omp_destroy_lock(&h->locks[i]);
+	}
 	mem_free(h);
 }
 
@@ -82,6 +92,24 @@ void hashmap_clear(hashmap_t *h)
 	h->collisions = 0;
 }
 
+void hashmap_enable_multithread(hashmap_t *h)
+{
+	if(!h || h->multithread)
+		return;
+
+	//printf("\n\n\n\n\ninitializing hashmap multithread for\n%u locks... ",
+	//	h->len);
+
+	h->multithread = true;
+	h->locks = mem_malloc(h->len * sizeof(*h->locks));
+	//printf("\nalloc done, initing locks... ");
+	for(uint32_t i=0; i<HM_LOCK_CT; i++)
+	{
+		omp_init_lock(&h->locks[i]);
+	}
+	//printf("done!\n");
+}
+
 int hashmap_add_kvpair(hashmap_t *h, void *key, void *value,
 	uint32_t *hash)
 {
@@ -91,18 +119,20 @@ int hashmap_add_kvpair(hashmap_t *h, void *key, void *value,
 	int add_result = -1;
 
 	//void *norm_key = copy_key_normalize(h, key);
-	kvpair_t **bucket = hashmap_key_get_bucket(h, key, hash);
+
+	//kvpair_t **bucket = hashmap_key_get_bucket(h, key, hash);
+	uint32_t index = hashmap_key_get_index(h, key, hash);
+	kvpair_t **bucket = &h->map[index];
 	assert(bucket);
+
+	if(h->multithread)
+		hashmap_set_lock(h, index);
+		//omp_set_lock(&h->locks[index]);
 
 	kvpair_t *kv;
 	if(*bucket)	//bucket already filled
 	{
 		kv = *bucket;
-
-		//assert(!(kv->lock));
-		/*if(kv->lock)
-			return HM_NO_ADD;
-		kv->lock = true;*/
 
 		if(keys_match(h, kv->key, key))
 		{
@@ -131,12 +161,6 @@ int hashmap_add_kvpair(hashmap_t *h, void *key, void *value,
 	else	//bucket empty, add the kv pair
 	{
 		kv = alloc_kvpair(h);
-		/*kv->lock = true;
-		if(*bucket)
-		{
-			free_kvpair(kv);
-			return HM_NO_ADD;
-		}*/
 		*bucket = kv;
 
 
@@ -149,8 +173,9 @@ int hashmap_add_kvpair(hashmap_t *h, void *key, void *value,
 		add_result = HM_ADDED_KV_NEW;
 	}
 
-
-	//kv->lock = false;
+	if(h->multithread)
+		hashmap_unset_lock(h, index);
+		//omp_unset_lock(&h->locks[index]);
 	return add_result;
 
 	////////////////////////////////////////////////////////
@@ -200,7 +225,9 @@ void *hashmap_key_get_value(hashmap_t *h, void *key, uint32_t *hash)
 
 
 	//printf("getting bucket\n");
-	kvpair_t **bucket = hashmap_key_get_bucket(h, key, hash);
+	//kvpair_t **bucket = hashmap_key_get_bucket(h, key, hash);
+	uint32_t index = hashmap_key_get_index(h, key, hash);
+	kvpair_t **bucket = &h->map[index];
 	assert(bucket);
 	//printf("\tgot bucket\n");
 	if(!bucket)
@@ -209,17 +236,19 @@ void *hashmap_key_get_value(hashmap_t *h, void *key, uint32_t *hash)
 	if(!kv)	//slot not filled
 		return NULL;
 
-	//assert(!kv->lock);
-	/*if(kv->lock)
-		return NULL;
-	kv->lock = true;*/
+	if(h->multithread)
+		hashmap_set_lock(h, index);
+		//omp_set_lock(&h->locks[index]);
 
 
 	//return kv->value;
 	bool match = keys_match(h, kv->key, key);
 
 	void *val = match? kv->value : NULL;
-	//kv->lock = false;
+
+	if(h->multithread)
+		hashmap_unset_lock(h, index);
+		//omp_unset_lock(&h->locks[index]);
 	return val;
 
 	/*if(match)
@@ -360,31 +389,40 @@ void *hashmap_key_get_bucket(hashmap_t *h, void *key, uint32_t *hash)
 	if(!h)
 		return NULL;
 
-	//uint32_t index = hashmap_key_get_index(h, key);
+	uint32_t index = hashmap_key_get_index(h, key, hash);
+
+	return &h->map[index];
+	//list_t **pairlist = (list_t**)&h->map[index];
+	//return pairlist;
+}
+
+uint32_t hashmap_key_get_index(hashmap_t *h, void *key, uint32_t *hash)
+{
+	/*if(!h)
+		return 0;
+
+
+	uint32_t index = h->hash(key, h->ksize);
+	//index %= h->len;
+
+	return index;*/
+
+
+
 	uint32_t index;
 	if(hash)
 		index = (*hash);
 	else
-		index = hashmap_key_get_index(h, key);
+	{
+		index = h->hash(key, h->ksize);
+		index %= h->len;
+	}
 	index = avalanche(index);
 
 	if(h->p2_mask)
 		index &= h->p2_mask;
 	else
 		index %= h->len;
-	return &h->map[index];
-	//list_t **pairlist = (list_t**)&h->map[index];
-	//return pairlist;
-}
-
-uint32_t hashmap_key_get_index(hashmap_t *h, void *key)
-{
-	if(!h)
-		return 0;
-
-
-	uint32_t index = h->hash(key, h->ksize);
-	//index %= h->len;
 
 	return index;
 }
@@ -468,6 +506,18 @@ uint32_t default_hash_string(void *key, size_t size)
 		hash <<= 1;
 	}
 	return hash;
+}
+
+void hashmap_set_lock(hashmap_t *h, int index)
+{
+	omp_lock_t *lock = &h->locks[index / HM_LOCK_CT];
+	omp_set_lock(lock);
+}
+
+void hashmap_unset_lock(hashmap_t *h, int index)
+{
+	omp_lock_t *lock = &h->locks[index / HM_LOCK_CT];
+	omp_unset_lock(lock);
 }
 
 /*

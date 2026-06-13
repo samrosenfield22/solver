@@ -7,9 +7,6 @@
 
 typedef struct
 {
-	//bool lock;
-	//omp_lock_t lock;
-
 	void *key;
 	void *value;
 } kvpair_t;
@@ -25,6 +22,9 @@ typedef struct
 	bool (*compare_keys_fp)(void *k1, void *k2);
 	void (*normalize_key)(void *k);
 	bool (*replace_fp)(void *k1, void *v1, void *k2, void *v2);
+
+	bool multithread;
+	omp_lock_t *locks;
 
 	kvpair_t *map[];
 } hashmap_t;
@@ -43,6 +43,7 @@ enum
 hashmap_t *hashmap_create(size_t ksize, size_t vsize, uint32_t len);
 void hashmap_destroy(hashmap_t *h);
 void hashmap_clear(hashmap_t *h);
+void hashmap_enable_multithread(hashmap_t *h);
 int hashmap_add_kvpair(hashmap_t *h, void *key, void *value, uint32_t *hash);
 void *hashmap_key_get_value(hashmap_t *h, void *key, uint32_t *hash);
 int hashmap_load(hashmap_t *h);
