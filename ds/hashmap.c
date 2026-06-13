@@ -218,10 +218,11 @@ int hashmap_add_kvpair(hashmap_t *h, void *key, void *value,
 	*/
 }
 
-void *hashmap_key_get_value(hashmap_t *h, void *key, uint32_t *hash)
+bool hashmap_key_get_value(hashmap_t *h, void *key,
+	void *value, uint32_t *hash)
 {
 	if(!h)
-		return NULL;
+		return false;
 
 
 	//printf("getting bucket\n");
@@ -231,25 +232,26 @@ void *hashmap_key_get_value(hashmap_t *h, void *key, uint32_t *hash)
 	assert(bucket);
 	//printf("\tgot bucket\n");
 	if(!bucket)
-		return NULL;
+		return false;
 	kvpair_t *kv = *bucket;
 	if(!kv)	//slot not filled
-		return NULL;
+		return false;
 
 	if(h->multithread)
 		hashmap_set_lock(h, index);
 		//omp_set_lock(&h->locks[index]);
 
 
-	//return kv->value;
 	bool match = keys_match(h, kv->key, key);
-
-	void *val = match? kv->value : NULL;
+	//void *val = match? kv->value : NULL;
+	if(match)
+		memcpy(value, kv->value, h->vsize);
 
 	if(h->multithread)
 		hashmap_unset_lock(h, index);
 		//omp_unset_lock(&h->locks[index]);
-	return val;
+	//return val;
+	return match;
 
 	/*if(match)
 		return kv->value;
@@ -335,7 +337,7 @@ void hashmap_attach_replace(hashmap_t *h,
 void hashmap_demo(void)
 {
 	//add (7,88)
-	hashmap_t *h = hashmap(int, int, 100);
+	/*hashmap_t *h = hashmap(int, int, 100);
 	hashmap_add_kvpair(h, &(int){7}, &(int){88}, NULL);
 	int got = *(int*)hashmap_key_get_value(h, &(int){7}, NULL);
 	printf("got %d\n", got);
@@ -352,7 +354,7 @@ void hashmap_demo(void)
 	got = *(int*)hashmap_key_get_value(h, &(int){107}, NULL);
 	printf("got %d\n", got);
 
-	hashmap_destroy(h);
+	hashmap_destroy(h);*/
 }
 
 ////////////////////////// statics ///////////////////////////

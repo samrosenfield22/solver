@@ -57,7 +57,7 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 	sorter_t *order, int len, int depth, float alpha, float beta,
 	bool is_pv);
 
-trans_value_t *tt_get(gdata_t *gd, int depth);
+bool tt_get(trans_value_t *value, gdata_t *gd, int depth);
 
 bool alphabeta_cutoff(float cscore, float prune,
 	float *best_so_far, int depth);
@@ -186,7 +186,7 @@ void solver_check(solver_t *s)
 
 typedef struct
 {
-	trans_value_t *tv;
+	trans_value_t tv;
 	int move;
 } tv_with_last_move_t;
 
@@ -197,11 +197,12 @@ int vars_from_root_compare(const void *aa, const void *bb)
 	tv_with_last_move_t *a = (tv_with_last_move_t *)aa;
 	tv_with_last_move_t *b = (tv_with_last_move_t *)bb;
 
-	if(!a->tv)	return 1;
-	if(!b->tv)	return -1;
-	//if(a->move == pv_var_move) return -1;
-	//if(b->move == pv_var_move) return 1;
-	return b->tv->score - a->tv->score;
+	//if(!a->tv)	return 1;
+	//if(!b->tv)	return -1;
+	if(a->move == -1)	return 1;
+	if(b->move == -1)	return -1;
+
+	return b->tv.score - a->tv.score;
 }
 
 void print_variations(gdata_t *gd, int len)
@@ -230,11 +231,15 @@ void print_variations(gdata_t *gd, int len)
 			if(solver->is_legal(&gd->pos, i))
 			{
 				make_new_move(var_walker, var_walker, i);
-				from_root[i].tv = tt_get(var_walker, 0);
-				from_root[i].move = i;
+				//from_root[i].tv = tt_get(var_walker, 0);
+				if(tt_get(&from_root[i].tv, var_walker, 0))
+					from_root[i].move = i;
+				else
+					from_root[i].move = -1;
 			}
 			else
-				from_root[i].tv = NULL;
+				//from_root[i].tv = NULL;
+				from_root[i].move = -1;
 		}
 
 
@@ -245,16 +250,20 @@ void print_variations(gdata_t *gd, int len)
 	else
 	{
 		memcpy(var_walker, gd, gdata_size);
-		from_root[0].tv = tt_get(var_walker, 0);
+		/*from_root[0].tv = tt_get(var_walker, 0);
 		if(!from_root[0].tv)
+			return;*/
+		bool got = tt_get(&from_root[0].tv, var_walker, 0);
+		if(!got)
 			return;
-		from_root[0].move = from_root[0].tv->best_move;
+		from_root[0].move = from_root[0].tv.best_move;
 	}
-	//assert(from_root[0].move == )
+	//assert(from_root[0].move != -1);
 
 	for(int v=0; v<vars; v++)
 	{
-		if(!from_root[v].tv)
+		//if(!from_root[v].tv)
+		if(from_root[v].move == -1)
 		{
 			for(int i=0; i<2*VARIATION_LENGTH; i++)
 				printf("     ");
@@ -262,12 +271,12 @@ void print_variations(gdata_t *gd, int len)
 			continue;
 		}
 
-		int spaces = printf("  #%d %+.1f", v+1, from_root[v].tv->score);
+		int spaces = printf("  #%d %+.1f", v+1, from_root[v].tv.score);
 		for(int s=spaces; s<13; s++)
 			printf(" ");
 
 		int vmove = from_root[v].move;	//nth best
-		float vscore = from_root[v].tv->score;
+		float vscore = from_root[v].tv.score;
 
 		//copy original gd
 		memcpy(var_walker, gd, gdata_size);
@@ -288,16 +297,19 @@ void print_variations(gdata_t *gd, int len)
 			make_new_move(var_walker, var_walker, vmove);
 
 			//get the next one
-			trans_value_t *tv = tt_get(var_walker, 0);
-			if(!tv)
+			//trans_value_t *tv = tt_get(var_walker, 0);
+			//if(!tv)
+			trans_value_t tv;
+			bool g = tt_get(&tv, var_walker, 0);
+			if(!g)
 			{
 				if(vscore==WIN_SCORE-1 || vscore==-WIN_SCORE+1)
 					printf("#");
 				break;
 			}
 			printf(", ");
-			vmove = tv->best_move;
-			vscore = tv->score;
+			vmove = tv.best_move;
+			vscore = tv.score;
 		}
 
 		for(; i<2*VARIATION_LENGTH; i++)
@@ -653,29 +665,33 @@ result_t eval(gdata_t *gd, int depth,
 	//void *pos = node_get_pos(n);
 	void *pos = &(gd->pos);
 
-	trans_value_t *ttval = NULL;
+	//trans_value_t *ttval = NULL;
+	trans_value_t ttval;
+	bool got = false;
 	#ifdef USE_TRANSPOSITION_TABLE
 	//check if position was already analyzed
-	ttval = tt_get(gd, depth);
-	if(ttval)
+	//ttval = tt_get(gd, depth);
+	//if(ttval)
+	got = tt_get(&ttval, gd, depth);
+	if(got)
 	{
-		gd->score = ttval->score;
+		gd->score = ttval.score;
 		//if(ttval->full)
-		if(ttval->full && ttval->bound==BOUND_EXACT)
+		if(ttval.full && ttval.bound==BOUND_EXACT)
 		{
 			assert(gd->score > MATE_LIMIT
 				|| gd->score < -MATE_LIMIT
 				|| gd->score == 0);
-			return (result_t){.score=gd->score, .full=true, .best_move=ttval->best_move};
+			return (result_t){.score=gd->score, .full=true, .best_move=ttval.best_move};
 		}
 		//if(ttval->iddfs >= iddfs_depth && !asp_window_rerun)
 		//if(ttval->iddfs >= iddfs_depth && ttval->bound==BOUND_EXACT)
 		//assert(!ttval->full);
-		if(ttval->search_depth >= (iddfs_depth - depth)
-			&& ttval->bound==BOUND_EXACT)
+		if(ttval.search_depth >= (iddfs_depth - depth)
+			&& ttval.bound==BOUND_EXACT)
 		//if(val->iddfs >= iddfs_depth
 		//	&& !(asp_window_rerun && !val->exact))
-			return (result_t){.score=gd->score, .full=false, .best_move=ttval->best_move};
+			return (result_t){.score=gd->score, .full=false, .best_move=ttval.best_move};
 	}
 	#endif
 
@@ -728,7 +744,8 @@ result_t eval(gdata_t *gd, int depth,
 	}
 
 	//main analysis -- recursive tree search
-	result_t result = analyze_all_children(gd, ttval, movelist, len,
+	trans_value_t *tv = got? &ttval : NULL;
+	result_t result = analyze_all_children(gd, tv, movelist, len,
 		depth, alpha, beta, is_pv);
 
 
@@ -1094,8 +1111,11 @@ void sort_movelist(sorter_t *order, int len, gdata_t *gd, int depth)
 {
 	void *pos = &(gd->pos);
 
-	trans_value_t *v = tt_get(gd, depth);
-	int best = v? v->best_move : -1;
+	//trans_value_t *v = tt_get(gd, depth);
+	//int best = v? v->best_move : -1;
+	trans_value_t v;
+	bool got = tt_get(&v, gd, depth);
+	int best = got? v.best_move : -1;
 
 	uint8_t *killers_ply = killers[depth];
 	(void)killers_ply;
@@ -1286,22 +1306,26 @@ int tt_add(gdata_t *gd, result_t *result, int depth, int bound, int best_move)
 	return hashmap_add_kvpair(trans_tbl, pos, &value, hash);
 }
 
-trans_value_t *tt_get(gdata_t *gd, int depth)
+//trans_value_t *tt_get(gdata_t *gd, int depth)
+bool tt_get(trans_value_t *value, gdata_t *gd, int depth)
 {
 	void *pos = &(gd->pos);
 	uint32_t *hash = gdata_get_hash(gd);
-	trans_value_t *value = hashmap_key_get_value(trans_tbl, pos, hash);
+	//trans_value_t *value = hashmap_key_get_value(trans_tbl, pos, hash);
+	bool got = hashmap_key_get_value(trans_tbl, pos, value, hash);
 
-	if(!value && solver->flip && depth<=solver->flip_depth)
+	//if(!value && solver->flip && depth<=solver->flip_depth)
+	if(!got && solver->flip && depth<=solver->flip_depth)
 	{
 		uint8_t flipped[solver->pos_size];
 		solver->flip(flipped, pos);
-		value = hashmap_key_get_value(trans_tbl, flipped, NULL);
+		//value = hashmap_key_get_value(trans_tbl, flipped, NULL);
+		got = hashmap_key_get_value(trans_tbl, flipped, value, NULL);
 	}
 
-	//if(value)
-	//	n->score = value->score;
-	return value;
+
+	//return value;
+	return got;
 }
 
 /*bool alphabeta_cutoff(float cscore, float prune,

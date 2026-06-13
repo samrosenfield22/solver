@@ -17,9 +17,13 @@
 
 #define MULTICORE_CT	(1)
 
-//#define FORCE_SEARCH_DEPTH	(20)
+#define FORCE_SEARCH_DEPTH	(40)
 
+//how many full moves are shown in each variation
 #define VARIATION_LENGTH	(4)
+
+//number of variations -- if greater than 1, analysis will
+//take longer
 #define DISPLAY_VAR_CT		(1)
 
 
