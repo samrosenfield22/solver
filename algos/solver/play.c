@@ -286,6 +286,7 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 			bool end = false;
 			while(1)
 			{
+				#ifndef FORCE_SEARCH_DEPTH
 				bool clock_flagged = clock_update();
 				if(clock_flagged)
 					return (game_outcome_t)
@@ -295,6 +296,7 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 							.reason=WIN_BY_TIMEOUT,
 							.pos=pos
 						};
+				#endif
 
 				int key = term_check_input();
 				int sel = menu_input_control(move_sel_menu, key);
