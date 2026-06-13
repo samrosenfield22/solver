@@ -85,7 +85,7 @@ void print_variations(gdata_t *gd, int len);
 solver_t *solver;
 hashmap_t *trans_tbl = NULL;
 bool who_goes_first = true;
-uint32_t position_ct = 0, max_node_ct = 0;
+uint32_t position_ct = 0;
 int iddfs_depth;
 int time_lim;
 
@@ -428,13 +428,13 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 
 			if(MULTICORE_CT > 1)
 			{
-				#pragma omp parallel for private(solver)
+				//#pragma omp parallel for private(solver)
+				#pragma omp parallel for
 				for(int mp=0; mp<MULTICORE_CT; mp++)
 				{
-					int tid = omp_get_thread_num();
-					printf("solving from thread %d\n", tid);
-					//solver = alt_solvers[tid];
-					solver = (tid==0)? game_solver : &alt_solvers[tid-1];
+					//int tid = omp_get_thread_num();
+					//printf("solving from thread %d\n", tid);
+					//solver = (tid==0)? game_solver : &alt_solvers[tid-1];
 					result = eval(gd, 0,
 						asp_window[0], asp_window[1],
 						true);
@@ -643,14 +643,10 @@ bool set_aspiration_window(float *asp_window,
 result_t eval(gdata_t *gd, int depth,
 	float alpha, float beta, bool is_pv)
 {
+	//printf("eval at d=%d (%d)\n", depth, omp_get_thread_num());
 	if(time_up())
 		return (result_t){.score=0, .full=false, .best_move=-1};
 
-	/*term_move_cursor(0, 12);
-	solver->draw_full(gd->pos);
-	printf("(enter to continue): ");
-	getchar();
-*/
 
 	//if(is_pv)
 	//	printf("\tpv node at d=%d w [%.1f,%.1f]\n",
@@ -878,6 +874,14 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 
 	bool multi_pv = (depth==0 && DISPLAY_VAR_CT>1);
 	bool multi_full = true;
+
+	/*int tid = omp_get_thread_num();
+	if(tid && depth==2 && MULTICORE_CT > 1)
+	{
+		int swap_move = order[tid].move;
+		order[tid].move = order[0].move;
+		order[0].move = swap_move;
+	}*/
 
 	for(int i=0; i<len; i++)
 	{

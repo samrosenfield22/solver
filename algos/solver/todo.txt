@@ -4,6 +4,7 @@ GAME SOLVER -- TO DO
 
 general-fix:
 * why doesn't history heuristic work? :(				-
+* tt replace policy doesn't actually do anything		-
 
 general-new:
 * NNUE?????												-

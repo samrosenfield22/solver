@@ -6,7 +6,7 @@
 #include <string.h>
 #include <assert.h>
 
-#define HM_LOCK_CT	(10000)
+#define HM_LOCK_CT	(1000000)
 
 //statics
 //void *copy_key_normalize(hashmap_t *h, void *key);
@@ -19,8 +19,9 @@ kvpair_t *alloc_kvpair(hashmap_t *h);
 void free_kvpair(kvpair_t *kv);
 
 uint32_t default_hash(void *key, size_t size);
-void hashmap_set_lock(hashmap_t *h, int index);
-void hashmap_unset_lock(hashmap_t *h, int index);
+void hashmap_set_lock(hashmap_t *h, uint32_t index);
+bool hashmap_try_lock(hashmap_t *h, uint32_t index);
+void hashmap_unset_lock(hashmap_t *h, uint32_t index);
 
 
 hashmap_t *hashmap_create(size_t ksize, size_t vsize, uint32_t len)
@@ -118,16 +119,19 @@ int hashmap_add_kvpair(hashmap_t *h, void *key, void *value,
 
 	int add_result = -1;
 
-	//void *norm_key = copy_key_normalize(h, key);
-
 	//kvpair_t **bucket = hashmap_key_get_bucket(h, key, hash);
 	uint32_t index = hashmap_key_get_index(h, key, hash);
 	kvpair_t **bucket = &h->map[index];
 	assert(bucket);
 
 	if(h->multithread)
-		hashmap_set_lock(h, index);
-		//omp_set_lock(&h->locks[index]);
+	{
+		//printf("getting lock... ");
+		//hashmap_set_lock(h, index);
+		//printf("got!\n");
+		if(!hashmap_try_lock(h, index))
+			return HM_NO_ADD;
+	}
 
 	kvpair_t *kv;
 	if(*bucket)	//bucket already filled
@@ -223,7 +227,8 @@ bool hashmap_key_get_value(hashmap_t *h, void *key,
 {
 	if(!h)
 		return false;
-
+	//if(!h->multithread)
+	//	printf("no multi!\n");
 
 	//printf("getting bucket\n");
 	//kvpair_t **bucket = hashmap_key_get_bucket(h, key, hash);
@@ -238,7 +243,13 @@ bool hashmap_key_get_value(hashmap_t *h, void *key,
 		return false;
 
 	if(h->multithread)
-		hashmap_set_lock(h, index);
+	{
+		//printf("getting lock... ");
+		//hashmap_set_lock(h, index);
+		//printf("got!\n");
+		if(!hashmap_try_lock(h, index))
+			return false;
+	}
 		//omp_set_lock(&h->locks[index]);
 
 
@@ -510,13 +521,19 @@ uint32_t default_hash_string(void *key, size_t size)
 	return hash;
 }
 
-void hashmap_set_lock(hashmap_t *h, int index)
+void hashmap_set_lock(hashmap_t *h, uint32_t index)
 {
 	omp_lock_t *lock = &h->locks[index / HM_LOCK_CT];
 	omp_set_lock(lock);
 }
 
-void hashmap_unset_lock(hashmap_t *h, int index)
+bool hashmap_try_lock(hashmap_t *h, uint32_t index)
+{
+	omp_lock_t *lock = &h->locks[index / HM_LOCK_CT];
+	return omp_test_lock(lock);
+}
+
+void hashmap_unset_lock(hashmap_t *h, uint32_t index)
 {
 	omp_lock_t *lock = &h->locks[index / HM_LOCK_CT];
 	omp_unset_lock(lock);

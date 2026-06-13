@@ -116,6 +116,54 @@ bool is_win(uint64_t x)
 	return false;
 }
 
+bool c4_player_can_win(uint64_t x, uint64_t filled)
+{
+	/*walk out from a middle (col 3) token
+	if it's blocked by an opp token, it's not a win path
+	*/
+
+	/*uint64_t b = 1;
+	b <<= 21;	//middle bottom
+	uint64_t end = 1;
+	end <<= 27;
+	for(; b>end; b<<=1)
+	{
+		if(!b & x)
+			continue;
+
+		int shifts[] = {6, 7, 8};
+		for(int s=0; s<3; s++)
+		{
+			int sh = shifts[s];
+			for(int i=0; i<3; i++)
+			{
+				uint64_t next = b << sh;
+				if(!(next & opp) && not off edge)
+					//return true;
+			}
+		}
+	}*/
+}
+
+bool c4_win_impossible(c4_pos_t *p)
+{
+	//only relevant if columns 2-4 are completely full
+	if(!(p->filled & 0b01111110111111011111100000000000000))
+		return false;
+
+	//if win maps, a win is possible
+	if(p->x_wmap || p->opp_wmap)
+		return false;
+
+	//check for each player
+	if(c4_player_can_win(p->x, p->filled))
+		return false;
+	if(c4_player_can_win(p->x ^ p->filled, p->filled))
+		return false;
+
+	return true;
+}
+
 endstate_t c4_gameover(void *pos)
 {
 	assert(c4_ok(pos));
@@ -142,6 +190,9 @@ endstate_t c4_gameover(void *pos)
 		//exit(0);
 		return END_DRAW;
 	}
+
+	//if(c4_win_impossible(p))
+	//	return END_DRAW;
 
 
 	//
