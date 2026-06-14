@@ -98,7 +98,7 @@ int ttt_print_pos(void *pos)
 	ttt_pos_t *p = pos;
 	for(int i=0; i<9; i++)
 	{
-		char c;
+		char c = ' ';
 		switch(p->spaces[i])
 		{
 			case EMPTY: c = ' ';	break;

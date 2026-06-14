@@ -1052,7 +1052,7 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 	}*/
 
 
-
+	goto analyze_end;
 	analyze_end:
 	if(!(0 <= best_result.best_move
 		&& best_result.best_move < solver->possible_moves))

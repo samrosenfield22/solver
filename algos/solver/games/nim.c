@@ -43,7 +43,7 @@ bool nim_is_legal(void *pos, int index)
 	//printf("\tchecking legality for pos {%d,%d,%d}\n", np->piles[0], np->piles[1], np->piles[2]);
 
 
-	int pile, take;
+	int pile=0, take=0;
 	nim_calc_pile_and_take(np, index, &pile, &take);
 
 	return (take <= np->piles[pile]);
@@ -62,7 +62,7 @@ void nim_make_move(void *pos, int index, uint32_t *hash)
 	//np->move_index = index;
 	//printf("checking pos {%d,%d,%d}\n", np->piles[0], np->piles[1], np->piles[2]);
 
-	int pile, take;
+	int pile=0, take=0;
 	nim_calc_pile_and_take(np, index, &pile, &take);
 
 	np->piles[pile] -= take;
