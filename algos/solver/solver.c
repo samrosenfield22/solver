@@ -1233,6 +1233,9 @@ void tt_create(void)
 
 	//gdata_hash_size = sizeof(gdata_t) + solver->hash_size;
 
+	//printf("tt w ksize=%d, vsize=%d\n", solver->hash_size, sizeof(trans_value_t));
+	//exit(0);
+
 	//create the table
 	trans_tbl = hashmap_create(solver->hash_size,
 		sizeof(trans_value_t),

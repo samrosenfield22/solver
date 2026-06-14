@@ -61,12 +61,21 @@ bool c4_ok(c4_pos_t *p)
 		if(get_col(p->x, i) & 0b11000000)
 			return false;
 	}
+
+	if(p->x_wmap != NO_WIN_MAP)
+		if(p->x_wmap & p->filled)
+			return false;
+
+	if(p->opp_wmap != NO_WIN_MAP)
+		if(p->opp_wmap & p->filled)
+			return false;
+
 	return true;
 }
 
 bool c4_whosemove(void *pos)
 {
-	assert(c4_ok(pos));
+	//assert(c4_ok(pos));
 	c4_pos_t *p = pos;
 	//return p->whosemove;
 	return p->filled & WHOSEMOVE_BIT;
@@ -118,9 +127,61 @@ bool is_win(uint64_t x)
 
 bool c4_player_can_win(uint64_t x, uint64_t filled)
 {
-	/*walk out from a middle (col 3) token
-	if it's blocked by an opp token, it's not a win path
+
+
+
+
+	/*if we have a token in 3, and the opp has blocking
+	tokens in both (1,2) and (4,5), that path can't win
+
+	if any path can win, return true
 	*/
+
+	uint64_t opp = x ^ filled;
+	uint64_t x_middle = x & 0b0111111000000000000000000000;
+	uint64_t opp_left = opp & 0b011111101111110000000;
+	uint64_t opp_right = opp & 0b011111101111110000000000000000000000000000;
+	int shifts[] = {6, 7, 8};
+
+	for(int i=3; i<7; i++)
+	{
+		for(int s=0; s<3; s++)
+		{
+			int sh = shifts[s];
+			uint64_t x_mask = 0b111111;
+			x_mask <<= (i & 7);
+			uint64_t x_col = x & x_mask;
+
+			uint64_t blockers = (opp<<sh)
+				| (opp<<(sh*2))
+				| (opp<<(sh*3));
+
+			if(x_col != blockers)
+				return true;
+
+			//left
+			uint64_t l = (opp_left>>sh) | (opp_left>>(2*sh));
+			if(sh==6)	//down diag
+				l |= 0b110000000000000000000;
+			else if(sh==8)	//up diag
+				l |= 0b000001100000000000000;
+			uint64_t blocked = l & x_middle;
+			if(blocked != x_middle)
+				return true;
+
+			//right
+			uint64_t r = (opp_right<<sh) | (opp_left<<(2*sh));
+			if(sh==6)	//down diag
+				l |= 0b000001100000000000000;
+			else if(sh==8)	//up diag
+				l |= 0b110000000000000000000;
+			blocked = r & x_middle;
+			if(blocked != x_middle)
+				return true;
+		}
+	}
+
+	return false;
 
 	/*uint64_t b = 1;
 	b <<= 21;	//middle bottom
@@ -145,21 +206,110 @@ bool c4_player_can_win(uint64_t x, uint64_t filled)
 	}*/
 }
 
+void make_paths(uint64_t *paths)
+{
+	//48 paths (24 horiz, 12 up diag, 12 down diag)
+
+	//horiz
+	for(int c=0; c<4; c++)
+	{
+		for(int r=0; r<6; r++)
+		{
+			uint64_t st = 0b1;
+			st <<= (7*c);
+			st <<= r;
+
+			uint64_t pt = st | (st<<7) | (st<<14) | (st<<21);
+			int index = c*6 + r;
+			paths[index] = pt;
+		}
+	}
+
+	//up diag
+	for(int c=0; c<4; c++)
+	{
+		for(int r=0; r<3; r++)
+		{
+			uint64_t st = 0b1;
+			st <<= (7*c);
+			st <<= r;
+
+			uint64_t pt = st | (st<<8) | (st<<16) | (st<<24);
+			int index = c*3 + r;
+			index += 24;
+			paths[index] = pt;
+		}
+	}
+
+	//down diag
+	for(int c=0; c<4; c++)
+	{
+		for(int r=5; r>2; r--)
+		{
+			uint64_t st = 0b1;
+			st <<= (7*c);
+			st <<= r;
+
+			uint64_t pt = st | (st<<6) | (st<<12) | (st<<18);
+			int index = c*3 + r-3;
+			index += 36;
+			paths[index] = pt;
+		}
+	}
+
+	/*term_move_cursor(0, 0);
+	for(int i=0; i<48; i++)
+		printf("path %d: %s\n", i, sprintbig(paths[i], "%b"));
+	exit(0);*/
+}
+
 bool c4_win_impossible(c4_pos_t *p)
 {
-	//only relevant if columns 2-4 are completely full
-	if(!(p->filled & 0b01111110111111011111100000000000000))
+	//only relevant if column 3 is completely full
+	/*if(!(p->filled & 0b0111111000000000000000000000))
+	{
+		//printf("col 3 not full!\n");
+		//exit(0);
 		return false;
+	}*/
 
 	//if win maps, a win is possible
-	if(p->x_wmap || p->opp_wmap)
-		return false;
+	//if(p->x_wmap || p->opp_wmap)
+	//	return false;
 
 	//check for each player
-	if(c4_player_can_win(p->x, p->filled))
+	/*if(c4_player_can_win(p->x, p->filled))
 		return false;
 	if(c4_player_can_win(p->x ^ p->filled, p->filled))
-		return false;
+		return false;*/
+
+	/*printf("checking for impossible\n");
+	window_unfocus();
+	term_move_cursor(0,12);
+	c4_draw_full(p, -1);
+	getchar();*/
+
+	//24 horiz paths (6 * 4)
+	//12 up diag paths (3 * 4)
+	//12 down diag paths (3 * 4)
+	static uint64_t paths[48] = {0};
+	if(!paths[0])
+		make_paths(paths);
+
+	uint64_t x = p->x;
+	uint64_t opp = p->x ^ p->filled;
+	for(int i=0; i<48; i++)
+	{
+		uint64_t path = paths[i];
+		if(!((path & x) && (path & opp)))
+			return false;
+	}
+
+	//test
+	/*printf("pos w impossible win:\n");
+	term_move_cursor(0, 12);
+	c4_draw_full(p, -1);
+	getchar();*/
 
 	return true;
 }
@@ -572,7 +722,7 @@ float estimate_color(uint64_t x, uint64_t opp, uint64_t filled,
 
 bool c4_is_legal(void *pos, int index)
 {
-	//assert(c4_ok(pos));
+	assert(c4_ok(pos));
 	c4_pos_t *p = pos;
 
 	uint8_t col = get_col(p->filled, index);
@@ -1157,27 +1307,16 @@ bool c4_replace_transpose(void *k_old, void *v_old,
 {
 	return true;
 
-	/*trans_value_t *val_old = v_old;
+	trans_value_t *val_old = v_old;
 	trans_value_t *val_new = v_new;
 
-	if((val_old->score >= MATE_LIMIT
-		|| val_old->score <= MATE_LIMIT)
-		&&
-		!(val_new->score >= MATE_LIMIT
-			|| val_new->score <= MATE_LIMIT))
-		return false;
-	int age = val_new->iddfs - val_old->iddfs;
-	if(age >= 4)
-		return true;
-	//if(val_new->iddfs > val_old->iddfs)
-	//	return true;
-	//assert(val_old->iddfs == val_new->iddfs);
 
-	if(val_old->depth+4 < val_new->depth)
+
+	if(val_old->search_depth > val_new->search_depth+8)
 		return false;
 	return true;
 
-	*/
+
 }
 
 solver_t C4_SOLVER =
