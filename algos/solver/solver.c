@@ -164,6 +164,37 @@ void print_eval_bar(float score)
 
 }
 
+void draw_tt_load(void)
+{
+	const int load_bar_len = 25;
+	const int load_bar_h = 16;
+	static bool first = true;
+	if(first)
+	{
+		first = false;
+		window_unfocus();
+		term_move_cursor(0, load_bar_h-1);
+		printf("^");
+		term_move_cursor(0, load_bar_h+load_bar_len);
+		printf("v");
+		window_focus(analysis_hdl);
+	}
+
+	static int last_load = 0;
+	int load = hashmap_load(trans_tbl)/4;
+	if(load == last_load)
+		return;
+	last_load = load;
+
+	printf(TERM_WHITE);
+	window_unfocus();
+	term_move_cursor(0, load_bar_h);
+	for(int i=0; i<load; i++)
+		printf("%c\n", 219);
+
+	window_focus(analysis_hdl);
+}
+
 bool asp_window_rerun = false;
 
 
@@ -692,9 +723,15 @@ result_t eval(gdata_t *gd, int depth,
 	#endif
 
 	//update metrics
+	if(!(position_ct & 0xFFFFF))	//every few 100k
+	{
+		//printf("%d\n", position_ct);
+		draw_tt_load();
+	}
 	position_ct++;
 	//if(gt->node_ct > max_node_ct)
 	//	max_node_ct = gt->node_ct;
+
 
 
 	//evaluate end states/leaf nodes
