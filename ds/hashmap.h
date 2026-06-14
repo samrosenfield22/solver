@@ -5,11 +5,12 @@
 #define hashmap(ktype, vtype, len)		\
 	hashmap_create(sizeof(ktype), sizeof(vtype), len)
 
-typedef struct
+/*typedef struct
 {
-	void *key;
-	void *value;
-} kvpair_t;
+	//void *key;
+	//void *value;
+	uint8_t data[];
+} kvpair_t;*/
 
 typedef struct
 {
@@ -26,7 +27,8 @@ typedef struct
 	bool multithread;
 	omp_lock_t *locks;
 
-	kvpair_t *map[];
+	//kvpair_t *map[];
+	void *map[];
 } hashmap_t;
 
 enum

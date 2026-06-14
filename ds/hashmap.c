@@ -15,11 +15,12 @@ uint32_t hashmap_key_get_index(hashmap_t *h, void *key, uint32_t *hash);
 //void *pairlist_find_matching_key(hashmap_t *h,
 //	list_t *pairlist, void *key);
 bool keys_match(hashmap_t *h, void *k1, void *k2);
-kvpair_t *alloc_kvpair(hashmap_t *h);
-void free_kvpair(kvpair_t *kv);
+//kvpair_t *alloc_kvpair(hashmap_t *h);
+//void free_kvpair(kvpair_t *kv);
 
 uint32_t default_hash(void *key, size_t size);
 void hashmap_set_lock(hashmap_t *h, uint32_t index);
+void *kv_get_value(hashmap_t *h, void *kv);
 bool hashmap_try_lock(hashmap_t *h, uint32_t index);
 void hashmap_unset_lock(hashmap_t *h, uint32_t index);
 
@@ -31,7 +32,9 @@ hashmap_t *hashmap_create(size_t ksize, size_t vsize, uint32_t len)
 		return NULL;
 
 	h->ksize = ksize;
+	h->ksize += 4 - (ksize%4);
 	h->vsize = vsize;
+	h->vsize += 4 - (vsize%4);
 	h->len = len;
 	h->collisions = 0;
 	h->filled = 0;
@@ -80,9 +83,10 @@ void hashmap_clear(hashmap_t *h)
 	{
 		if(h->map[i])
 		{
-			kvpair_t *kv = h->map[i];
+			void *kv = h->map[i];
 
-			free_kvpair(kv);
+			//free_kvpair(kv);
+			mem_free(kv);
 			h->map[i] = NULL;
 
 			h->filled--;
@@ -121,7 +125,7 @@ int hashmap_add_kvpair(hashmap_t *h, void *key, void *value,
 
 	//kvpair_t **bucket = hashmap_key_get_bucket(h, key, hash);
 	uint32_t index = hashmap_key_get_index(h, key, hash);
-	kvpair_t **bucket = &h->map[index];
+	void **bucket = &h->map[index];
 	assert(bucket);
 
 	if(h->multithread)
@@ -133,15 +137,19 @@ int hashmap_add_kvpair(hashmap_t *h, void *key, void *value,
 			return HM_NO_ADD;
 	}
 
-	kvpair_t *kv;
+	void *kv;
 	if(*bucket)	//bucket already filled
 	{
 		kv = *bucket;
+		void *val_p = kv_get_value(h, kv);
 
-		if(keys_match(h, kv->key, key))
+		//if(keys_match(h, kv->key, key))
+		if(keys_match(h, kv, key))	//key is the first elem of kvpair
 		{
 			//replace value
-			memcpy(kv->value, value, h->vsize);
+			//memcpy(kv->value, value, h->vsize);
+			memcpy(val_p, value, h->vsize);
+
 			add_result = HM_KEYS_MATCHED_REPLACED_VALUE;
 		}
 		else	//collision, apply replacement policy
@@ -149,12 +157,17 @@ int hashmap_add_kvpair(hashmap_t *h, void *key, void *value,
 			h->collisions++;
 			bool replace = true;
 			if(h->replace_fp)
-				replace = h->replace_fp(kv->key, kv->value, key, value);
+			{
+				//replace = h->replace_fp(kv->key, kv->value, key, value);
+				replace = h->replace_fp(kv, val_p, key, value);
+			}
 
 			if(replace)
 			{
-				memcpy(kv->key, key, h->ksize);
-				memcpy(kv->value, value, h->vsize);
+				//memcpy(kv->key, key, h->ksize);
+				//memcpy(kv->value, value, h->vsize);
+				memcpy(kv, key, h->ksize);
+				memcpy(val_p, value, h->vsize);
 				add_result = HM_POLICY_OVERWRITE_KV;
 			}
 			else
@@ -164,13 +177,18 @@ int hashmap_add_kvpair(hashmap_t *h, void *key, void *value,
 	}
 	else	//bucket empty, add the kv pair
 	{
-		kv = alloc_kvpair(h);
+		//kv = alloc_kvpair(h);
+		kv = mem_malloc(h->ksize + h->vsize);
 		*bucket = kv;
 
 
 		//printf("moving %d bytes from %p to %p\n", h->ksize, key, kv->key);
-		memcpy(kv->key, key, h->ksize);
-		memcpy(kv->value, value, h->vsize);
+
+		//memcpy(kv->key, key, h->ksize);
+		//memcpy(kv->value, value, h->vsize);
+		void *val_p = kv_get_value(h, kv);
+		memcpy(kv, key, h->ksize);
+		memcpy(val_p, value, h->vsize);
 
 		//printf("kvpair added!\n");
 		h->filled++;
@@ -233,12 +251,12 @@ bool hashmap_key_get_value(hashmap_t *h, void *key,
 	//printf("getting bucket\n");
 	//kvpair_t **bucket = hashmap_key_get_bucket(h, key, hash);
 	uint32_t index = hashmap_key_get_index(h, key, hash);
-	kvpair_t **bucket = &h->map[index];
+	void **bucket = &h->map[index];
 	assert(bucket);
 	//printf("\tgot bucket\n");
 	if(!bucket)
 		return false;
-	kvpair_t *kv = *bucket;
+	void *kv = *bucket;
 	if(!kv)	//slot not filled
 		return false;
 
@@ -253,10 +271,14 @@ bool hashmap_key_get_value(hashmap_t *h, void *key,
 		//omp_set_lock(&h->locks[index]);
 
 
-	bool match = keys_match(h, kv->key, key);
+	bool match = keys_match(h, kv, key);
 	//void *val = match? kv->value : NULL;
 	if(match)
-		memcpy(value, kv->value, h->vsize);
+	{
+		//memcpy(value, kv->value, h->vsize);
+		void *val_p = kv_get_value(h, kv);
+		memcpy(value, val_p, h->vsize);
+	}
 
 	if(h->multithread)
 		hashmap_unset_lock(h, index);
@@ -472,7 +494,7 @@ bool keys_match(hashmap_t *h, void *k1, void *k2)
 		return (memcmp(k1, k2, h->ksize)==0);
 }
 
-kvpair_t *alloc_kvpair(hashmap_t *h)
+/*kvpair_t *alloc_kvpair(hashmap_t *h)
 {
 	kvpair_t *kv = mem_malloc(sizeof(*kv));
 	assert(kv);
@@ -482,16 +504,16 @@ kvpair_t *alloc_kvpair(hashmap_t *h)
 	assert(kv->value);
 
 	return kv;
-}
+}*/
 
-void free_kvpair(kvpair_t *kv)
+/*void free_kvpair(kvpair_t *kv)
 {
 	if(kv->key)
 		mem_free(kv->key);
 	if(kv->value)
 		mem_free(kv->value);
 	mem_free(kv);
-}
+}*/
 
 uint32_t default_hash(void *key, size_t size)
 {
@@ -519,6 +541,13 @@ uint32_t default_hash_string(void *key, size_t size)
 		hash <<= 1;
 	}
 	return hash;
+}
+
+void *kv_get_value(hashmap_t *h, void *kv)
+{
+	char *vp = kv;
+	vp += h->ksize;
+	return vp;
 }
 
 void hashmap_set_lock(hashmap_t *h, uint32_t index)
