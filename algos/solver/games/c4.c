@@ -1402,7 +1402,7 @@ solver_t C4_SOLVER =
 	.iddfs_increment = 8,
 	.aspiration_default_width = 1,
 	.default_order = (uint8_t[]){2, 4, 6, 7, 5, 3, 1},
-	.flip_depth = 16,
+	.flip_depth = 20,
 
 	.gameover = c4_gameover,
 	.estimate = c4_estimate,

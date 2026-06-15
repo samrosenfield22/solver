@@ -17,7 +17,7 @@
 
 #define MULTICORE_CT	(1)
 
-#define FORCE_SEARCH_DEPTH	(40)
+//#define FORCE_SEARCH_DEPTH	(32)
 
 //how many full moves are shown in each variation
 #define VARIATION_LENGTH	(4)
