@@ -17,7 +17,7 @@
 
 #define MULTICORE_CT	(1)
 
-#define FORCE_SEARCH_DEPTH	(32)
+#define FORCE_SEARCH_DEPTH	(40)
 
 //how many full moves are shown in each variation
 #define VARIATION_LENGTH	(4)
@@ -48,13 +48,10 @@ enum
 typedef struct
 {
 	float score;
-	//uint8_t best;
-	//uint8_t iddfs;
-	//uint8_t depth;
 	uint8_t search_depth;
 	bool full;
-	int bound;
-	int best_move;
+	uint8_t bound;
+	uint8_t best_move;
 	//age??
 } trans_value_t;
 

@@ -449,6 +449,10 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 		incr = 2;
 	for(iddfs=0;; iddfs+=incr)
 	{
+		#ifdef FORCE_SEARCH_DEPTH
+		if(iddfs > FORCE_SEARCH_DEPTH)
+			iddfs = FORCE_SEARCH_DEPTH;
+		#endif
 		iddfs_depth = iddfs;
 
 		uint32_t last = toc_ms();
@@ -1135,7 +1139,6 @@ int order_compare(const void *aa, const void *bb)
 int build_movelist(sorter_t *order, void *pos)
 {
 	int ct = 0;
-	int bad_move = -1;
 
 	for(int i=0; i<solver->possible_moves; i++)
 	{
@@ -1144,19 +1147,7 @@ int build_movelist(sorter_t *order, void *pos)
 		 //	solver->default_order[i] : i;
 		if(!solver->is_legal(pos, i))
 			continue;
-		if(solver->move_loses && solver->move_loses(pos, i))
-			bad_move = i;
-		else
-		{
-			order[ct].move = i;
-			order[ct].score = 0;
-			ct++;
-		}
-	}
-
-	if(!ct)
-	{
-		order[ct].move = bad_move;
+		order[ct].move = i;
 		order[ct].score = 0;
 		ct++;
 	}
@@ -1372,8 +1363,11 @@ void tt_create(void)
 
 int tt_add(gdata_t *gd, result_t *result, int depth, int bound, int best_move)
 {
+	assert(best_move >= 0);
+
 	void *pos = &(gd->pos);
 	uint32_t *hash = gdata_get_hash(gd);
+	int search_depth = iddfs_depth - depth;
 
 	trans_value_t value =
 	{
@@ -1382,7 +1376,7 @@ int tt_add(gdata_t *gd, result_t *result, int depth, int bound, int best_move)
 		.bound = bound,
 		//.iddfs = iddfs_depth,
 		//.depth = depth,
-		.search_depth = iddfs_depth - depth,
+		.search_depth = search_depth,
 		.best_move = best_move,
 	};
 

@@ -18,46 +18,6 @@
 
 int main(void)
 {
-	//int locs[] = {0, 0, 3, 0, 5, }
-	//void *opt = menu_make_options()
-	/*menu_t *m = menu_grid(20, 20,	//x,y
-		1, 7,	//rows,columns
-		1, 3,	//r/c spacing
-		"\n^\n^");
-	term_clear();
-	while(1)
-	{
-
-		term_move_cursor(1,20);
-		char c = getchar();
-		if(c == '1')
-			menu_left(m);
-		else if(c == '2')
-			menu_right(m);
-
-		//printf("\n\nselect=%d", menu_get(m));
-	}
-
-	return 0;*/
-
-	//winterm_init_ansi();
-
-	/*term_clear();
-	int mywin = window(20, 20);
-	int other = window_wh(50, 15, 90, 10);
-	window_printf(mywin, "test %d", 67);
-	window_printf(other, "\n\naaaaaaaaaaaaaaaaaaaaaaaaayyyyyyyyyyyyyyy");
-	window_printf(mywin, "\n\nmustard on the beat h%02d\n", 3);
-	window_set_colors(other, TERM_CYAN, TERM_BLACK_BG);
-	int i=0;
-	while(1)
-	{
-		window_printf(mywin, "%d\n", i);
-		i++;
-		delay(500);
-	}
-	return 0;
-	*/
 
 	play_menu();
 	if(mem_check())
