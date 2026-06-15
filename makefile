@@ -15,6 +15,7 @@ SRCS := user.c algos/solver/games/quoridor.c algos/solver/games/quoridor_pathfin
 
 # Map source files to object files in the build directory
 OBJS := $(SRCS:%.c=$(BUILD_DIR)/%.o)
+DEPS := $(SRCS:%.c=$(BUILD_DIR)/%.d)
 #OBJS := $(patsubst %.c, $(BUILD_DIR)/%.o, $(notdir $(SRCS)))
 
 # Default target
@@ -24,16 +25,21 @@ all: $(TARGET)
 $(TARGET): $(OBJS)
 	$(CC) $(CFLAGS) $^ -o $@
 
-# 7. Compiling rule for nested directories
+# compiling rule for nested directories
 $(BUILD_DIR)/%.o: %.c
 	@if not exist "$(@D)\" mkdir "$(@D)"
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) -MMD -MP -c $< -o $@
 
-# 8. Clean rule
+-include $(DEPS)
+
+# clean rule
 clean:
-	rm -rf $(BUILD_DIR)
+	@rmdir /s /q $(BUILD_DIR)
 
-.PHONY: all clean
+prof: CFLAGS += -pg
+prof: $(TARGET)
+
+.PHONY: all clean prof
 
 #target:
 #	$(CC) $(SRCS) $(CFLAGS) -o $(TARGET)

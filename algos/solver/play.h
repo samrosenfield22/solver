@@ -30,6 +30,7 @@ enum
 	COMPUTER_PLAYER = false,
 };
 
+
 void play_menu(void);
 game_outcome_t play(solver_t *solver, void *pos, bool p1, bool p2);
 

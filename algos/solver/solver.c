@@ -1138,7 +1138,7 @@ int order_compare(const void *aa, const void *bb)
 
 int build_movelist(sorter_t *order, void *pos)
 {
-	int ct = 0;
+	int ct = 1;
 
 	for(int i=0; i<solver->possible_moves; i++)
 	{
