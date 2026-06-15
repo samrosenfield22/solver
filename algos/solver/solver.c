@@ -49,7 +49,7 @@ result_t eval(gdata_t *gd, int depth,
 	float alpha, float beta, bool is_pv);
 //int build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth);
 int build_movelist(sorter_t *order, void *pos);
-void sort_movelist(sorter_t *order, int len,
+int sort_movelist(sorter_t *order, int len,
 	gdata_t *gd, int depth);
 bool move_is_forcing(void *pos, int move);
 
@@ -780,7 +780,7 @@ result_t eval(gdata_t *gd, int depth,
 		else
 			len = build_movelist(movelist, pos);
 
-		sort_movelist(movelist, len, gd, depth);
+		len = sort_movelist(movelist, len, gd, depth);
 	}
 
 	//main analysis -- recursive tree search
@@ -1135,6 +1135,7 @@ int order_compare(const void *aa, const void *bb)
 int build_movelist(sorter_t *order, void *pos)
 {
 	int ct = 0;
+	int bad_move = -1;
 
 	for(int i=0; i<solver->possible_moves; i++)
 	{
@@ -1143,9 +1144,20 @@ int build_movelist(sorter_t *order, void *pos)
 		 //	solver->default_order[i] : i;
 		if(!solver->is_legal(pos, i))
 			continue;
-		order[ct].move = i;
-		order[ct].score = 0;
+		if(solver->move_loses && solver->move_loses(pos, i))
+			bad_move = i;
+		else
+		{
+			order[ct].move = i;
+			order[ct].score = 0;
+			ct++;
+		}
+	}
 
+	if(!ct)
+	{
+		order[ct].move = bad_move;
+		order[ct].score = 0;
 		ct++;
 	}
 
@@ -1155,7 +1167,7 @@ int build_movelist(sorter_t *order, void *pos)
 }
 
 
-void sort_movelist(sorter_t *order, int len, gdata_t *gd, int depth)
+int sort_movelist(sorter_t *order, int len, gdata_t *gd, int depth)
 {
 	void *pos = &(gd->pos);
 
@@ -1211,12 +1223,15 @@ void sort_movelist(sorter_t *order, int len, gdata_t *gd, int depth)
 
 	//printf("killers are %d and %d\n", killers_ply[0], killers_ply[1]);
 
+	int losers = 0;
+
 	for(int i=0; i<len; i++)
 	{
 		//get move
 		int move = order[i].move;
 		assert(move < solver->possible_moves);
 		assert(order[i].score == 0);
+		//assert(solver->is_legal(pos, move));
 
 		//heuristic bonuses
 		if(move == best)	//hash move
@@ -1230,31 +1245,49 @@ void sort_movelist(sorter_t *order, int len, gdata_t *gd, int depth)
 		else if(move_is_forcing(pos, move))
 			order[i].score += 800;
 
+
+
 		//else if(move == killers_ply[0]
 		//	|| move == killers_ply[1])
 		//	order[ct].score = 400;
 
 		//add default move ordering
-		//order[ct].score -= (float)i/100;
-
 		if(solver->default_order)
 			order[i].score += solver->default_order[move];
 
 
-		//ct++;
-	}
+		if(solver->move_loses && solver->move_loses(pos, move))
+		{
+			order[i].score = -100;
+			losers++;
+		}
 
-	//must have found at least 1 legal move
-	//assert(ct);
+	}
 
 	//sort
 	qsort(order, len, sizeof(*order), order_compare);
 
-	//tree_get(gt, n);
-	//tree_delete_all_but_first(gt, 0);
+	/*if(losers)
+	{
+		printf("\nscores: ");
+		for(int i=0; i<len; i++)
+			printf("[%d: %.1f], ", order[i].move, order[i].score);
+		printf("         \n%d losers\n", losers);
+		window_unfocus();
+		term_move_cursor(0, 12);
+		solver->draw_full(pos, -1);
+		getchar();
+	}*/
 
-	//return ct;
-	return;
+	assert(len >= losers);
+	if(losers)
+		assert(order[len-1].score == -100);
+	/*len -= losers;
+	if(!len)
+		len = 1;*/
+
+
+	return len;
 }
 
 bool move_is_forcing(void *pos, int move)

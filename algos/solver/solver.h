@@ -17,7 +17,7 @@
 
 #define MULTICORE_CT	(1)
 
-#define FORCE_SEARCH_DEPTH	(40)
+#define FORCE_SEARCH_DEPTH	(32)
 
 //how many full moves are shown in each variation
 #define VARIATION_LENGTH	(4)
@@ -151,7 +151,7 @@ typedef struct
 	//optional
 	int (*make_movelist)(sorter_t *sorter, void *pos);
 
-	//bool (*move_loses)(void *pos, int move);
+	bool (*move_loses)(void *pos, int move);
 
 	/*optional:
 	populates the sorter_t array with one or more only

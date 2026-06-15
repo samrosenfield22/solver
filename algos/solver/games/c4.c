@@ -14,7 +14,7 @@
 //#define SHOW_WIN_TILES
 
 float estimate_color(uint64_t x, uint64_t opp, uint64_t filled,
-	uint64_t wmap, bool verbose);
+	uint64_t wmap, uint64_t opp_wmap, bool verbose);
 void get_win_maps(c4_pos_t *p);
 //void get_win_map(uint64_t *wmap, uint64_t x, uint64_t filled);
 void c4_draw_full(void *pos, int last_move);
@@ -87,6 +87,7 @@ bool c4_whosemove(void *pos)
 uint64_t move_bit(c4_pos_t *p, int index)
 {
 	uint64_t col = get_col(p->filled, index)+1;
+	col &= 0b111111;
 	return col<<(7*index);
 }
 
@@ -365,10 +366,15 @@ float c4_estimate(void *pos)
 	uint64_t x_wmap = p->x_wmap;
 	uint64_t opp_wmap = p->opp_wmap;
 
+	//if we can win on the next move, don't bother
+	//with the other estimates
+	//if((x_wmap>>1) & (p->filled | 0b100000010000001000000100000010000001000000))
+	//	return c4_whosemove(p)? 500 : -500;
+
 
 	//calculate est for each player
-	float est = estimate_color(x, opp, p->filled, x_wmap, false);
-	est -= estimate_color(opp, x, p->filled, opp_wmap, false);
+	float est = estimate_color(x, opp, p->filled, x_wmap, opp_wmap, false);
+	est -= estimate_color(opp, x, p->filled, opp_wmap, x_wmap, false);
 
 	//endgame analysis
 	const int C4_ENDGAME_CT = 26;
@@ -705,17 +711,32 @@ float estimate_color_count_open_threes(uint64_t x, uint64_t opp, bool verbose)
 
 
 float estimate_color(uint64_t x, uint64_t opp, uint64_t filled,
-	uint64_t wmap, bool verbose)
+	uint64_t wmap, uint64_t opp_wmap, bool verbose)
 //float estimate_color(uint64_t x, uint64_t filled, bool verbose)
 {
+	assert(wmap != NO_WIN_MAP);
+
 	float est = 0;
 	//int move_ct = __builtin_popcount(filled & ~WHOSEMOVE_BIT);
 	//if(move_ct < 26)
 		est += estimate_color_count_middles(x);
 	est += 3*estimate_color_count_wins(x, filled, wmap, verbose);
 	//est += 3*(__builtin_popcount(wmap));
-	if(wmap & (wmap<<1))	//stacked wins
+
+	uint64_t stack = wmap & (wmap>>1);
+	if(stack && !(stack & opp_wmap)
+		 && !(stack>>1 & opp_wmap))
 		est += 100;
+	/*{
+		window_unfocus();
+		term_move_cursor(0, 12);
+		c4_pos_t stack_p;
+		stack_p.x = x;
+		stack_p.filled = filled;
+		c4_draw_full(&stack_p, -1);
+		getchar();
+	}*/
+
 	//est += estimate_color_count_open_threes(x, opp, verbose);
 	return est;
 }
@@ -886,17 +907,26 @@ void c4_make_move(void *pos, int index, uint32_t *hash)
 	//assert(*hash == check_hash);
 }
 
-/*bool c4_move_loses(void *pos, int move)
+bool c4_move_loses(void *pos, int move)
 {
-	if(!c4_is_legal(pos, move))
-		return false;
+	//if(!c4_is_legal(pos, move))
+	//	return false;
 
 	c4_pos_t *p = pos;
 
-	//check if opp has
+	get_win_maps(p);
 
-	return losing;
-}*/
+
+	uint64_t mb = move_bit(p, move);
+	assert(mb);
+
+	//a win move is never a losing move
+	if(mb & p->x_wmap)
+		return false;
+
+	//don't play under an opponent's win
+	return (mb<<1) & p->opp_wmap;
+}
 
 uint32_t c4_hash(void *key, size_t size)
 {
@@ -994,6 +1024,8 @@ int c4_make_movelist(sorter_t *sorter, void *pos)
 {
 	c4_pos_t *p = pos;
 	int ct = 0;
+	//int bad_move = -1;
+	get_win_maps(p);
 	for(int i=0; i<7; i++)
 	{
 		if(get_col(p->filled, i) != 0b111111)
@@ -1048,12 +1080,15 @@ int c4_only_moves(sorter_t *sorter, void *pos)
 	//get_win_map(&p->x_wmap, p->x, p->filled);
 	//get_win_map(&p->opp_wmap, p->x ^ p->filled, p->filled);
 
+	//uint64_t filled_1_higher = (p->filled<<1) | 0b000000100000010000001000000100000010000001;
+
 	//check if we have a win on next move
 	//uint64_t wmap = win_map(p->x, p->filled);
 	//uint64_t wmap = p->x_wmap;
 	if(p->x_wmap == NO_WIN_MAP)
 		p->x_wmap = win_map(p->x, p->filled);
 	uint64_t win_move = move_map & p->x_wmap;
+	//uint64_t win_move = p->x_wmap & filled_1_higher;
 	//if(move_map & p->x_wmap)
 	if(win_move)
 	{
@@ -1088,6 +1123,7 @@ int c4_only_moves(sorter_t *sorter, void *pos)
 	//uint64_t opp_wmap = p->opp_wmap;
 	if(p->opp_wmap == NO_WIN_MAP)
 		p->opp_wmap = win_map(p->x ^ p->filled, p->filled);
+	//win_move = p->opp_wmap & filled_1_higher;
 	win_move = move_map & p->opp_wmap;
 	//if(move_map & p->opp_wmap)
 	if(win_move)
@@ -1376,7 +1412,7 @@ solver_t C4_SOLVER =
 	.make_move = c4_make_move,
 	.make_move_temp = c4_make_move_temp,
 	.get_placement = c4_get_placement,
-	//.move_loses = c4_move_loses,
+	.move_loses = c4_move_loses,
 	.make_movelist = c4_make_movelist,
 	.only_moves = c4_only_moves,
 
