@@ -14,7 +14,7 @@
 
 typedef struct
 {
-	size_t ksize, vsize;
+	size_t ksize, vsize;//, kvsize;
 	uint32_t len, filled;
 	uint32_t collisions;
 	int p2_mask;
@@ -29,6 +29,7 @@ typedef struct
 
 	//kvpair_t *map[];
 	void *map[];
+	//uint8_t map[];
 } hashmap_t;
 
 enum

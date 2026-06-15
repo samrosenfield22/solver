@@ -168,11 +168,15 @@ void draw_tt_load(void)
 {
 	const int load_bar_len = 25;
 	const int load_bar_h = 16;
+	const int load_num_h = load_bar_h - 3;
+
 	static bool first = true;
 	if(first)
 	{
 		first = false;
 		window_unfocus();
+		term_move_cursor(0, load_num_h);
+		printf("0%%");
 		term_move_cursor(0, load_bar_h-1);
 		printf("^");
 		term_move_cursor(0, load_bar_h+load_bar_len);
@@ -181,7 +185,7 @@ void draw_tt_load(void)
 	}
 
 	static int last_load = 0;
-	int load = hashmap_load(trans_tbl)/4;
+	int load = hashmap_load(trans_tbl);
 	if(load == last_load)
 		return;
 	last_load = load;
@@ -189,8 +193,11 @@ void draw_tt_load(void)
 	printf(TERM_WHITE);
 	window_unfocus();
 	term_move_cursor(0, load_bar_h);
-	for(int i=0; i<load; i++)
+	for(int i=0; i<load/4; i++)
 		printf("%c\n", 219);
+
+	term_move_cursor(0, load_num_h);
+	printf("%d%% ", load);
 
 	window_focus(analysis_hdl);
 }

@@ -34,7 +34,7 @@ hashmap_t *hashmap_create(size_t ksize, size_t vsize, uint32_t len)
 	h->ksize = ksize;
 	h->ksize += 4 - (ksize%4);
 	h->vsize = vsize;
-	h->vsize += 4 - (vsize%4);
+	//h->vsize += 4 - (vsize%4);
 	h->len = len;
 	h->collisions = 0;
 	h->filled = 0;
@@ -86,8 +86,11 @@ void hashmap_clear(hashmap_t *h)
 			void *kv = h->map[i];
 
 			//free_kvpair(kv);
-			mem_free(kv);
-			h->map[i] = NULL;
+			if(kv)
+			{
+				mem_free(kv);
+				h->map[i] = NULL;
+			}
 
 			h->filled--;
 		}
@@ -318,7 +321,8 @@ int hashmap_load(hashmap_t *h)
 	//printbig(h->filled, "%d");
 	//printf(" out of %s buckets filled\n",
 	//	sprintbig(h->len, "%d"));
-	return (h->filled * 100) / h->len;
+	uint64_t f = h->filled;
+	return (f * 100) / h->len;
 }
 
 uint32_t hashmap_collisions(hashmap_t *h)
