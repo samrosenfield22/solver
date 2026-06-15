@@ -310,6 +310,9 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 
 				switch(key)
 				{
+					case 'x':
+						exit(0);
+						break;
 					case '\n':
 					case '\r':
 						*bp = '\0';

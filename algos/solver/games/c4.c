@@ -714,6 +714,8 @@ float estimate_color(uint64_t x, uint64_t opp, uint64_t filled,
 		est += estimate_color_count_middles(x);
 	est += 3*estimate_color_count_wins(x, filled, wmap, verbose);
 	//est += 3*(__builtin_popcount(wmap));
+	if(wmap & (wmap<<1))	//stacked wins
+		est += 100;
 	//est += estimate_color_count_open_threes(x, opp, verbose);
 	return est;
 }
@@ -1011,27 +1013,26 @@ int c4_only_moves(sorter_t *sorter, void *pos)
 
 	//get_win_maps(p);
 
-	uint64_t move_map = 0;
-	//bool only_middle = true;
+	/*uint64_t move_map = 0;
 	for(int i=0; i<7; i++)
 	{
-		//move_map |= move_bit(p, i);
-
 		uint64_t b = move_bit(p, i);
 		move_map |= b;
+	}*/
 
-		//terrible opening table
-		/*uint8_t col = get_col(p->filled, i);
-		if(i==3 && col == 0b111111)
-			only_middle = false;
-		else if(col && (i!=3))
-			only_middle = false;*/
-	}
+	uint64_t filled_alt = p->filled;
+	filled_alt |= 0b100000010000001000000100000010000001000000;
+	uint64_t move_map = (filled_alt<<1) | filled_alt;
+	move_map ^= filled_alt;
+	if(!(filled_alt & 0b1))
+		move_map |= 0b1;
 
-	/*if(only_middle)
+	/*if(move_map != other_move_map)
 	{
-		sorter[0].move = 3;
-		return 1;
+		printf("filled:\t%s\n", sprintbig(p->filled, "%b"));
+		printf("move map:\t%s\n", sprintbig(move_map, "%b"));
+		printf("alt map:\t%s\n", sprintbig(other_move_map, "%b"));
+		assert(0);
 	}*/
 
 	/*uint64_t alt_move_map = (p->filled<<1) & ~p->filled;
@@ -1052,18 +1053,34 @@ int c4_only_moves(sorter_t *sorter, void *pos)
 	//uint64_t wmap = p->x_wmap;
 	if(p->x_wmap == NO_WIN_MAP)
 		p->x_wmap = win_map(p->x, p->filled);
-	if(move_map & p->x_wmap)
+	uint64_t win_move = move_map & p->x_wmap;
+	//if(move_map & p->x_wmap)
+	if(win_move)
+	{
 		for(int i=0; i<7; i++)
 		{
-			uint64_t mb = move_bit(p, i);
-			if(mb & p->x_wmap)
+			win_move >>= 7;
+			if(!win_move)
 			{
 				if(sorter)
 					sorter[0].move = i;
 				return 1;
 			}
-			//	return i;
 		}
+		/*uint64_t col_mask = 0b111111;
+		for(int i=0; i<7; i++)
+		{
+			//uint64_t mb = move_bit(p, i);
+			//if(mb & p->x_wmap)
+			if(col_mask & win_move)
+			{
+				if(sorter)
+					sorter[0].move = i;
+				return 1;
+			}
+			col_mask <<= 7;
+		}*/
+	}
 
 	//check if opp has a win we have to block on next move
 	//uint64_t opp = p->x ^ p->filled;
@@ -1071,18 +1088,34 @@ int c4_only_moves(sorter_t *sorter, void *pos)
 	//uint64_t opp_wmap = p->opp_wmap;
 	if(p->opp_wmap == NO_WIN_MAP)
 		p->opp_wmap = win_map(p->x ^ p->filled, p->filled);
-	if(move_map & p->opp_wmap)
+	win_move = move_map & p->opp_wmap;
+	//if(move_map & p->opp_wmap)
+	if(win_move)
+	{
 		for(int i=0; i<7; i++)
 		{
-			uint64_t mb = move_bit(p, i);
-			if(mb & p->opp_wmap)
+			win_move >>= 7;
+			if(!win_move)
 			{
 				if(sorter)
 					sorter[0].move = i;
 				return 1;
 			}
-				//return i;
 		}
+		/*uint64_t col_mask = 0b111111;
+		for(int i=0; i<7; i++)
+		{
+			//uint64_t mb = move_bit(p, i);
+			//if(mb & p->opp_wmap)
+			if(col_mask & win_move)
+			{
+				if(sorter)
+					sorter[0].move = i;
+				return 1;
+			}
+			col_mask <<= 7;
+		}*/
+	}
 
 	return 0;
 }
