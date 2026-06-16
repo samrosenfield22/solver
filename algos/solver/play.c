@@ -22,7 +22,7 @@
 
 
 //#define COMP_TIME	(1 * 1000)
-#define TIME_ODDS	(200)
+#define TIME_ODDS	(180)
 
 #define DEV_MODE	(true)
 //#define DEV_MODE	(false)
@@ -248,7 +248,6 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 	clocks_init(0, 0);
 	#else
 	clocks_init(5*60*1000 / TIME_ODDS, 5*60*1000);
-	#endif
 
 	int moves_est = 50;
 	if(solver->moves_remaining)
@@ -264,6 +263,7 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 	}
 	if(!solver->iddfs_increment)
 		solver->iddfs_increment = 2;
+	#endif
 
 	while(1)
 	{
@@ -307,7 +307,7 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 					return (game_outcome_t)
 						{
 							.score=1-player,
-							.winner=player,
+							.winner=!player,
 							.reason=WIN_BY_TIMEOUT,
 							.pos=pos
 						};
@@ -452,7 +452,7 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 			return (game_outcome_t)
 				{
 					.score=1-player,
-					.winner=player,
+					.winner=!player,
 					.reason=WIN_BY_TIMEOUT,
 					.pos=pos
 				};

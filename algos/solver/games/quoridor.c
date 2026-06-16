@@ -968,7 +968,6 @@ solver_t QUOR_SOLVER =
 	//.normalize_position = quor_normalize,
 	//.flip = quor_flip,
 	//.normalize_position = NULL,
-	//.replace_transpose = quor_replace_transpose,
 
 	.human_to_iter = quor_human_to_iter,
 	.iter_to_human = quor_iter_to_human,

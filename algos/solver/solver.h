@@ -17,7 +17,7 @@
 
 #define MULTICORE_CT	(1)
 
-//#define FORCE_SEARCH_DEPTH	(32)
+#define FORCE_SEARCH_DEPTH	(36)
 
 //how many full moves are shown in each variation
 #define VARIATION_LENGTH	(4)
@@ -181,16 +181,6 @@ typedef struct
 	/*optional:
 	creates a symmetrically equivalent version of the position*/
 	void (*flip)(void *to, void *from);
-
-	//void (*normalize_position)(void *k);
-	//bool (*replace_transpose)(void *k1, void *k2);
-
-	/*optional:
-	compares 2 KV pairs, and determines if the transposition
-	table should keep the previously stored position, or replace
-	it with the new one*/
-	bool (*replace_transpose)(void *k1, void *v1,
-		void *k2, void *d1);
 
 	/*optional:
 	short print, for tree draw*/

@@ -367,7 +367,7 @@ int random_move(void *pos)
 		if(solver->is_legal(pos, i))
 			allowed[ct++] = i;
 	assert(ct);
-	
+
 	uint8_t n = rand();
 	n %= ct;
 	return allowed[n];
@@ -1313,6 +1313,19 @@ bool move_is_forcing(void *pos, int move)
 	return (len > 0);
 }
 
+
+//1 (old val) gets replaced with 2 (new val)
+bool tt_replace_by_depth(void *k_old, void *v_old,
+	void *k_new, void *v_new)
+{
+	//return false;
+
+	trans_value_t *val_old = v_old;
+	trans_value_t *val_new = v_new;
+
+	return (val_new->search_depth >= val_old->search_depth);
+}
+
 void tt_create(void)
 {
 
@@ -1339,8 +1352,9 @@ void tt_create(void)
 			solver->keys_match);
 	//if(solver->normalize_position)
 	//	hashmap_attach_normalize(trans_tbl, solver->normalize_position);
-	if(solver->replace_transpose)
-		hashmap_attach_replace(trans_tbl, solver->replace_transpose);
+	//if(solver->replace_transpose)
+	//	hashmap_attach_replace(trans_tbl, solver->replace_transpose);
+	hashmap_attach_replace(trans_tbl, tt_replace_by_depth);
 
 	//test the hash table functionality with the current solver
 	/*tree_t *test = tree_create(solver->pos_size);

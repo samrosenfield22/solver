@@ -10,6 +10,8 @@
 //#define ZOBRIST_LEN	(148)
 int ZOBRIST_LEN;
 
+//typedef uint64_t z_data_t;
+
 //bool zobrist_computed = false;
 //uint32_t zobrist_strings[ZOBRIST_LEN];
 uint32_t *zobrist_strings = NULL;

@@ -1370,24 +1370,6 @@ char *c4_iter_to_human(int move)
 
 
 
-//1 (old val) gets replaced with 2 (new val)
-bool c4_replace_transpose(void *k_old, void *v_old,
-	void *k_new, void *v_new)
-{
-	return true;
-
-	trans_value_t *val_old = v_old;
-	trans_value_t *val_new = v_new;
-
-
-
-	if(val_old->search_depth > val_new->search_depth+8)
-		return false;
-	return true;
-
-
-}
-
 solver_t C4_SOLVER =
 {
 	.name = "connect four",
@@ -1422,11 +1404,7 @@ solver_t C4_SOLVER =
 	.uses_zobrist = true,
 	//.hash = NULL,
 	.keys_match = c4_keys_match,
-	//.keys_match = NULL,
-	//.normalize_position = c4_normalize,
 	.flip = c4_flip_horiz,
-	//.normalize_position = NULL,
-	.replace_transpose = c4_replace_transpose,
 
 	.draw_full = c4_draw_full,
 	.menu_define = c4_menu_define,
