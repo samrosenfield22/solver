@@ -3,10 +3,8 @@
 #ifndef SOLVER_H_
 #define SOLVER_H_
 
-
 #include <stdint.h>
 #include <stdbool.h>
-
 
 #define USE_ALPHABETA_PRUNING
 #define USE_TRANSPOSITION_TABLE
@@ -15,9 +13,11 @@
 #define ASPIRATION_WINDOW
 #define PRINCIPAL_VAR_SEARCH
 
+//not working yet
 #define MULTICORE_CT	(1)
 
-#define FORCE_SEARCH_DEPTH	(36)
+//#define FORCE_SEARCH_DEPTH	(32)
+extern int FORCE_SEARCH_DEPTH;
 
 //how many full moves are shown in each variation
 #define VARIATION_LENGTH	(4)

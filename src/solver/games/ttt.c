@@ -2,6 +2,7 @@
 
 #include "ttt.h"
 #include "../../utils/utils.h"
+#include "../zobrist.h"
 
 #include <stdio.h>
 #include <stdint.h>

@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-
+#include "../zobrist.h"
 
 
 nim_pos_t NIM_INIT_POS =

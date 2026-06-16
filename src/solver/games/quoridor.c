@@ -17,6 +17,7 @@ need aux structure for pathfinding (only changes when gates placed)
 #include <inttypes.h>
 #include <assert.h>
 
+#include "../zobrist.h"
 #include "../../utils/utils.h"
 
 #define TOKEN_MOVES	(4)

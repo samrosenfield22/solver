@@ -6,6 +6,7 @@
 
 #include "play_windows.h"
 #include "clock.h"
+#include "zobrist.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -82,6 +83,7 @@ uint32_t *gdata_get_hash(gdata_t *gd);
 void print_eval_bar(float score);
 void print_variations(gdata_t *gd, int len);
 
+int FORCE_SEARCH_DEPTH = 0;	//declare extern in solver.h
 solver_t *solver;
 hashmap_t *trans_tbl = NULL;
 bool who_goes_first = true;
@@ -425,11 +427,10 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 		}
 		else
 			printf("solving ");
-		#ifdef FORCE_SEARCH_DEPTH
-		printf("(force search depth %d)", FORCE_SEARCH_DEPTH);
-		#else
-		printf("(time limit %d ms)", time_lim_ms);
-		#endif
+		if(FORCE_SEARCH_DEPTH)
+			printf("(force search depth %d)", FORCE_SEARCH_DEPTH);
+		else
+			printf("(time limit %d ms)", time_lim_ms);
 		printf("\n");
 
 		//printf("pre setup time = %d ms\n", toc_ms());
@@ -464,10 +465,9 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 		incr = 2;
 	for(iddfs=0;; iddfs+=incr)
 	{
-		#ifdef FORCE_SEARCH_DEPTH
-		if(iddfs > FORCE_SEARCH_DEPTH)
-			iddfs = FORCE_SEARCH_DEPTH;
-		#endif
+		if(FORCE_SEARCH_DEPTH)
+			if(iddfs > FORCE_SEARCH_DEPTH)
+				iddfs = FORCE_SEARCH_DEPTH;
 		iddfs_depth = iddfs;
 
 		uint32_t last = toc_ms();
@@ -549,10 +549,9 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 		if(result.full)
 			break;
 
-		#ifdef FORCE_SEARCH_DEPTH
+		if(FORCE_SEARCH_DEPTH)
 			if(iddfs >= FORCE_SEARCH_DEPTH)
 				break;
-		#endif
 
 		#ifdef USE_HISTORY_HEURISTIC
 		for(int i=0; i<solver->possible_placements; i++)
@@ -1503,13 +1502,14 @@ float abs_f(float a)
 
 bool time_up(void)
 {
-	#ifndef FORCE_SEARCH_DEPTH
-	bool clock_flag = clock_update();
-	if(clock_flag)
+	if(!FORCE_SEARCH_DEPTH)
 	{
-		return true;
+		bool clock_flag = clock_update();
+		if(clock_flag)
+		{
+			return true;
+		}
 	}
-	#endif
 
 	if(time_lim == 0)
 		return false;

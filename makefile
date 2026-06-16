@@ -40,7 +40,7 @@ $(BUILD_DIR)/%.o: %.c
 clean:
 	@rmdir /s /q $(BUILD_DIR)
 
-prof: CFLAGS += -pg -DFORCE_SEARCH_DEPTH=$(DEPTH)
+prof: CFLAGS += -pg
 prof: $(TARGET)
 
 release: CFLAGS += -DNDEBUG

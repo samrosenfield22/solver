@@ -244,26 +244,28 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 	window_clear();
 	window_focus(p2_window_hdl);
 	window_clear();
-	#ifdef FORCE_SEARCH_DEPTH
-	clocks_init(0, 0);
-	#else
-	clocks_init(5*60*1000 / TIME_ODDS, 5*60*1000);
+	if(FORCE_SEARCH_DEPTH)
+		clocks_init(0, 0);
+	else
+	{
+		clocks_init(5*60*1000 / TIME_ODDS, 5*60*1000);
 
-	int moves_est = 50;
-	if(solver->moves_remaining)
-		moves_est = solver->moves_remaining(pos);
-	int time_p_m = (1000 * 5*60 / TIME_ODDS) / moves_est;
-	if(time_p_m <= 1000)
-	{
-		solver->iddfs_increment /= 2;
+		int moves_est = 50;
+		if(solver->moves_remaining)
+			moves_est = solver->moves_remaining(pos);
+		int time_p_m = (1000 * 5*60 / TIME_ODDS) / moves_est;
+		if(time_p_m <= 1000)
+		{
+			solver->iddfs_increment /= 2;
+		}
+		if(time_p_m <= 80)
+		{
+			solver->iddfs_increment /= 2;
+		}
+		if(!solver->iddfs_increment)
+			solver->iddfs_increment = 2;
 	}
-	if(time_p_m <= 80)
-	{
-		solver->iddfs_increment /= 2;
-	}
-	if(!solver->iddfs_increment)
-		solver->iddfs_increment = 2;
-	#endif
+
 
 	while(1)
 	{
@@ -301,17 +303,19 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 			bool end = false;
 			while(1)
 			{
-				#ifndef FORCE_SEARCH_DEPTH
-				bool clock_flagged = clock_update();
-				if(clock_flagged)
-					return (game_outcome_t)
-						{
-							.score=1-player,
-							.winner=!player,
-							.reason=WIN_BY_TIMEOUT,
-							.pos=pos
-						};
-				#endif
+				if(!FORCE_SEARCH_DEPTH)
+				{
+					bool clock_flagged = clock_update();
+					if(clock_flagged)
+						return (game_outcome_t)
+							{
+								.score=1-player,
+								.winner=!player,
+								.reason=WIN_BY_TIMEOUT,
+								.pos=pos
+							};
+				}
+
 
 				int key = term_check_input();
 				int sel = menu_input_control(move_sel_menu, key);
@@ -426,21 +430,22 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 		else	//COMPUTER_PLAYER
 		{
 			int time_lim;
-			#ifdef FORCE_SEARCH_DEPTH
-			time_lim = 0;
-			#else
-			//int time_lim = 1000;
-			if(solver->moves_remaining)
-			{
-				int remaining = solver->moves_remaining(pos);
-				if(remaining)
-					time_lim = clock_get_time() / remaining;
-				else
-					time_lim = clock_get_time();
-			}
+			if(FORCE_SEARCH_DEPTH)
+				time_lim = 0;
 			else
-				time_lim = clock_get_time() / 50;	//idk
-			#endif
+			{
+				//int time_lim = 1000;
+				if(solver->moves_remaining)
+				{
+					int remaining = solver->moves_remaining(pos);
+					if(remaining)
+						time_lim = clock_get_time() / remaining;
+					else
+						time_lim = clock_get_time();
+				}
+				else
+					time_lim = clock_get_time() / 50;	//idk
+			}
 			window_focus(analysis_hdl);
 			window_clear();
 			move = solve(solver, pos, seq_ct, time_lim, true);

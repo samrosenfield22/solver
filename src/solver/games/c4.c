@@ -9,6 +9,7 @@
 #include <inttypes.h>
 #include <assert.h>
 
+#include "../zobrist.h"
 #include "../../utils/utils.h"
 
 //#define SHOW_WIN_TILES

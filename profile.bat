@@ -10,11 +10,11 @@ IF "%2"=="" (
 	EXIT /B 1
 )
 
-set "exe=user.exe"
+set "exe=solver.exe"
 
 mingw32-make clean
-mingw32-make prof DEPTH=%1
-"%exe%"
+mingw32-make prof
+%exe% %1
 gprof %exe% gmon.out > analysis/%2
 
 del gmon.out

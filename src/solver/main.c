@@ -16,8 +16,14 @@
 
 
 
-int main(void)
+int main(int argc, char **argv)
 {
+	if(argc == 2)
+	{
+		FORCE_SEARCH_DEPTH = strtol(argv[1], NULL, 10);
+	}
+	
+
 	play_menu();
 	if(mem_check())
 		printf("\nmemory good!\n");
