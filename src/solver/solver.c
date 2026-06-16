@@ -34,7 +34,6 @@ bool set_aspiration_window(float *asp_window,
 	float *asp_window_size, float *last_score, float score);
 result_t eval(gdata_t *gd, int depth,
 	float alpha, float beta, bool is_pv);
-//int build_order(sorter_t *order, tree_t *gt, tnode_t *n, int depth);
 int build_movelist(sorter_t *order, void *pos);
 int sort_movelist(sorter_t *order, int len,
 	gdata_t *gd, int depth);
@@ -56,7 +55,6 @@ float worst_score(int depth);
 bool is_win_score(float s, int depth);
 bool max_or_min(int depth);
 
-//tnode_t *node_make_new_move(tree_t *gt, tnode_t *n, int move);
 bool make_new_move(gdata_t *child, gdata_t *gd, int move);
 
 void print_eval_bar(float score);
@@ -565,7 +563,6 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 		else
 			printf("N/A\n");
 		printf("evaluated %s unique positions\n", sprintbig(position_ct, "%d"));
-		//printf("greatest number of nodes stored in tree: %u\n", max_node_ct);
 		#ifdef USE_TRANSPOSITION_TABLE
 		printf("hashmap load factor = %d%%\n", tt_load());
 		printf("number of collisions: %s\n", sprintbig(tt_collisions(), "%d"));
@@ -915,8 +912,6 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 
 	for(int i=0; i<len; i++)
 	{
-		//tree_get(gt, n);
-
 		//get move to try
 		int move = order[i].move;
 		/*assert(move != -1);
@@ -928,7 +923,6 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 		assert(0 <= move && move < solver->possible_moves);
 
 		//make new position
-		//tnode_t *child = node_make_new_move(gt, n, move);
 		//gdata_t child;
 		//gdata_t *child = sl_alloc(gdata_size);
 		uint8_t child[gdata_size];
@@ -1381,37 +1375,8 @@ bool max_or_min(int depth)
 }
 
 
-
-/*tnode_t *node_make_new_move(tree_t *gt, tnode_t *n, int move)
-{
-	tnode_t *child = NULL;
-	//if(solver->is_legal(node_get_pos(n), move))
-	if(1)
-	{
-		tree_get(gt, n);
-		tree_add_copies(gt, 1);
-		//tree_add(gt, NULL);
-		child = n->children[n->child_ct-1];
-
-		uint32_t *hp = node_get_hash(child);
-		// *hp = *node_get_hash(n);
-
-
-		solver->make_move(node_get_pos(child), move, hp);
-		child->move_index = move;
-		//assert(child->score == 0);
-
-
-	}
-	return child;
-}*/
-
 bool make_new_move(gdata_t *child, gdata_t *gd, int move)
 {
-	/*tree_get(gt, n);
-	tree_add_copies(gt, 1);
-	//tree_add(gt, NULL);
-	child = n->children[n->child_ct-1];*/
 
 	memcpy(child, gd, gdata_size);
 
@@ -1421,20 +1386,3 @@ bool make_new_move(gdata_t *child, gdata_t *gd, int move)
 
 	return true;	//always?
 }
-
-/*void *node_get_pos(tnode_t *n)
-{
-	gdata_t *d = n->data;
-	return &(d->pos);
-}
-
-uint32_t *node_get_hash(tnode_t *n)
-{
-	if(solver->uses_zobrist)
-	{
-		gdata_t *d = n->data;
-		return &(d->hash);
-	}
-	else
-		return NULL;
-}*/
