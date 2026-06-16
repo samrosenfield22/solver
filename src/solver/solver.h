@@ -38,7 +38,7 @@ typedef enum
 #define WIN_SCORE	(10000.0)
 #define MATE_LIMIT	(WIN_SCORE - 100)
 
-enum
+/*enum
 {
 	BOUND_EXACT,
 	BOUND_UPPER,
@@ -53,7 +53,7 @@ typedef struct
 	uint8_t bound;
 	uint8_t best_move;
 	//age??
-} trans_value_t;
+} trans_value_t;*/
 
 typedef struct
 {

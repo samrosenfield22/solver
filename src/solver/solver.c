@@ -4,9 +4,12 @@
 
 #include "../utils/utils.h"
 
+#include "transposition.h"
 #include "play_windows.h"
 #include "clock.h"
 #include "zobrist.h"
+
+#include "shared.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,26 +27,9 @@ enum
 #define printf(fmt, ...)	window_printf(fmt, ##__VA_ARGS__)
 
 
-typedef struct
-{
-	float score;
-	bool full;
-	int best_move;
-} result_t;
 
-typedef struct
-{
-	uint32_t hash;
-	float score;
-	int move_index;
-	//uint8_t move_ct;
-	uint8_t pos[];
-} gdata_t;
 
 //statics
-void tt_create(void);
-int tt_add(gdata_t *gd, result_t *result, int depth,
-	int bound, int best_move);
 bool set_aspiration_window(float *asp_window,
 	float *asp_window_size, float *last_score, float score);
 result_t eval(gdata_t *gd, int depth,
@@ -53,13 +39,9 @@ int build_movelist(sorter_t *order, void *pos);
 int sort_movelist(sorter_t *order, int len,
 	gdata_t *gd, int depth);
 bool move_is_forcing(void *pos, int move);
-
 result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 	sorter_t *order, int len, int depth, float alpha, float beta,
 	bool is_pv);
-
-bool tt_get(trans_value_t *value, gdata_t *gd, int depth);
-
 bool alphabeta_cutoff(float cscore, float prune,
 	float *best_so_far, int depth);
 float max(float x, float y);
@@ -76,16 +58,12 @@ bool max_or_min(int depth);
 
 //tnode_t *node_make_new_move(tree_t *gt, tnode_t *n, int move);
 bool make_new_move(gdata_t *child, gdata_t *gd, int move);
-void *node_get_pos(tnode_t *n);
-uint32_t *node_get_hash(tnode_t *n);
-uint32_t *gdata_get_hash(gdata_t *gd);
 
 void print_eval_bar(float score);
 void print_variations(gdata_t *gd, int len);
 
-int FORCE_SEARCH_DEPTH = 0;	//declare extern in solver.h
-solver_t *solver;
-hashmap_t *trans_tbl = NULL;
+int FORCE_SEARCH_DEPTH = 0;	//declared extern in solver.h
+//solver_t *solver;
 bool who_goes_first = true;
 uint32_t position_ct = 0;
 int iddfs_depth;
@@ -187,7 +165,7 @@ void draw_tt_load(void)
 	}
 
 	static int last_load = 0;
-	int load = hashmap_load(trans_tbl);
+	int load = tt_load();
 	if(load == last_load)
 		return;
 	last_load = load;
@@ -252,11 +230,7 @@ void print_variations(gdata_t *gd, int len)
 
 	int vars = DISPLAY_VAR_CT;
 
-	//memcpy(var_walker, gd, gdata_size);
-	/*trans_value_t *tv = tt_get(var_walker, 0);
-	if(!tv)
-		return;
-	pv_var_move = tv->best_move;*/
+
 
 	//load and sort the moves from root
 	tv_with_last_move_t from_root[solver->possible_moves];
@@ -385,15 +359,13 @@ void solver_init(solver_t *game_solver)
 	gdata_size = sizeof(gdata_t) + solver->pos_size;
 
 	#ifdef USE_TRANSPOSITION_TABLE
-	if(!trans_tbl)
-		tt_create();
+	tt_create(solver->hash_size, solver->transtbl_buckets_ct);
 	#endif	//USE_TRANSPOSITION_TABLE
 }
 
 void solver_clear(void)
 {
-	hashmap_destroy(trans_tbl);
-	trans_tbl = NULL;
+	tt_destroy();
 }
 
 float solve(solver_t *game_solver, void *pos, int init_depth,
@@ -403,11 +375,6 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 
 	time_lim = time_lim_ms;
 	position_ct = 0;
-
-	/*#ifdef USE_TRANSPOSITION_TABLE
-	if(!trans_tbl)
-		tt_create();
-	#endif	//USE_TRANSPOSITION_TABLE*/
 
 	if(!pos)
 		pos = solver->initial_pos;
@@ -600,16 +567,14 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 		printf("evaluated %s unique positions\n", sprintbig(position_ct, "%d"));
 		//printf("greatest number of nodes stored in tree: %u\n", max_node_ct);
 		#ifdef USE_TRANSPOSITION_TABLE
-		printf("hashmap load factor = %d%%\n", hashmap_load(trans_tbl));
-		printf("number of collisions: %s\n", sprintbig(hashmap_collisions(trans_tbl), "%d"));
+		printf("hashmap load factor = %d%%\n", tt_load());
+		printf("number of collisions: %s\n", sprintbig(tt_collisions(), "%d"));
 		#endif
 	}
 
 
 	//clean up
 	mem_free(gd);
-	//hashmap_destroy(trans_tbl);
-	//trans_tbl = NULL;
 	zobrist_free();
 
 
@@ -834,7 +799,8 @@ result_t eval(gdata_t *gd, int depth,
 			//result.full = false;
 		}
 	}
-	tt_add(gd, &result, depth, bound, result.best_move);
+	tt_add(gd->pos, gdata_get_hash(gd), &result,
+		iddfs_depth-depth, bound, result.best_move);
 	#endif
 
 
@@ -1178,8 +1144,7 @@ int sort_movelist(sorter_t *order, int len, gdata_t *gd, int depth)
 {
 	void *pos = &(gd->pos);
 
-	//trans_value_t *v = tt_get(gd, depth);
-	//int best = v? v->best_move : -1;
+
 	trans_value_t v;
 	bool got = tt_get(&v, gd, depth);
 	int best = got? v.best_move : -1;
@@ -1312,129 +1277,6 @@ bool move_is_forcing(void *pos, int move)
 	return (len > 0);
 }
 
-
-//1 (old val) gets replaced with 2 (new val)
-bool tt_replace_by_depth(void *k_old, void *v_old,
-	void *k_new, void *v_new)
-{
-	//return false;
-
-	trans_value_t *val_old = v_old;
-	trans_value_t *val_new = v_new;
-
-	return (val_new->search_depth >= val_old->search_depth);
-}
-
-void tt_create(void)
-{
-
-	//gdata_hash_size = sizeof(gdata_t) + solver->hash_size;
-
-	//printf("tt w ksize=%d, vsize=%d\n", solver->hash_size, sizeof(trans_value_t));
-	//exit(0);
-
-	//create the table
-	trans_tbl = hashmap_create(solver->hash_size,
-		sizeof(trans_value_t),
-		solver->transtbl_buckets_ct);
-	if(!trans_tbl)
-	{
-		printf("failed to allocate transposition table\n");
-		exit(0);
-	}
-	if(MULTICORE_CT > 1)
-		hashmap_enable_multithread(trans_tbl);
-	if(solver->hash)
-		hashmap_attach_hash(trans_tbl, solver->hash);
-	if(solver->keys_match)
-		hashmap_attach_keycompare(trans_tbl,
-			solver->keys_match);
-	//if(solver->normalize_position)
-	//	hashmap_attach_normalize(trans_tbl, solver->normalize_position);
-	//if(solver->replace_transpose)
-	//	hashmap_attach_replace(trans_tbl, solver->replace_transpose);
-	hashmap_attach_replace(trans_tbl, tt_replace_by_depth);
-
-	//test the hash table functionality with the current solver
-	/*tree_t *test = tree_create(solver->pos_size);
-	tree_add(test, solver->initial_pos);
-	for(int i=0; i<4; i++)
-	{
-		int move = rand() % solver->possible_moves;
-		if(solver->is_legal(node_get_pos(test->p), move))
-			solver->make_move(node_get_pos(test->p), move);
-		printf("(made move %d)\n", move);
-	}
-	//solver->print_pos(test->p->data);
-	//solver->print_pos(test->p->data);
-	trans_value_t *val = tt_get(test->p);
-	assert(!val);
-
-	int add_result = tt_add(test->p, 67, 4, -1);
-	assert(add_result == HM_ADDED_KV_NEW);
-	val = tt_get(test->p);
-	assert(val);
-	assert(val->iddfs == iddfs);
-	assert(val->score == 67);
-	assert(val->depth == 4);
-
-	tree_clear(test);
-	//exit(0);
-	hashmap_clear(trans_tbl);
-	*/
-	/*
-	create a position
-	assert that it's not found in the table
-	add it to the table
-	assert that it is found, and that all the values are correct
-	normalize it, same
-	*/
-}
-
-int tt_add(gdata_t *gd, result_t *result, int depth, int bound, int best_move)
-{
-	assert(best_move >= 0);
-
-	void *pos = &(gd->pos);
-	uint32_t *hash = gdata_get_hash(gd);
-	int search_depth = iddfs_depth - depth;
-
-	trans_value_t value =
-	{
-		.score = result->score,
-		.full = result->full,
-		.bound = bound,
-		//.iddfs = iddfs_depth,
-		//.depth = depth,
-		.search_depth = search_depth,
-		.best_move = best_move,
-	};
-
-
-	return hashmap_add_kvpair(trans_tbl, pos, &value, hash);
-}
-
-//trans_value_t *tt_get(gdata_t *gd, int depth)
-bool tt_get(trans_value_t *value, gdata_t *gd, int depth)
-{
-	void *pos = &(gd->pos);
-	uint32_t *hash = gdata_get_hash(gd);
-	//trans_value_t *value = hashmap_key_get_value(trans_tbl, pos, hash);
-	bool got = hashmap_key_get_value(trans_tbl, pos, value, hash);
-
-	//if(!value && solver->flip && depth<=solver->flip_depth)
-	if(!got && solver->flip && depth<=solver->flip_depth)
-	{
-		uint8_t flipped[solver->pos_size];
-		solver->flip(flipped, pos);
-		//value = hashmap_key_get_value(trans_tbl, flipped, NULL);
-		got = hashmap_key_get_value(trans_tbl, flipped, value, NULL);
-	}
-
-
-	//return value;
-	return got;
-}
 
 /*bool alphabeta_cutoff(float cscore, float prune,
 	float *best_so_far, int depth)
@@ -1596,11 +1438,3 @@ uint32_t *node_get_hash(tnode_t *n)
 	else
 		return NULL;
 }*/
-
-uint32_t *gdata_get_hash(gdata_t *gd)
-{
-	if(solver->uses_zobrist)
-		return &(gd->hash);
-	else
-		return NULL;
-}

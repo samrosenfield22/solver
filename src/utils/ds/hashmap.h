@@ -1,5 +1,8 @@
 
 
+#ifndef HASHMAP_H_
+#define HASHMAP_H_
+
 #include <omp.h>
 
 #define hashmap(ktype, vtype, len)		\
@@ -62,3 +65,5 @@ void hashmap_attach_replace(hashmap_t *h,
 	bool (*replace_transpose)(void *k1, void *v1,
 	void *k2, void *d1));
 void hashmap_demo(void);
+
+#endif	//HASHMAP_H_
