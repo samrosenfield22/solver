@@ -17,7 +17,7 @@ need aux structure for pathfinding (only changes when gates placed)
 #include <inttypes.h>
 #include <assert.h>
 
-#include "../../../utils.h"
+#include "../../utils/utils.h"
 
 #define TOKEN_MOVES	(4)
 #define HORIZ_PLACEMENTS	(64 + TOKEN_MOVES)

@@ -2,7 +2,7 @@
 
 #include "play_windows.h"
 #include "solver.h"
-#include "../../utils.h"
+#include "../utils/utils.h"
 
 int analysis_hdl = -1, eval_hdl = -1, notation_win_hdl = -1, p1_window_hdl=-1, p2_window_hdl=-1;
 

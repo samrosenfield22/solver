@@ -2,7 +2,7 @@
 
 #include "play.h"
 #include "play_windows.h"
-#include "../../utils.h"
+#include "../utils/utils.h"
 #include "clock.h"
 
 #include "games/nim.h"
@@ -17,8 +17,8 @@
 #include <assert.h>
 
 
-#define PGN_DIR	"algos/solver/pgns"
-#define LAST_PGN_DIR	"algos/solver/pgns/repeat.txt"
+#define PGN_DIR			"src/solver/pgns"
+#define LAST_PGN_DIR	"src/solver/pgns/repeat.txt"
 
 
 //#define COMP_TIME	(1 * 1000)

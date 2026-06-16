@@ -1,7 +1,7 @@
 
 
 #include "zobrist.h"
-#include "../../utils.h"
+#include "../utils/utils.h"
 
 #include <stdlib.h>
 #include <stdbool.h>

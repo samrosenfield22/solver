@@ -3,14 +3,14 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "utils.h"
+#include "../utils/utils.h"
 
-#include "algos/solver/solver.h"
-#include "algos/solver/play.h"
+#include "solver.h"
+#include "play.h"
 
-#include "algos/solver/games/nim.h"
-#include "algos/solver/games/ttt.h"
-#include "algos/solver/games/c4.h"
+#include "games/nim.h"
+#include "games/ttt.h"
+#include "games/c4.h"
 
 #include <windows.h>
 

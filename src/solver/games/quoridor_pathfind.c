@@ -1,6 +1,6 @@
 
 
-#include "../../../utils.h"
+#include "../../utils/utils.h"
 #include "quoridor_pathfind.h"
 
 #include <assert.h>

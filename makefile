@@ -2,7 +2,7 @@
 #variables
 CC = gcc
 CFLAGS = -Wall -O3 -ggdb -fopenmp
-TARGET = user.exe
+TARGET = solver.exe
 
 
 BUILD_DIR := build

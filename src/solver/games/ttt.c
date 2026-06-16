@@ -1,7 +1,7 @@
 
 
 #include "ttt.h"
-#include "../../../utils.h"
+#include "../../utils/utils.h"
 
 #include <stdio.h>
 #include <stdint.h>
