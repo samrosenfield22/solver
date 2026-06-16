@@ -358,6 +358,21 @@ void print_variations(gdata_t *gd, int len)
 	mem_free(var_walker);
 }
 
+int random_move(void *pos)
+{
+	int ct = 0;
+	int allowed[solver->possible_moves];
+
+	for(int i=0; i<solver->possible_moves; i++)
+		if(solver->is_legal(pos, i))
+			allowed[ct++] = i;
+	assert(ct);
+	
+	uint8_t n = rand();
+	n %= ct;
+	return allowed[n];
+}
+
 void solver_init(solver_t *game_solver)
 {
 	solver_check(game_solver);
@@ -555,7 +570,9 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 
 
 	int best_move = result.best_move;
-	assert(best_move != -1);
+	//assert(best_move != -1);
+	if(best_move == -1)
+		best_move = random_move(gd->pos);
 
 	if(verbose)
 	{
@@ -1138,7 +1155,7 @@ int order_compare(const void *aa, const void *bb)
 
 int build_movelist(sorter_t *order, void *pos)
 {
-	int ct = 1;
+	int ct = 0;
 
 	for(int i=0; i<solver->possible_moves; i++)
 	{

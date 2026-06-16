@@ -22,7 +22,7 @@
 
 
 //#define COMP_TIME	(1 * 1000)
-#define TIME_ODDS	(1)
+#define TIME_ODDS	(250)
 
 #define DEV_MODE	(true)
 //#define DEV_MODE	(false)
@@ -247,8 +247,23 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 	#ifdef FORCE_SEARCH_DEPTH
 	clocks_init(0, 0);
 	#else
-	clocks_init(5*60 / TIME_ODDS, 5*60);
+	clocks_init(5*60*1000 / TIME_ODDS, 5*60*1000);
 	#endif
+
+	int moves_est = 50;
+	if(solver->moves_remaining)
+		moves_est = solver->moves_remaining(pos);
+	int time_p_m = (1000 * 5*60 / TIME_ODDS) / moves_est;
+	if(time_p_m <= 1000)
+	{
+		solver->iddfs_increment /= 2;
+	}
+	if(time_p_m <= 80)
+	{
+		solver->iddfs_increment /= 2;
+	}
+	if(!solver->iddfs_increment)
+		solver->iddfs_increment = 2;
 
 	while(1)
 	{

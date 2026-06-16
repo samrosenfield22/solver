@@ -22,8 +22,8 @@ int *CUR_CLOCK = &CLOCKS[0];
 
 void clocks_init(int p1, int p2)
 {
-	CLOCKS[0] = 1000*p1;
-	CLOCKS[1] = 1000*p2;
+	CLOCKS[0] = p1;
+	CLOCKS[1] = p2;
 
 	clock_draw_frame();
 	clock_draw(&CLOCKS[0]);
