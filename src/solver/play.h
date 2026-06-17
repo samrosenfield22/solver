@@ -7,6 +7,8 @@
 
 //#define FORCE_MOVE_ITERATION
 
+extern char *CMDLINE_ARG_PGN;
+
 enum
 {
 	GAME_UNFINISHED,

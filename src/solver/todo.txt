@@ -4,7 +4,7 @@ GAME SOLVER -- TO DO
 
 general-fix:
 * why doesn't history heuristic work? :(				-
-* tt replace policy doesn't actually do anything		-
+* try using int for scores???							-
 
 general-new:
 * NNUE?????												-

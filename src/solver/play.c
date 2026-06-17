@@ -38,6 +38,7 @@ void seq_add(int move);
 
 int8_t seq[200] = {-1};
 int seq_ct = 0, seq_entire = 0;
+char *CMDLINE_ARG_PGN = NULL;
 
 #define printf(fmt, ...)	window_printf(fmt, ##__VA_ARGS__)
 
@@ -45,27 +46,6 @@ int seq_ct = 0, seq_entire = 0;
 void play_menu(void)
 {
 	srand(time(NULL));
-
-	/*bool mode_selected = false;
-	bool playing;
-	while(1)
-	{
-		printf("select a mode ('p' to play, 's' to solve):   ");
-		char c = getchar();
-		switch(c)
-		{
-			case 'p':	playing = true; mode_selected = true; break;
-			case 's':	playing = false; mode_selected = true; break;
-			default:	printf("invalid selection \'%c\'!\n", c);
-						fflush(stdin);
-						break;
-		}
-		if(mode_selected)
-			break;
-	}*/
-
-
-
 
 	solver_t gamelist[] =
 	{
@@ -92,13 +72,12 @@ void play_menu(void)
 	int sel = menu_control_loop(m);
 	game = &gamelist[sel];
 
-	while(1)
+	uint8_t pos[game->pos_size];
+	memcpy(pos, game->initial_pos, game->pos_size);
+	char pgn[640];
+	if(CMDLINE_ARG_PGN)
 	{
-		printf("\n\n\n\n\nenter pgn, (r) for repeat, or press enter for a new game:\n");
-		char pgn[640];
-		fgets(pgn, 639, stdin);
-
-		if(strcmp(pgn, "r\n")==0)	//pgn repeat
+		if(strcmp(CMDLINE_ARG_PGN, "r")==0)	//pgn repeat
 		{
 			FILE *fp = fopen(LAST_PGN_DIR, "r");
 			if(!fp)
@@ -108,20 +87,29 @@ void play_menu(void)
 			//exit(0);
 			fclose(fp);
 		}
-		else if(pgn[0] != '\n')
+		else
 		{
+			strncpy(pgn, CMDLINE_ARG_PGN, 639);
 			FILE *fp = fopen(LAST_PGN_DIR, "w");
 			if(!fp)
 				return;
-			fputs(pgn, fp);
+			fputs(CMDLINE_ARG_PGN, fp);
 			fclose(fp);
 		}
 
-		uint8_t pos[game->pos_size];
-		memcpy(pos, game->initial_pos, game->pos_size);
 		bool valid = load_pgn(game, pos, pgn);
 		if(!valid)
-			return;
+		{
+			printf("invalid pgn\n");
+			exit(0);
+		}
+	}
+
+	while(1)
+	{
+		//printf("\n\n\n\n\nenter pgn, (r) for repeat, or press enter for a new game:\n");
+		//char pgn[640];
+		//fgets(pgn, 639, stdin);
 
 		init_play_windows();
 
@@ -177,7 +165,7 @@ void play_menu(void)
 		char opt = getchar();
 		if(opt != 'y')
 			break;
-
+		memcpy(pos, game->initial_pos, game->pos_size);
 
 	}
 }

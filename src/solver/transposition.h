@@ -54,8 +54,10 @@ typedef struct
 	float score;
 	uint8_t search_depth;
 	bool full;
-	uint8_t bound;
 	uint8_t best_move;
+
+	uint8_t bound	: 2;
+	uint8_t ancient	: 1;
 	//age??
 } trans_value_t;
 
