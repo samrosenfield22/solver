@@ -22,7 +22,12 @@ int main(int argc, char **argv)
 	{
 		FORCE_SEARCH_DEPTH = strtol(argv[1], NULL, 10);
 	}
-	
+	/*if(argc == 3)
+	{
+		printf("(%s)\n", argv[2]);
+		return 0;
+	}*/
+
 
 	play_menu();
 	if(mem_check())

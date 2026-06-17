@@ -27,7 +27,7 @@ typedef struct
 
 	uint32_t (*hash)(void *key, size_t size);
 	bool (*compare_keys_fp)(void *k1, void *k2);
-	void (*normalize_key)(void *k);
+	//void (*normalize_key)(void *k);
 	bool (*replace_fp)(void *k1, void *v1, void *k2, void *v2);
 
 	bool multithread;

@@ -87,50 +87,10 @@ void play_menu(void)
 		term_move_cursor(50, 22+i);
 		printf("%s\n", gamelist[i].name);
 	}
-	//exit(0);
 	menu_t *m = menu_vert(48, 22, len, 1);
 	menu_set(m, 2);	//default to c4
 	int sel = menu_control_loop(m);
 	game = &gamelist[sel];
-	/*while(1)
-	{
-		int key = term_check_input();
-		if(key)
-		{
-			int sel = menu_input_control(m, key);
-			if(sel != -1)
-			{
-				game = &gamelist[sel];
-				break;
-			}
-		}
-	}*/
-
-	/*while(1)
-	{
-		printf("select a game!\n\n");
-		int len = sizeof(gamelist)/sizeof(gamelist[0]);
-		int gamechoice;
-		for(int i=0; i<len; i++)
-		{
-			printf("\t%d:\t%s\n", i, gamelist[i].name);
-		}
-		printf("\nyour choice:\t");
-		scanf("%d", &gamechoice);
-		fflush(stdin);
-		if(0 <= gamechoice && gamechoice < len)
-		{
-			game = &gamelist[gamechoice];
-			break;
-		}
-		else
-			printf("invalid game selection (must be between 0 and %d)!\n",
-				len-1);
-
-
-	}*/
-
-
 
 	while(1)
 	{
