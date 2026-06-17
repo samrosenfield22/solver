@@ -13,10 +13,15 @@
 
 /*typedef struct
 {
-	//void *key;
-	//void *value;
-	uint8_t data[];
-} kvpair_t;*/
+	uint64_t hash;
+	trans_value_t value;
+} kvpair_t;
+
+typedef struct
+{
+	kvpair_t first, second;
+} bucket_t;
+*/
 
 typedef struct
 {
@@ -27,8 +32,7 @@ typedef struct
 
 	uint32_t (*hash)(void *key, size_t size);
 	bool (*compare_keys_fp)(void *k1, void *k2);
-	//void (*normalize_key)(void *k);
-	bool (*replace_fp)(void *k1, void *v1, void *k2, void *v2);
+	bool (*replace_fp)(void *old, void *new);
 
 	bool multithread;
 	omp_lock_t *locks;
@@ -62,7 +66,7 @@ enum
 	TT_KEYS_MATCHED_REPLACED_VALUE,
 	TT_POLICY_OVERWRITE_KV,
 	TT_POLICY_DENIED_KV,
-} TT_blahlbah;
+};
 
 
 /////////////////////// protos ///////////////////////

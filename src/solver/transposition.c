@@ -20,8 +20,7 @@ bool tt_key_get_value(tt_t *h, void *key,
 	void *value, uint32_t *hash);
 void tt_attach_hash(uint32_t (*hash)(void *key, size_t size));
 void tt_attach_keycompare(bool (*compare_keys_fp)(void *k1, void *k2));
-void tt_attach_replace(bool (*replace_transpose)(void *k1, void *v1,
-	void *k2, void *d1));
+void tt_attach_replace(bool (*replace_transpose)(void *old, void *new));
 
 void *tt_key_get_bucket(tt_t *h, void *key, uint32_t *hash);
 uint32_t tt_key_get_index(tt_t *h, void *key, uint32_t *hash);
@@ -34,8 +33,7 @@ void tt_set_lock(tt_t *h, uint32_t index);
 bool tt_try_lock(tt_t *h, uint32_t index);
 void tt_unset_lock(tt_t *h, uint32_t index);
 
-bool tt_replace_by_depth(void *k_old, void *v_old,
-	void *k_new, void *v_new);
+bool tt_replace_by_depth(void *old, void *new);
 
 
 tt_t *trans_tbl = NULL;
@@ -138,7 +136,9 @@ bool tt_get(trans_value_t *value, gdata_t *gd, int depth)
 	{
 		uint8_t flipped[solver->pos_size];
 		solver->flip(flipped, pos);
-		//value = tt_key_get_value(trans_tbl, flipped, NULL);
+		//uint32_t temp_hash;
+		//temp_hash = trans_tbl->hash(flipped, trans_tbl->ksize);
+
 		got = tt_key_get_value(trans_tbl, flipped, value, NULL);
 	}
 
@@ -151,13 +151,12 @@ bool tt_get(trans_value_t *value, gdata_t *gd, int depth)
 /////////////////////////////////////////////
 
 //1 (old val) gets replaced with 2 (new val)
-bool tt_replace_by_depth(void *k_old, void *v_old,
-	void *k_new, void *v_new)
+bool tt_replace_by_depth(void *old, void *new)
 {
 	//return false;
 
-	trans_value_t *val_old = v_old;
-	trans_value_t *val_new = v_new;
+	trans_value_t *val_old = old;
+	trans_value_t *val_new = new;
 
 	return (val_new->search_depth >= val_old->search_depth);
 }
@@ -262,7 +261,7 @@ int tt_add_kvpair(tt_t *h, void *key, void *value,
 			if(h->replace_fp)
 			{
 				//replace = h->replace_fp(kv->key, kv->value, key, value);
-				replace = h->replace_fp(kv, val_p, key, value);
+				replace = h->replace_fp(val_p, value);
 			}
 
 			if(replace)
@@ -364,8 +363,7 @@ void tt_attach_keycompare(bool (*compare_keys_fp)(void *k1, void *k2))
 	trans_tbl->compare_keys_fp = compare_keys_fp;
 }
 
-void tt_attach_replace(bool (*replace_fp)(void *k1, void *v1,
-	void *k2, void *d1))
+void tt_attach_replace(bool (*replace_fp)(void *old, void *new))
 {
 	if(!trans_tbl)
 		return;
@@ -418,8 +416,13 @@ uint32_t tt_key_get_index(tt_t *h, void *key, uint32_t *hash)
 		index = (*hash);
 	else
 	{
+		//printf("no hash\n");
 		index = h->hash(key, h->ksize);
-		index %= h->len;
+		//index %= h->len;
+		if(h->p2_mask)
+			index &= h->p2_mask;
+		else
+			index %= h->len;
 	}
 	index = tt_avalanche(index);
 
