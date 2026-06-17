@@ -437,6 +437,8 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 
 		uint32_t last = toc_ms();
 
+		tt_set_ancient();
+
 
 		float asp_window_size[] = {solver->aspiration_default_width,
 								solver->aspiration_default_width};

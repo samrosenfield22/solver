@@ -34,6 +34,7 @@ bool tt_try_lock(tt_t *h, uint32_t index);
 void tt_unset_lock(tt_t *h, uint32_t index);
 
 bool tt_replace_by_depth(void *old, void *new);
+bool tt_replace_by_ancient(void *old, void *new);
 
 
 tt_t *trans_tbl = NULL;
@@ -59,7 +60,7 @@ void tt_create(size_t ksize, uint32_t len)
 		tt_attach_hash(solver->hash);
 	if(solver->keys_match)
 		tt_attach_keycompare(solver->keys_match);
-	tt_attach_replace(tt_replace_by_depth);
+	tt_attach_replace(REPLACE_STRATEGY);
 }
 
 void tt_destroy(void)
@@ -100,6 +101,24 @@ void tt_clear(void)
 	trans_tbl->collisions = 0;
 }
 
+void tt_set_ancient(void)
+{
+	if(!trans_tbl)
+		return;
+	if(trans_tbl->replace_fp != tt_replace_by_ancient)
+		return;
+
+	for(uint32_t i=0; i<trans_tbl->len; i++)
+	{
+		if(trans_tbl->map[i])
+		{
+			void *kv = trans_tbl->map[i];
+			trans_value_t *v = tt_kv_get_value(trans_tbl, kv);
+			v->ancient = true;
+		}
+	}
+}
+
 int tt_add(void *pos, uint32_t *hash, result_t *result, int search_depth, int bound, int best_move)
 {
 	assert(best_move >= 0);
@@ -113,6 +132,7 @@ int tt_add(void *pos, uint32_t *hash, result_t *result, int search_depth, int bo
 		.score = result->score,
 		.full = result->full,
 		.bound = bound,
+		.ancient = false,
 		//.iddfs = iddfs_depth,
 		//.depth = depth,
 		.search_depth = search_depth,
@@ -150,6 +170,7 @@ bool tt_get(trans_value_t *value, gdata_t *gd, int depth)
 
 /////////////////////////////////////////////
 
+
 //1 (old val) gets replaced with 2 (new val)
 bool tt_replace_by_depth(void *old, void *new)
 {
@@ -159,6 +180,20 @@ bool tt_replace_by_depth(void *old, void *new)
 	trans_value_t *val_new = new;
 
 	return (val_new->search_depth >= val_old->search_depth);
+}
+
+bool tt_replace_by_ancient(void *old, void *new)
+{
+	trans_value_t *val_old = old;
+	trans_value_t *val_new = new;
+
+	if(val_new->search_depth >= val_old->search_depth)
+		return true;
+	if(val_new->search_depth + 16 < val_old->search_depth)
+		return false;
+
+	return (val_old->ancient);
+	//return (val_new->search_depth >= val_old->search_depth);
 }
 
 tt_t *tt_make(size_t ksize, size_t vsize, uint32_t len)
@@ -326,8 +361,11 @@ bool tt_key_get_value(tt_t *h, void *key,
 	if(match)
 	{
 		//memcpy(value, kv->value, h->vsize);
-		void *val_p = tt_kv_get_value(h, kv);
+		trans_value_t *val_p = tt_kv_get_value(h, kv);
 		memcpy(value, val_p, h->vsize);
+
+		if(trans_tbl->replace_fp == tt_replace_by_ancient)
+			val_p->ancient = false;
 	}
 
 	if(h->multithread)

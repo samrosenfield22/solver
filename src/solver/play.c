@@ -514,7 +514,7 @@ void load_seq_string(solver_t *solver, char *seq)
 			move = solver->human_to_iter(token);
 		if(move < 0 || move >= solver->possible_moves)
 			move = strtol(token, NULL, 10);
-		printf("move=%d\n", move);
+		//printf("move=%d\n", move);
 
 		seq_add(move);
 
