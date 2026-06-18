@@ -9,7 +9,6 @@
 #include "clock.h"
 #include "zobrist.h"
 #include "ui/solver_ui.h"
-
 #include "shared.h"
 
 #include <stdio.h>

@@ -164,6 +164,61 @@ void nim_draw_full(void *pos, int last_move)
 	}
 }
 
+void *nim_menu_define(void)
+{
+	menu_t *m = menu_grid(68, 19,	//x,y
+		3, 1,	//rows,columns
+		2, 4,	//r/c spacing
+		"");
+
+	//for(int i=0; )
+	menu_set(m, 0);
+	return m;
+}
+
+void nim_menu_update(void *menu, void *pos, int key)
+{
+	nim_pos_t *p = pos;
+	int rocks_selected = 1;
+
+	int d;
+	switch(key)
+	{
+		case ARROW_UP:
+		case ARROW_DOWN:
+			menu_update(menu, key);
+			rocks_selected = 1;
+			break;
+		case ARROW_LEFT:	d=1;	break;
+		case ARROW_RIGHT:	d=-1;	break;
+	}
+
+	int current = menu_get(menu);
+	int piles = p->piles[current];
+	
+	rocks_selected += d;
+	if(rocks_selected <= 0)
+		rocks_selected = 1;
+	if(rocks_selected >= piles)
+		rocks_selected = piles;
+
+
+	int i;
+	for(i=current+d; ; i+=d)
+	{
+		if(p->spaces[i]==EMPTY)
+			break;
+		if(i<0 || i>=9)
+		{
+			i = -1;
+			break;
+		}
+	}
+
+	if(i != -1)
+		menu_set(menu, i);
+}
+
 int nim_human_to_iter(char *human)
 {
 	if(human[0] >= 'a')

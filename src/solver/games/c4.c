@@ -1351,6 +1351,7 @@ void *c4_menu_define(void)
 
 void c4_menu_update(void *menu, void *pos, int key)
 {
+	assert(0);
 	menu_move_cursor(menu, key);
 }
 
