@@ -213,5 +213,6 @@ void solver_clear(void);
 float solve(solver_t *solver, void *pos, int init_depth,
 	int time_lim_ms, bool verbose);
 void solver_check(solver_t *s);
+void catch_pos(void *pos);
 
 #endif	//SOLVER_H_

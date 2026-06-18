@@ -1028,6 +1028,16 @@ bool move_is_forcing(void *pos, int move)
 	return (len > 0);
 }
 
+void catch_pos(void *pos)
+{
+	window_unfocus();
+	term_move_cursor(0, 12);
+	solver->draw_full(pos, -1);
+	printf("\n(caught pos, press any key)");
+	getchar();
+	window_focus(analysis_hdl);
+}
+
 
 /*bool alphabeta_cutoff(float cscore, float prune,
 	float *best_so_far, int depth)

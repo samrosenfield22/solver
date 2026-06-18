@@ -12,7 +12,7 @@
 #include "../zobrist.h"
 #include "../../utils/utils.h"
 
-//#define SHOW_WIN_TILES
+#define SHOW_WIN_TILES
 
 float estimate_color(uint64_t x, uint64_t opp, uint64_t filled,
 	uint64_t wmap, uint64_t opp_wmap, bool verbose);
@@ -358,12 +358,6 @@ int endgame_forced_win(c4_pos_t *pp)
 	if(!pp->x_wmap && !pp->opp_wmap)
 		return 0;
 
-	window_unfocus();
-	term_move_cursor(0, 12);
-	printf("checking endgame\n");
-	c4_draw_full(pp, -1);
-	exit(0);
-
 	//copy position
 	c4_pos_t copy_posta =
 	{
@@ -378,7 +372,8 @@ int endgame_forced_win(c4_pos_t *pp)
 
 	//find the column with a win (bail if there's >1)
 	bool win_found = false;
-	int win_col = -1;
+	//int win_col = -1;
+	int win_col_empties = -1;
 	uint64_t b = 0b111111;
 	for(int i=0; i<7; i++)
 	{
@@ -388,37 +383,74 @@ int endgame_forced_win(c4_pos_t *pp)
 			if(win_found)	//already found a win
 				return 0;
 			win_found = true;
-			win_col = i;
+			//win_col = i;
+			win_col_empties = 6 - __builtin_popcountll(b & p->filled);
 		}
 		b <<= 7;
 	}
 
 	//count spaces in columns without wins
 	b = 0b111111;
-	int empty_ct = 0;
-	for(int i=0; i<7; i++)
+	int filled_ct = __builtin_popcountll(p->filled & ~WHOSEMOVE_BIT);
+	int empty_ct = 42 - filled_ct - win_col_empties;
+	/*for(int i=0; i<7; i++)
 	{
 		if(i == win_col)
+		{
+			b <<= 7;
 			continue;
+		}
 
 		//if(!(b ^ p->filled))
 		if((b & p->filled) != b)
 		{
 			//count empty spaces
-			empty_ct += 6 - __builtin_popcountll(b & p->filled);
+			int en = 6 - __builtin_popcountll(b & p->filled);
+			empty_ct += en;
+			printf("%d e in %d\n", en, i);
 		}
 		b <<= 7;
-	}
+	}*/
 
-	window_unfocus();
-	term_move_cursor(0, 12);
-	printf("%d empties in non-win columns\n", empty_ct);
-	c4_draw_full(p, -1);
-	exit(0);
+
+
 
 	//fill up the win column until we have a win
+	uint64_t alternate = 0b001010100101010010101001010100101010010101;
+	bool me_first_in_death_col = !(0b1 & empty_ct);
+	bool even_shift = !(0b1 & win_col_empties);
+	if(me_first_in_death_col ^ even_shift)
+		alternate = ~alternate;
+	uint64_t me_forced_win = alternate & p->x_wmap;
+	uint64_t opp_forced_win = ~alternate & p->opp_wmap;
 
-	return 0;	//for now
+	int whowins = 0;
+	if(!me_forced_win && !opp_forced_win)
+		whowins = 0;
+	else if(me_forced_win && !opp_forced_win)
+		whowins = 1;
+	else if(!me_forced_win && opp_forced_win)
+		whowins = -1;
+	else if(me_forced_win < opp_forced_win)
+		whowins = 1;
+	else if(me_forced_win > opp_forced_win)
+		whowins = -1;
+	else
+		assert(0);
+
+	window_unfocus();
+	term_move_cursor(0, 8);
+	printf("forced win value %d  \n", whowins);
+	printf("%s to move\n", (p->filled & WHOSEMOVE_BIT)? "red":"yellow");
+	printf("my forced wins: %s  \n", sprintbig(me_forced_win, "%b"));
+	printf("my wmap: %s  \n", sprintbig(p->x_wmap, "%b"));
+	printf("opp forced wins: %s  \n", sprintbig(opp_forced_win, "%b"));
+	printf("opp wmap: %s  \n", sprintbig(p->opp_wmap, "%b"));
+	printf("%d empties in non-win columns\n", empty_ct);
+	//printf("win col %d\n", win_col);
+	catch_pos(p);
+
+	return whowins;
 }
 
 float c4_estimate(void *pos)
@@ -444,18 +476,10 @@ float c4_estimate(void *pos)
 	est -= estimate_color(opp, x, p->filled, opp_wmap, x_wmap, false);
 
 	//endgame analysis
-	//const int C4_ENDGAME_CT = 26;
 	int move_ct = __builtin_popcountll(p->filled & ~WHOSEMOVE_BIT);
-	/*if(move_ct > 26)
-	{
-		window_unfocus();
-		term_move_cursor(0,12);
-		c4_draw_full(pos, -1);
-		printf("\n%d moves\n", move_ct);
-		printf("%s\n", sprintbig(p->filled, "%b"));
-		exit(0);
-	}*/
-	/*if(move_ct >= C4_ENDGAME_CT)
+	/*
+	//const int C4_ENDGAME_CT = 26;
+	if(move_ct >= C4_ENDGAME_CT)
 	{
 		//printf("count=%d\n", move_ct);
 		if(p->x_wmap && !p->opp_wmap)	est += 100;
@@ -463,10 +487,8 @@ float c4_estimate(void *pos)
 	}*/
 	/*if(move_ct >= 30)
 	{
-		printf("checking endgame status\n");
-		exit(0);
 		int endgame_status = endgame_forced_win(p);
-		est += 500 * endgame_status;
+		est += 50 * endgame_status;
 	}*/
 
 	if(!c4_whosemove(p))
@@ -684,7 +706,7 @@ float estimate_color_count_middles(uint64_t x)
 	int scores[] = {0, 1, 2, 3, 2, 1, 0};
 	for(int i=1; i<6; i++)
 	{
-		int col_bits = __builtin_popcountll(get_col(x, i));
+		int col_bits = __builtin_popcount(get_col(x, i));
 		est += scores[i] * col_bits;
 	}
 	return est;
