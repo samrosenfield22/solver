@@ -22,7 +22,7 @@
 
 
 //#define COMP_TIME	(1 * 1000)
-#define TIME_ODDS	(50)
+#define TIME_ODDS	(10)
 
 #define DEV_MODE	(true)
 //#define DEV_MODE	(false)
@@ -245,7 +245,8 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 
 
 			print_sequence(solver, seq, stdout);
-			printf("\n\nenter your move, [b]ack, [f]orward, [s]ave, [q]uit game, or e[x]it:\n> ");
+			//printf("\n\nenter your move, [b]ack, [f]orward, [s]ave, [q]uit game, or e[x]it:\n> ");
+			printf("\n\nyour move!\n");
 			char buf[160];
 			char *bp = buf;
 			bool end = false;
@@ -311,72 +312,13 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 					break;
 			}
 
-			//snprintf(buf, 159, "%d", menu_get(move_sel_menu));
 
-			/*fgets(buf, 159, stdin);
-			char *end = &buf[strlen(buf)-1];
-			if(*end == '\n')
-				*end = '\0';*/
-
-			/*if(strcmp(buf, "b")==0 || strcmp(buf, "back")==0)
-			{
-				seq_ct -= 2;
-				//pos = solver->initial_pos;
-				memcpy(pos, solver->initial_pos, solver->pos_size);
-				make_sequence_moves(solver, pos);
-				continue;
-			}
-			else if(strcmp(buf, "f")==0 || strcmp(buf, "forward")==0)
-			{
-				if(seq_ct+2 <= seq_entire)
-				{
-					seq_ct += 2;
-					//pos = solver->initial_pos;
-					memcpy(pos, solver->initial_pos, solver->pos_size);
-					make_sequence_moves(solver, pos);
-				}
-				continue;
-			}
-			else if(strcmp(buf, "s")==0 || strcmp(buf, "save")==0)
-			{
-				printf("enter save path (or enter for repeat):  \n");
-				fgets(buf, 159, stdin);
-				if(buf[0] == '\n')
-					strncpy(buf, "repeat.txt", 159);
-				else
-				{
-					char *end = &buf[strlen(buf)-1];
-					if(*end == '\n')
-						*end = '\0';
-				}
-
-				save_pgn(solver, buf);
-				continue;
-			}
-			else if(strcmp(buf, "q")==0 || strcmp(buf, "quit game")==0)
-			{
-				return (game_outcome_t){.reason=GAME_UNFINISHED, .pos=pos};
-			}
-			else if(strcmp(buf, "x")==0 || strcmp(buf, "exit")==0)
-			{
-				printf("ggs\n");
-				exit(0);
-			}*/
-
-
-
-			/*#ifndef FORCE_MOVE_ITERATION
-			if(solver->human_to_iter)
-				move = solver->human_to_iter(buf);
-			else
-			#endif
-				move = strtol(buf, NULL, 10);
 			if(move < 0 || move >= solver->possible_moves
 				|| !solver->is_legal(pos, move))
 			{
 				printf("illegal move!\n");
 				continue;
-			}*/
+			}
 			solver->make_move(pos, move, NULL);
 		}
 		else	//COMPUTER_PLAYER

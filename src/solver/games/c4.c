@@ -351,6 +351,44 @@ endstate_t c4_gameover(void *pos)
 	return END_NOT_OVER;
 }
 
+//returns 1 for my forced win, -1 for opp forced win,
+//0 for draw
+/*int endgame_forced_win(c4_pos_t *p)
+{
+	if(!p->x_wmap && !p->opp_wmap)
+		return 0;
+	uint64_t both_wins = p->x_wmap | p->opp_wmap;
+
+	//get all unfilled columns
+	int open[7];
+	int open_with_wins[7];
+	int open_ct = 0;
+	int open_with_win_ct = 0;
+	uint64_t b = 0b111111;
+	for(int i=0; i<7; i++)
+	{
+		//if(!(b ^ p->filled))
+		if((b & p->filled) == b)
+		{
+			open[open_ct++] = i;
+			if(b & both_wins)
+				open_with_wins[open_with_win_ct++] = i;
+		}
+		b <<= 7;
+	}
+	assert(open_with_win_ct <= open_ct);
+	assert(open_with_win_ct);
+
+	//for now - if more than 1 has a win, return
+	if(open_with_win_ct > 1)
+		return 0;
+
+	//fill up columns which don't have wins
+	//fill up remaining column(s) until we have a win
+
+	return 0;	//for now
+}*/
+
 float c4_estimate(void *pos)
 {
 	assert(c4_ok(pos));
@@ -385,6 +423,11 @@ float c4_estimate(void *pos)
 		if(p->x_wmap && !p->opp_wmap)	est += 100;
 		else if(p->opp_wmap && !p->x_wmap)	est -= 100;
 	}
+	/*if(move_ct >= 30)
+	{
+		int endgame_status = endgame_is_forced_win(p));
+		est += 500 * endgame_status;
+	}*/
 
 	if(!c4_whosemove(p))
 		est *= -1;

@@ -914,7 +914,7 @@ char *quor_iter_to_human(int move)
 
 solver_t QUOR_SOLVER =
 {
-	.name = "quoridor",
+	.name = "quoridor (under construction)",
 
 	.initial_pos = &QUOR_INIT_POS,
 	.pos_size = sizeof(quor_pos_t),
