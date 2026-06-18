@@ -186,10 +186,49 @@ void *nim_menu_define(void)
 	return m;
 }
 
+void redraw_nim_pos(void *pos, int current, int rocks_selected)
+{
+	window_unfocus();
+	term_move_cursor(0, 12);
+	nim_draw_withmissing(pos, current, rocks_selected);
+}
+
 int nim_menu_update(void *menu, void *pos, int key)
 {
 	nim_pos_t *p = pos;
 	static int rocks_selected = 1;
+	static int current = 0;
+	static int last_piles[3] = {0, 0, 0};
+	bool redraw = false;
+	if(p->piles[0]!=last_piles[0]
+		|| p->piles[1]!=last_piles[1]
+		|| p->piles[2]!=last_piles[2])
+	{
+		redraw = true;
+	}
+	int piles = p->piles[current];
+	if(piles == 0)
+	{
+		for(int i=0; i<3; i++)
+			if(p->piles[i])
+			{
+				current = i;
+				menu_set(menu, current);
+				redraw = true;
+				break;
+			}
+	}
+
+	last_piles[0] = p->piles[0];
+	last_piles[1] = p->piles[1];
+	last_piles[2] = p->piles[2];
+
+
+	if(redraw)
+	{
+		rocks_selected = 1;
+		redraw_nim_pos(pos, current, rocks_selected);
+	}
 
 	bool pressed = true;
 	char buf[3];
@@ -199,6 +238,9 @@ int nim_menu_update(void *menu, void *pos, int key)
 		case ARROW_UP:
 		case ARROW_DOWN:
 			menu_input_control(menu, key);
+			current = menu_get(menu);
+			if(p->piles[current] == 0 && current==1)
+				menu_input_control(menu, key);
 			//rocks_selected = 1;
 			break;
 		case ARROW_LEFT:	rocks_selected+=1;	break;
@@ -218,8 +260,8 @@ int nim_menu_update(void *menu, void *pos, int key)
 	if(pressed)
 	{
 
-		int current = menu_get(menu);
-		int piles = p->piles[current];
+		current = menu_get(menu);
+		piles = p->piles[current];
 
 		//rocks_selected += d;
 		if(rocks_selected <= 0)
@@ -227,9 +269,7 @@ int nim_menu_update(void *menu, void *pos, int key)
 		if(rocks_selected >= piles)
 			rocks_selected = piles;
 
-		window_unfocus();
-		term_move_cursor(0, 12);
-		nim_draw_withmissing(pos, current, rocks_selected);
+		redraw_nim_pos(pos, current, rocks_selected);
 	}
 
 
