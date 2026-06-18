@@ -246,7 +246,7 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 
 			print_sequence(solver, seq, stdout);
 			//printf("\n\nenter your move, [b]ack, [f]orward, [s]ave, [q]uit game, or e[x]it:\n> ");
-			printf("\n\nyour move!\n");
+			printf("\nyour move!\n");
 			char buf[160];
 			char *bp = buf;
 			bool end = false;

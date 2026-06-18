@@ -353,41 +353,73 @@ endstate_t c4_gameover(void *pos)
 
 //returns 1 for my forced win, -1 for opp forced win,
 //0 for draw
-/*int endgame_forced_win(c4_pos_t *p)
+int endgame_forced_win(c4_pos_t *pp)
 {
-	if(!p->x_wmap && !p->opp_wmap)
+	if(!pp->x_wmap && !pp->opp_wmap)
 		return 0;
+
+	window_unfocus();
+	term_move_cursor(0, 12);
+	printf("checking endgame\n");
+	c4_draw_full(pp, -1);
+	exit(0);
+
+	//copy position
+	c4_pos_t copy_posta =
+	{
+		.x = pp->x,
+		.filled = pp->filled,
+		.x_wmap = pp->x_wmap,
+		.opp_wmap = pp->opp_wmap,
+	};
+	c4_pos_t *p = &copy_posta;
+
 	uint64_t both_wins = p->x_wmap | p->opp_wmap;
 
-	//get all unfilled columns
-	int open[7];
-	int open_with_wins[7];
-	int open_ct = 0;
-	int open_with_win_ct = 0;
+	//find the column with a win (bail if there's >1)
+	bool win_found = false;
+	int win_col = -1;
 	uint64_t b = 0b111111;
 	for(int i=0; i<7; i++)
 	{
 		//if(!(b ^ p->filled))
-		if((b & p->filled) == b)
+		if(b & both_wins)
 		{
-			open[open_ct++] = i;
-			if(b & both_wins)
-				open_with_wins[open_with_win_ct++] = i;
+			if(win_found)	//already found a win
+				return 0;
+			win_found = true;
+			win_col = i;
 		}
 		b <<= 7;
 	}
-	assert(open_with_win_ct <= open_ct);
-	assert(open_with_win_ct);
 
-	//for now - if more than 1 has a win, return
-	if(open_with_win_ct > 1)
-		return 0;
+	//count spaces in columns without wins
+	b = 0b111111;
+	int empty_ct = 0;
+	for(int i=0; i<7; i++)
+	{
+		if(i == win_col)
+			continue;
 
-	//fill up columns which don't have wins
-	//fill up remaining column(s) until we have a win
+		//if(!(b ^ p->filled))
+		if((b & p->filled) != b)
+		{
+			//count empty spaces
+			empty_ct += 6 - __builtin_popcountll(b & p->filled);
+		}
+		b <<= 7;
+	}
+
+	window_unfocus();
+	term_move_cursor(0, 12);
+	printf("%d empties in non-win columns\n", empty_ct);
+	c4_draw_full(p, -1);
+	exit(0);
+
+	//fill up the win column until we have a win
 
 	return 0;	//for now
-}*/
+}
 
 float c4_estimate(void *pos)
 {
@@ -405,10 +437,6 @@ float c4_estimate(void *pos)
 	uint64_t x_wmap = p->x_wmap;
 	uint64_t opp_wmap = p->opp_wmap;
 
-	//if we can win on the next move, don't bother
-	//with the other estimates
-	//if((x_wmap>>1) & (p->filled | 0b100000010000001000000100000010000001000000))
-	//	return c4_whosemove(p)? 500 : -500;
 
 
 	//calculate est for each player
@@ -416,16 +444,28 @@ float c4_estimate(void *pos)
 	est -= estimate_color(opp, x, p->filled, opp_wmap, x_wmap, false);
 
 	//endgame analysis
-	const int C4_ENDGAME_CT = 26;
-	int move_ct = __builtin_popcount(p->filled & ~WHOSEMOVE_BIT);
-	if(move_ct >= C4_ENDGAME_CT)
+	//const int C4_ENDGAME_CT = 26;
+	int move_ct = __builtin_popcountll(p->filled & ~WHOSEMOVE_BIT);
+	/*if(move_ct > 26)
 	{
+		window_unfocus();
+		term_move_cursor(0,12);
+		c4_draw_full(pos, -1);
+		printf("\n%d moves\n", move_ct);
+		printf("%s\n", sprintbig(p->filled, "%b"));
+		exit(0);
+	}*/
+	/*if(move_ct >= C4_ENDGAME_CT)
+	{
+		//printf("count=%d\n", move_ct);
 		if(p->x_wmap && !p->opp_wmap)	est += 100;
 		else if(p->opp_wmap && !p->x_wmap)	est -= 100;
-	}
+	}*/
 	/*if(move_ct >= 30)
 	{
-		int endgame_status = endgame_is_forced_win(p));
+		printf("checking endgame status\n");
+		exit(0);
+		int endgame_status = endgame_forced_win(p);
 		est += 500 * endgame_status;
 	}*/
 
@@ -564,7 +604,7 @@ uint64_t win_map(uint64_t x, uint64_t filled)
 
 	//clear
 	wb &= 0b0111111011111101111110111111011111101111110111111;
-	//return __builtin_popcount(wb);
+	//return __builtin_popcountll(wb);
 	return wb;
 }
 
@@ -590,8 +630,8 @@ float c4_estimate_sort(void *pos, int move)
 	uint64_t x = p->x | mb;
 	uint64_t opp = x ^ filled;
 
-	float est = __builtin_popcount(win_map(x, filled));
-	est -= __builtin_popcount(win_map(opp, filled));
+	float est = __builtin_popcountll(win_map(x, filled));
+	est -= __builtin_popcountll(win_map(opp, filled));
 
 	return est;
 
@@ -644,7 +684,7 @@ float estimate_color_count_middles(uint64_t x)
 	int scores[] = {0, 1, 2, 3, 2, 1, 0};
 	for(int i=1; i<6; i++)
 	{
-		int col_bits = __builtin_popcount(get_col(x, i));
+		int col_bits = __builtin_popcountll(get_col(x, i));
 		est += scores[i] * col_bits;
 	}
 	return est;
@@ -653,20 +693,20 @@ float estimate_color_count_middles(uint64_t x)
 float estimate_color_count_wins(uint64_t x, uint64_t filled,
 	uint64_t wmap, bool verbose)
 {
-	//return __builtin_popcount(win_map(x, filled));
-	return __builtin_popcount(wmap);
+	//return __builtin_popcountll(win_map(x, filled));
+	return __builtin_popcountll(wmap);
 
 	/////////////////////////////////////
 
 	//uint64_t wmap = win_map(x, filled);
-	int wins = __builtin_popcount(wmap);
+	int wins = __builtin_popcountll(wmap);
 
 	//parity
-	int nmoves = __builtin_popcount(filled & ~WHOSEMOVE_BIT);
+	int nmoves = __builtin_popcountll(filled & ~WHOSEMOVE_BIT);
 	/*int nmoves = 0;
 	for(int i=0; i<7; i++)
 	{
-		nmoves += __builtin_popcount(get_col(filled, i));
+		nmoves += __builtin_popcountll(get_col(filled, i));
 		//printf("\t0x%0x\n", get_col(filled, i));
 	}*/
 	bool parity = !(nmoves & 0b1);
@@ -761,11 +801,11 @@ float estimate_color(uint64_t x, uint64_t opp, uint64_t filled,
 	assert(wmap != NO_WIN_MAP);
 
 	float est = 0;
-	//int move_ct = __builtin_popcount(filled & ~WHOSEMOVE_BIT);
+	//int move_ct = __builtin_popcountll(filled & ~WHOSEMOVE_BIT);
 	//if(move_ct < 26)
 		est += estimate_color_count_middles(x);
 	est += 3*estimate_color_count_wins(x, filled, wmap, verbose);
-	//est += 3*(__builtin_popcount(wmap));
+	//est += 3*(__builtin_popcountll(wmap));
 
 	uint64_t stack = wmap & (wmap>>1);
 	if(stack && !(stack & opp_wmap)
@@ -841,7 +881,7 @@ void c4_make_move_temp(void *made, void *pos, int index, uint32_t *hash)
 	for(uint8_t c=col>>1; c; c>>=1)
 		hi++;
 	//hi += 32 - __builtin_clz((unsigned int)col);
-	//hi += __builtin_popcount(col);
+	//hi += __builtin_popcountll(col);
 	//printf("now hi is %d\n", hi);
 	//if(p->whosemove)
 	if(c4_whosemove(m))
@@ -864,7 +904,7 @@ int c4_get_placement(void *pos, int index)
 	uint64_t col = get_col(p->filled, index);
 	//uint64_t b = col<<(7*index);
 
-	int placement = __builtin_popcount(col);
+	int placement = __builtin_popcountll(col);
 	if(placement >= 6)
 		return -1;
 	placement += 6*index;
@@ -937,7 +977,7 @@ void c4_make_move(void *pos, int index, uint32_t *hash)
 
 	for(uint8_t c=col>>1; c; c>>=1)
 		hi++;
-	//hi += __builtin_popcount(col);
+	//hi += __builtin_popcountll(col);
 	//printf("now hi is %d\n", hi);
 	//if(p->whosemove)
 	if(c4_whosemove(p))
@@ -1018,7 +1058,7 @@ uint32_t c4_hash(void *key, size_t size)
 int c4_moves_remaining(void *pos)
 {
 	c4_pos_t *p = pos;
-	int played = __builtin_popcount(p->filled);
+	int played = __builtin_popcountll(p->filled);
 	return (42-played)/2;
 }
 
