@@ -11,8 +11,8 @@
 #include "shared.h"
 
 //#define REPLACE_STRATEGY	(NULL)	//always replace
-//#define REPLACE_STRATEGY	(tt_replace_by_depth)
-#define REPLACE_STRATEGY	(tt_replace_by_ancient)
+#define REPLACE_STRATEGY	(tt_replace_by_depth)
+//#define REPLACE_STRATEGY	(tt_replace_by_ancient)
 
 /*typedef struct
 {

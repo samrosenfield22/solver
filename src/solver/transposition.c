@@ -3,7 +3,7 @@
 #include "transposition.h"
 
 #include "../utils/utils.h"
-#include "play_windows.h"
+//#include "play_windows.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -133,8 +133,6 @@ int tt_add(void *pos, uint32_t *hash, result_t *result, int search_depth, int bo
 		.full = result->full,
 		.bound = bound,
 		.ancient = false,
-		//.iddfs = iddfs_depth,
-		//.depth = depth,
 		.search_depth = search_depth,
 		.best_move = best_move,
 	};

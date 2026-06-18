@@ -5,9 +5,10 @@
 #include "../utils/utils.h"
 
 #include "transposition.h"
-#include "play_windows.h"
+#include "ui/play_windows.h"
 #include "clock.h"
 #include "zobrist.h"
+#include "ui/solver_ui.h"
 
 #include "shared.h"
 
@@ -26,9 +27,6 @@ enum
 
 #define printf(fmt, ...)	window_printf(fmt, ##__VA_ARGS__)
 
-
-
-
 //statics
 bool set_aspiration_window(float *asp_window,
 	float *asp_window_size, float *last_score, float score);
@@ -46,7 +44,6 @@ bool alphabeta_cutoff(float cscore, float prune,
 float max(float x, float y);
 float min(float x, float y);
 bool time_up(void);
-void print_score(float score);
 
 
 bool is_better(float s0, float s1, int depth);
@@ -55,11 +52,6 @@ float worst_score(int depth);
 bool is_win_score(float s, int depth);
 bool max_or_min(int depth);
 
-bool make_new_move(gdata_t *child, gdata_t *gd, int move);
-
-void print_eval_bar(float score);
-void print_variations(gdata_t *gd, int len);
-
 int FORCE_SEARCH_DEPTH = 0;	//declared extern in solver.h
 //solver_t *solver;
 bool who_goes_first = true;
@@ -67,118 +59,12 @@ uint32_t position_ct = 0;
 int iddfs_depth;
 int time_lim;
 
-size_t gdata_size, gdata_hash_size;
-
 int *HISTORY_VALS;
 uint8_t HISTORY_BEST[2] = {-1, -1};
 
 #define MAX_PLY	(42)
 #define NUM_KILLERS	(2)
 uint8_t killers[MAX_PLY][NUM_KILLERS] = {0};
-
-
-
-//uint32_t passed=0, checked=0;
-
-void print_evaluation(gdata_t *gd, result_t result)
-{
-	static float last_score = 111111;
-
-	window_focus(eval_hdl);
-	if(result.score == last_score)
-		window_cursor_set(3);
-	else
-	{
-		last_score = result.score;
-		window_cursor_set(0);
-		print_eval_bar(result.score);
-	}
-
-	printf("\t\t  (depth: %d) \n\n", iddfs_depth);
-
-	//print variation(s)
-	#ifdef USE_TRANSPOSITION_TABLE
-	//int var_len = min(iddfs_depth, 2*VARIATION_LENGTH);
-	//print_variations(gd, var_len);
-	print_variations(gd, 2*VARIATION_LENGTH);
-	#endif
-}
-
-void print_eval_bar(float score)
-{
-
-	//window_cursor_set(0);
-
-	int len = 40;
-	char *indent = "   ";
-
-	printf(indent);
-	for(int i=0; i<len/2-1; i++)
-		printf(" ");
-	print_score(score);
-	printf("        \n");
-
-	printf(indent);
-	printf("[");
-	int maxd = 20;
-	float dist = (score+maxd)/(2*maxd);
-	if(dist > maxd) dist = maxd;
-	if(dist < -maxd) dist = -maxd;
-	dist *= len;
-
-	for(int i=0; i<len; i++)
-	{
-		if(i < (int)dist)
-			printf("%c", 219);
-		else
-			printf(" ");
-	}
-	printf("]\n");
-
-	printf(indent);
-	for(int i=0; i<len/2; i++)
-		printf(" ");
-	printf("^\n");
-
-}
-
-void draw_tt_load(void)
-{
-	const int load_bar_len = 25;
-	const int load_bar_h = 16;
-	const int load_num_h = load_bar_h - 3;
-
-	static bool first = true;
-	if(first)
-	{
-		first = false;
-		window_unfocus();
-		term_move_cursor(0, load_num_h);
-		printf("0%%");
-		term_move_cursor(0, load_bar_h-1);
-		printf("^");
-		term_move_cursor(0, load_bar_h+load_bar_len);
-		printf("v");
-		window_focus(analysis_hdl);
-	}
-
-	static int last_load = 0;
-	int load = tt_load();
-	if(load == last_load)
-		return;
-	last_load = load;
-
-	printf(TERM_WHITE);
-	window_unfocus();
-	term_move_cursor(0, load_bar_h);
-	for(int i=0; i<load/4; i++)
-		printf("%c\n", 219);
-
-	term_move_cursor(0, load_num_h);
-	printf("%d%% ", load);
-
-	window_focus(analysis_hdl);
-}
 
 bool asp_window_rerun = false;
 
@@ -200,137 +86,7 @@ void solver_check(solver_t *s)
 
 }
 
-typedef struct
-{
-	trans_value_t tv;
-	int move;
-} tv_with_last_move_t;
 
-int pv_var_move;
-
-int vars_from_root_compare(const void *aa, const void *bb)
-{
-	tv_with_last_move_t *a = (tv_with_last_move_t *)aa;
-	tv_with_last_move_t *b = (tv_with_last_move_t *)bb;
-
-	//if(!a->tv)	return 1;
-	//if(!b->tv)	return -1;
-	if(a->move == -1)	return 1;
-	if(b->move == -1)	return -1;
-
-	return b->tv.score - a->tv.score;
-}
-
-void print_variations(gdata_t *gd, int len)
-{
-
-	gdata_t *var_walker = mem_malloc(gdata_size);
-
-	int vars = DISPLAY_VAR_CT;
-
-
-
-	//load and sort the moves from root
-	tv_with_last_move_t from_root[solver->possible_moves];
-	if(vars > 1)
-	{
-		for(int i=0; i<solver->possible_moves; i++)
-		{
-			//copy original gd
-			memcpy(var_walker, gd, gdata_size);
-
-			//get tt info of the nth move
-			if(solver->is_legal(&gd->pos, i))
-			{
-				make_new_move(var_walker, var_walker, i);
-				//from_root[i].tv = tt_get(var_walker, 0);
-				if(tt_get(&from_root[i].tv, var_walker, 0))
-					from_root[i].move = i;
-				else
-					from_root[i].move = -1;
-			}
-			else
-				//from_root[i].tv = NULL;
-				from_root[i].move = -1;
-		}
-
-
-		//sort them
-		qsort(from_root, solver->possible_moves,
-			sizeof(from_root[0]), vars_from_root_compare);
-	}
-	else
-	{
-		memcpy(var_walker, gd, gdata_size);
-		/*from_root[0].tv = tt_get(var_walker, 0);
-		if(!from_root[0].tv)
-			return;*/
-		bool got = tt_get(&from_root[0].tv, var_walker, 0);
-		if(!got)
-			return;
-		from_root[0].move = from_root[0].tv.best_move;
-	}
-	//assert(from_root[0].move != -1);
-
-	for(int v=0; v<vars; v++)
-	{
-		//if(!from_root[v].tv)
-		if(from_root[v].move == -1)
-		{
-			for(int i=0; i<2*VARIATION_LENGTH; i++)
-				printf("     ");
-			printf("\n");
-			continue;
-		}
-
-		int spaces = printf("  #%d %+.1f", v+1, from_root[v].tv.score);
-		for(int s=spaces; s<13; s++)
-			printf(" ");
-
-		int vmove = from_root[v].move;	//nth best
-		float vscore = from_root[v].tv.score;
-
-		//copy original gd
-		memcpy(var_walker, gd, gdata_size);
-
-		int i;
-		for(i=0; i<len; i++)
-		{
-			//set variation to its best_move
-			//variation[i] = vmove;
-
-			//print var move
-			if(solver->iter_to_human)
-				printf(solver->iter_to_human(vmove));
-			else
-				printf("%d", vmove);
-
-			//make the move
-			make_new_move(var_walker, var_walker, vmove);
-
-			//get the next one
-			//trans_value_t *tv = tt_get(var_walker, 0);
-			//if(!tv)
-			trans_value_t tv;
-			bool g = tt_get(&tv, var_walker, 0);
-			if(!g)
-			{
-				if(vscore==WIN_SCORE-1 || vscore==-WIN_SCORE+1)
-					printf("#");
-				break;
-			}
-			printf(", ");
-			vmove = tv.best_move;
-			vscore = tv.score;
-		}
-
-		for(; i<2*VARIATION_LENGTH; i++)
-			printf("    ");
-		printf("\n");
-	}
-
-	mem_free(var_walker);
-}
 
 int random_move(void *pos)
 {
@@ -500,7 +256,7 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 		//print info
 		if(verbose)
 		{
-			print_evaluation(gd, result);
+			print_evaluation(gd, iddfs_depth, result);
 
 			uint32_t now = toc_ms();
 			window_focus(analysis_hdl);
@@ -1333,11 +1089,6 @@ float min(float x, float y)
 	return (x<y)? x : y;
 }
 
-float abs_f(float a)
-{
-	return (a>=0)? a : -a;
-}
-
 bool time_up(void)
 {
 	if(!FORCE_SEARCH_DEPTH)
@@ -1355,18 +1106,6 @@ bool time_up(void)
 		return (toc_ms() >= time_lim);
 }
 
-void print_score(float score)
-{
-	if(abs_f(score) < MATE_LIMIT)
-		printf("%.1f  ", score);
-	else
-	{
-		int dif = WIN_SCORE - abs_f(score);
-		//int m = dif/2;
-		printf("M%d  ", dif);
-	}
-}
-
 
 bool max_or_min(int depth)
 {
@@ -1374,17 +1113,4 @@ bool max_or_min(int depth)
 	if(!who_goes_first)
 		mm = !mm;
 	return mm? MAX_LAYER : MIN_LAYER;
-}
-
-
-bool make_new_move(gdata_t *child, gdata_t *gd, int move)
-{
-
-	memcpy(child, gd, gdata_size);
-
-	uint32_t *hp = gdata_get_hash(child);
-	solver->make_move(&(child->pos), move, hp);
-	child->move_index = move;
-
-	return true;	//always?
 }

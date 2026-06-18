@@ -14,6 +14,7 @@ typedef struct
 
 #include "solver.h"	//eww
 extern solver_t *solver;
+extern size_t gdata_size;
 
 typedef struct
 {
@@ -25,5 +26,6 @@ typedef struct
 } gdata_t;
 
 uint32_t *gdata_get_hash(gdata_t *gd);
+bool make_new_move(gdata_t *child, gdata_t *gd, int move);
 
 #endif	//SHARED_H_
