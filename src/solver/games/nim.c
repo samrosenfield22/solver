@@ -7,7 +7,7 @@
 #include <stdbool.h>
 
 #include "../zobrist.h"
-
+#include "../../utils/utils.h"
 
 nim_pos_t NIM_INIT_POS =
 {
@@ -17,6 +17,7 @@ nim_pos_t NIM_INIT_POS =
 
 
 //statics
+int nim_human_to_iter(char *human);
 void nim_calc_pile_and_take(void *pos, int index, int *pile, int *take);
 
 
@@ -141,7 +142,7 @@ bool nim_keys_match(void *k1, void *k2)
 
 }*/
 
-void nim_draw_full(void *pos, int last_move)
+void nim_draw_withmissing(void *pos, int row, int nmissing)
 {
 	nim_pos_t *p = pos;
 
@@ -152,16 +153,25 @@ void nim_draw_full(void *pos, int last_move)
 	printf("\n\n\n\n\n\n");
 	for(int i=0; i<3; i++)
 	{
-		printf("%s%c    ", indent, 'A'+i);
+		printf("%s%s%c    ", TERM_WHITE, indent, 'A'+i);
 		int gap = 7 - max[i];
 		gap /= 2;
 		for(int g=0; g<gap; g++)
 			printf(space);
 		for(int g=0; g<max[i]; g++)
-			printf("%c%s", (g < p->piles[i])? '*':' ', space);
+		{
+			char *color = (i==row && g >= p->piles[i]-nmissing)?
+				TERM_RED : TERM_WHITE;
+			printf("%s%c%s", color, (g < p->piles[i])? '*':' ', space);
+		}
 
 		printf("\n\n");
 	}
+}
+
+void nim_draw_full(void *pos, int last_move)
+{
+	nim_draw_withmissing(pos, 0, 0);
 }
 
 void *nim_menu_define(void)
@@ -176,47 +186,54 @@ void *nim_menu_define(void)
 	return m;
 }
 
-void nim_menu_update(void *menu, void *pos, int key)
+int nim_menu_update(void *menu, void *pos, int key)
 {
 	nim_pos_t *p = pos;
-	int rocks_selected = 1;
+	static int rocks_selected = 1;
 
-	int d;
+	bool pressed = true;
+	char buf[3];
+	buf[2] = '\0';
 	switch(key)
 	{
 		case ARROW_UP:
 		case ARROW_DOWN:
-			menu_update(menu, key);
-			rocks_selected = 1;
+			menu_input_control(menu, key);
+			//rocks_selected = 1;
 			break;
-		case ARROW_LEFT:	d=1;	break;
-		case ARROW_RIGHT:	d=-1;	break;
+		case ARROW_LEFT:	rocks_selected+=1;	break;
+		case ARROW_RIGHT:	rocks_selected-=1;	break;
+		case '\n':
+		case '\r':
+			buf[0] = 'A' + menu_get(menu);
+			buf[1] = '0' + rocks_selected;
+			//printf("(%s)\n", buf);
+			//exit(0);
+			return nim_human_to_iter(buf);
+			break;
+		default:
+			pressed = false;
 	}
 
-	int current = menu_get(menu);
-	int piles = p->piles[current];
-	
-	rocks_selected += d;
-	if(rocks_selected <= 0)
-		rocks_selected = 1;
-	if(rocks_selected >= piles)
-		rocks_selected = piles;
-
-
-	int i;
-	for(i=current+d; ; i+=d)
+	if(pressed)
 	{
-		if(p->spaces[i]==EMPTY)
-			break;
-		if(i<0 || i>=9)
-		{
-			i = -1;
-			break;
-		}
+
+		int current = menu_get(menu);
+		int piles = p->piles[current];
+
+		//rocks_selected += d;
+		if(rocks_selected <= 0)
+			rocks_selected = 1;
+		if(rocks_selected >= piles)
+			rocks_selected = piles;
+
+		window_unfocus();
+		term_move_cursor(0, 12);
+		nim_draw_withmissing(pos, current, rocks_selected);
 	}
 
-	if(i != -1)
-		menu_set(menu, i);
+
+	return -1;
 }
 
 int nim_human_to_iter(char *human)
@@ -306,6 +323,8 @@ solver_t NIM_SOLVER =
 	//.normalize_position = nim_normalize,
 	//.normalize_position = NULL,
 
+	.menu_define = nim_menu_define,
+	.menu_update = nim_menu_update,
 	.draw_full = nim_draw_full,
 	.human_to_iter = nim_human_to_iter,
 	//.iter_to_human = nim_iter_to_human,

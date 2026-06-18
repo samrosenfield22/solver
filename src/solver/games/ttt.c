@@ -214,8 +214,11 @@ void *ttt_menu_define(void)
 	return m;
 }
 
-void ttt_menu_update(void *menu, void *pos, int key)
+int ttt_menu_update(void *menu, void *pos, int key)
 {
+	if(key == '\n' || key == '\r')
+		return menu_get(menu);
+
 	ttt_pos_t *p = pos;
 	int current = menu_get(menu);
 
@@ -228,14 +231,14 @@ void ttt_menu_update(void *menu, void *pos, int key)
 		case ARROW_RIGHT:	d=1;	break;
 		default:
 			if(p->spaces[current]==EMPTY)
-				return;
+				return -1;
 			for(int i=0; i<9; i++)
 				if(p->spaces[i]==EMPTY)
 				{
 					menu_set(menu, i);
-					return;
+					return -1;
 				}
-			return;
+			return -1;
 	}
 	int i;
 	for(i=current+d; ; i+=d)
@@ -251,6 +254,8 @@ void ttt_menu_update(void *menu, void *pos, int key)
 
 	if(i != -1)
 		menu_set(menu, i);
+
+	return -1;
 }
 
 int ttt_human_to_iter(char *human)

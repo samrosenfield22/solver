@@ -266,10 +266,13 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 
 
 				int key = term_check_input();
-				int sel = menu_input_control(move_sel_menu, key);
+				//int sel = menu_input_control(move_sel_menu, key);
+				int sel = solver->menu_update(move_sel_menu, pos, key);
 				if(sel != -1)
 				{
-					*bp = '\0';
+					//*bp = '\0';
+					//snprintf(buf, 159, "%d", sel);
+					move = sel;
 					end = true;
 					printf("\n");
 					break;
@@ -280,7 +283,7 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 					case 'x':
 						exit(0);
 						break;
-					case '\n':
+					/*case '\n':
 					case '\r':
 						*bp = '\0';
 						end = true;
@@ -292,7 +295,7 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 							bp--;
 							printf("\b \b");
 						}
-						break;
+						break;*/
 
 
 					default:
@@ -308,7 +311,8 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 					break;
 			}
 
-			snprintf(buf, 159, "%d", menu_get(move_sel_menu));
+			//snprintf(buf, 159, "%d", menu_get(move_sel_menu));
+
 			/*fgets(buf, 159, stdin);
 			char *end = &buf[strlen(buf)-1];
 			if(*end == '\n')
@@ -361,7 +365,7 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 
 
 
-			#ifndef FORCE_MOVE_ITERATION
+			/*#ifndef FORCE_MOVE_ITERATION
 			if(solver->human_to_iter)
 				move = solver->human_to_iter(buf);
 			else
@@ -372,7 +376,7 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 			{
 				printf("illegal move!\n");
 				continue;
-			}
+			}*/
 			solver->make_move(pos, move, NULL);
 		}
 		else	//COMPUTER_PLAYER

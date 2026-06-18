@@ -1349,10 +1349,13 @@ void *c4_menu_define(void)
 	return m;
 }
 
-void c4_menu_update(void *menu, void *pos, int key)
+int c4_menu_update(void *menu, void *pos, int key)
 {
-	assert(0);
+	if(key == '\n' || key == '\r')
+		return menu_get(menu);
+
 	menu_move_cursor(menu, key);
+	return -1;
 }
 
 /*int c4_human_to_iter(char *human)
