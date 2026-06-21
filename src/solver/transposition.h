@@ -31,9 +31,9 @@ typedef struct
 	size_t ksize, vsize;//, kvsize;
 	uint32_t len, filled;
 	uint32_t collisions;
-	int p2_mask;
+	uint32_t p2_mask;
 
-	uint32_t (*hash)(void *key, size_t size);
+	uint64_t (*hash)(void *key, size_t size);
 	bool (*compare_keys_fp)(void *k1, void *k2);
 	bool (*replace_fp)(void *old, void *new);
 
@@ -79,7 +79,7 @@ void tt_create(size_t ksize, uint32_t len);
 void tt_destroy(void);
 void tt_clear(void);
 void tt_set_ancient(void);
-int tt_add(void *pos, uint32_t *hash, result_t *result,
+int tt_add(void *pos, uint64_t *hash, result_t *result,
 	int search_depth, int bound, int best_move);
 bool tt_get(trans_value_t *value, gdata_t *gd, int depth);
 

@@ -87,7 +87,7 @@ bool ttt_whosemove(void *pos)
 	return p->whosemove;
 }
 
-void ttt_make_move(void *pos, int index, uint32_t *hash)
+void ttt_make_move(void *pos, int index, uint64_t *hash)
 {
 	ttt_pos_t *p = pos;
 	p->spaces[index] = (p->whosemove)? X_PIECE : O_PIECE;
@@ -115,10 +115,10 @@ int ttt_print_pos(void *pos)
 	return 11;
 }
 
-uint32_t ttt_hash(void *key, size_t size)
+uint64_t ttt_hash(void *key, size_t size)
 {
 	ttt_pos_t *p = key;
-	uint32_t h = 0, mult = 1;
+	uint64_t h = 0, mult = 1;
 	for(int i=0; i<9; i++)
 	{
 		h += mult * p->spaces[i];

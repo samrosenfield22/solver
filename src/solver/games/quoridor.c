@@ -56,7 +56,7 @@ enum
 
 //
 void quor_draw_full(void *pos, int last_move);
-uint32_t quor_hash(void *key, size_t size);
+uint64_t quor_hash(void *key, size_t size);
 
 
 
@@ -302,7 +302,7 @@ bool quor_is_legal(void *pos, int index)
 	return true;
 }
 
-void quor_make_move(void *pos, int index, uint32_t *hash)
+void quor_make_move(void *pos, int index, uint64_t *hash)
 {
 	//assert(quor_ok(pos));
 	quor_pos_t *p = pos;
@@ -425,7 +425,7 @@ void quor_make_move(void *pos, int index, uint32_t *hash)
 	}
 
 	//test
-	//uint32_t check_hash = quor_hash(pos, 0);
+	//uint64_t check_hash = quor_hash(pos, 0);
 	//assert(*hash == check_hash);
 }
 
@@ -465,10 +465,10 @@ float quor_estimate(void *pos)
 	return est;
 }
 
-uint32_t quor_hash(void *key, size_t size)
+uint64_t quor_hash(void *key, size_t size)
 {
 	quor_pos_t *p = key;
-	uint32_t h = 0;
+	uint64_t h = 0;
 	zobrist_init(QUOR_Z_LEN, 0);
 
 	zobrist_place(&h, p->p1.y*9 + p->p1.x);

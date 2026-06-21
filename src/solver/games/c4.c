@@ -19,7 +19,7 @@ float estimate_color(uint64_t x, uint64_t opp, uint64_t filled,
 void get_win_maps(c4_pos_t *p);
 //void get_win_map(uint64_t *wmap, uint64_t x, uint64_t filled);
 void c4_draw_full(void *pos, int last_move);
-uint32_t c4_hash(void *key, size_t size);
+uint64_t c4_hash(void *key, size_t size);
 
 #define WHOSEMOVE_BIT	(((uint64_t)1)<<63)
 #define NO_WIN_MAP		(0xFFFFFFFFFFFFFFFF)
@@ -476,7 +476,7 @@ float c4_estimate(void *pos)
 	est -= estimate_color(opp, x, p->filled, opp_wmap, x_wmap, false);
 
 	//endgame analysis
-	int move_ct = __builtin_popcountll(p->filled & ~WHOSEMOVE_BIT);
+	//int move_ct = __builtin_popcountll(p->filled & ~WHOSEMOVE_BIT);
 	/*
 	//const int C4_ENDGAME_CT = 26;
 	if(move_ct >= C4_ENDGAME_CT)
@@ -823,9 +823,10 @@ float estimate_color(uint64_t x, uint64_t opp, uint64_t filled,
 	assert(wmap != NO_WIN_MAP);
 
 	float est = 0;
+	est += estimate_color_count_middles(x);
 	//int move_ct = __builtin_popcountll(filled & ~WHOSEMOVE_BIT);
-	//if(move_ct < 26)
-		est += estimate_color_count_middles(x);
+	//if(move_ct < 32)
+	//	est /= 2;
 	est += 3*estimate_color_count_wins(x, filled, wmap, verbose);
 	//est += 3*(__builtin_popcountll(wmap));
 
@@ -859,7 +860,7 @@ bool c4_is_legal(void *pos, int index)
 	return (col & 0b111111) != 0b111111;
 }
 
-void c4_make_move_temp(void *made, void *pos, int index, uint32_t *hash)
+void c4_make_move_temp(void *made, void *pos, int index, uint64_t *hash)
 {
 	c4_pos_t *p = pos;
 	c4_pos_t *m = made;
@@ -913,7 +914,7 @@ void c4_make_move_temp(void *made, void *pos, int index, uint32_t *hash)
 	zobrist_place(hash, hi);
 
 	//test
-	//uint32_t check_hash = c4_hash(m, 0);
+	//uint64_t check_hash = c4_hash(m, 0);
 	//assert(*hash == check_hash);
 }
 
@@ -950,7 +951,7 @@ int c4_get_placement(void *pos, int index)
 	return player_place;
 }
 
-void c4_make_move(void *pos, int index, uint32_t *hash)
+void c4_make_move(void *pos, int index, uint64_t *hash)
 {
 	assert(c4_ok(pos));
 	c4_pos_t *p = pos;
@@ -1009,7 +1010,7 @@ void c4_make_move(void *pos, int index, uint32_t *hash)
 	zobrist_place(hash, hi);
 
 	//test
-	//uint32_t check_hash = c4_hash(pos, 0);
+	//uint64_t check_hash = c4_hash(pos, 0);
 	//assert(*hash == check_hash);
 }
 
@@ -1034,10 +1035,10 @@ bool c4_move_loses(void *pos, int move)
 	return (mb<<1) & p->opp_wmap;
 }
 
-uint32_t c4_hash(void *key, size_t size)
+uint64_t c4_hash(void *key, size_t size)
 {
 	c4_pos_t *p = key;
-	uint32_t h = 0;
+	uint64_t h = 0;
 
 	//printf("hash for pos:\nx=0x%0x\nfilled=0x%0x\n",
 	//	p->x, p->filled);

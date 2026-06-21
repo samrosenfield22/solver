@@ -138,9 +138,9 @@ typedef struct
 	if using an updating hash system like zobrist, we can pass
 	a pointer to the current hash to be updated. if not, pass
 	NULL.*/
-	void (*make_move)(void *pos, int index, uint32_t *hash);
+	void (*make_move)(void *pos, int index, uint64_t *hash);
 
-	void (*make_move_temp)(void *made, void *pos, int index, uint32_t *hash);
+	void (*make_move_temp)(void *made, void *pos, int index, uint64_t *hash);
 
 	//optional, for history heuristic
 	int (*get_placement)(void *pos, int index);
@@ -165,7 +165,7 @@ typedef struct
 	computes the hash. in updating hash systems like zobrist,
 	this is still required (currently) for the initial pos
 	(although it doesn't really need to be)*/
-	uint32_t (*hash)(void *key, size_t size);
+	uint64_t (*hash)(void *key, size_t size);
 
 	int (*moves_remaining)(void *pos);
 

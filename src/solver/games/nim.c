@@ -56,7 +56,7 @@ bool nim_whosemove(void *pos)
 	return np->whosemove;
 }
 
-void nim_make_move(void *pos, int index, uint32_t *hash)
+void nim_make_move(void *pos, int index, uint64_t *hash)
 {
 
 	nim_pos_t *np = pos;
@@ -88,10 +88,10 @@ int nim_print_pos(void *pos)
 	return printf("%d,%d,%d", np->piles[0], np->piles[1], np->piles[2]);
 }
 
-uint32_t nim_hash(void *key, size_t size)
+uint64_t nim_hash(void *key, size_t size)
 {
 	nim_pos_t *np = key;
-	uint32_t h = 48*np->piles[0] + 8*np->piles[1] + np->piles[2];
+	uint64_t h = 48*np->piles[0] + 8*np->piles[1] + np->piles[2];
 	if(np->whosemove)
 		h += 200;
 	return h;

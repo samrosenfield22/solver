@@ -15,15 +15,15 @@
 //statics
 tt_t *tt_make(size_t ksize, size_t vsize, uint32_t len);
 void tt_enable_multithread(void);
-int tt_add_kvpair(tt_t *h, void *key, void *value, uint32_t *hash);
+int tt_add_kvpair(tt_t *h, void *key, void *value, uint64_t *hash);
 bool tt_key_get_value(tt_t *h, void *key,
-	void *value, uint32_t *hash);
-void tt_attach_hash(uint32_t (*hash)(void *key, size_t size));
+	void *value, uint64_t *hash);
+void tt_attach_hash(uint64_t (*hash)(void *key, size_t size));
 void tt_attach_keycompare(bool (*compare_keys_fp)(void *k1, void *k2));
 void tt_attach_replace(bool (*replace_transpose)(void *old, void *new));
 
-void *tt_key_get_bucket(tt_t *h, void *key, uint32_t *hash);
-uint32_t tt_key_get_index(tt_t *h, void *key, uint32_t *hash);
+void *tt_key_get_bucket(tt_t *h, void *key, uint64_t *hash);
+uint32_t tt_key_get_index(tt_t *h, void *key, uint64_t *hash);
 
 bool tt_keys_match(tt_t *h, void *k1, void *k2);
 //kvpair_t *alloc_kvpair(tt_t *h);
@@ -119,12 +119,12 @@ void tt_set_ancient(void)
 	}
 }
 
-int tt_add(void *pos, uint32_t *hash, result_t *result, int search_depth, int bound, int best_move)
+int tt_add(void *pos, uint64_t *hash, result_t *result, int search_depth, int bound, int best_move)
 {
 	assert(best_move >= 0);
 
 	//void *pos = &(gd->pos);
-	//uint32_t *hash = gdata_get_hash(gd);
+	//uint64_t *hash = gdata_get_hash(gd);
 	//int search_depth = iddfs_depth - depth;
 
 	trans_value_t value =
@@ -145,7 +145,7 @@ int tt_add(void *pos, uint32_t *hash, result_t *result, int search_depth, int bo
 bool tt_get(trans_value_t *value, gdata_t *gd, int depth)
 {
 	void *pos = &(gd->pos);
-	uint32_t *hash = gdata_get_hash(gd);
+	uint64_t *hash = gdata_get_hash(gd);
 	//trans_value_t *value = tt_key_get_value(trans_tbl, pos, hash);
 	bool got = tt_key_get_value(trans_tbl, pos, value, hash);
 
@@ -154,7 +154,7 @@ bool tt_get(trans_value_t *value, gdata_t *gd, int depth)
 	{
 		uint8_t flipped[solver->pos_size];
 		solver->flip(flipped, pos);
-		//uint32_t temp_hash;
+		//uint64_t temp_hash;
 		//temp_hash = trans_tbl->hash(flipped, trans_tbl->ksize);
 
 		got = tt_key_get_value(trans_tbl, flipped, value, NULL);
@@ -250,7 +250,7 @@ void tt_enable_multithread(void)
 }
 
 int tt_add_kvpair(tt_t *h, void *key, void *value,
-	uint32_t *hash)
+	uint64_t *hash)
 {
 	if(!h)
 	{
@@ -329,7 +329,7 @@ int tt_add_kvpair(tt_t *h, void *key, void *value,
 }
 
 bool tt_key_get_value(tt_t *h, void *key,
-	void *value, uint32_t *hash)
+	void *value, uint64_t *hash)
 {
 	if(!h)
 	{
@@ -383,7 +383,7 @@ uint32_t tt_collisions(void)
 	return trans_tbl->collisions;
 }
 
-void tt_attach_hash(uint32_t (*hash)(void *value, size_t size))
+void tt_attach_hash(uint64_t (*hash)(void *value, size_t size))
 {
 	if(!trans_tbl)
 		return;
@@ -413,7 +413,7 @@ void tt_attach_replace(bool (*replace_fp)(void *old, void *new))
 
 
 
-uint32_t tt_avalanche(uint32_t index)
+uint64_t tt_avalanche(uint64_t index)
 {
 	uint64_t x = index;
 
@@ -424,7 +424,7 @@ uint32_t tt_avalanche(uint32_t index)
 	return x;
 }
 
-void *tt_key_get_bucket(tt_t *h, void *key, uint32_t *hash)
+void *tt_key_get_bucket(tt_t *h, void *key, uint64_t *hash)
 {
 	if(!h)
 		return NULL;
@@ -434,20 +434,20 @@ void *tt_key_get_bucket(tt_t *h, void *key, uint32_t *hash)
 	return &h->map[index];
 }
 
-uint32_t tt_key_get_index(tt_t *h, void *key, uint32_t *hash)
+uint32_t tt_key_get_index(tt_t *h, void *key, uint64_t *hash)
 {
 	/*if(!h)
 		return 0;
 
 
-	uint32_t index = h->hash(key, h->ksize);
+	uint64_t index = h->hash(key, h->ksize);
 	//index %= h->len;
 
 	return index;*/
 
 
 
-	uint32_t index;
+	uint64_t index;
 	if(hash)
 		index = (*hash);
 	else

@@ -3,18 +3,17 @@
 #include "zobrist.h"
 #include "../utils/utils.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <assert.h>
 
-//#define ZOBRIST_LEN	(148)
 int ZOBRIST_LEN;
 
 //typedef uint64_t z_data_t;
 
 //bool zobrist_computed = false;
-//uint32_t zobrist_strings[ZOBRIST_LEN];
-uint32_t *zobrist_strings = NULL;
+uint64_t *zobrist_strings = NULL;
 
 void zobrist_init(int len, int zseed)
 {
@@ -30,8 +29,15 @@ void zobrist_init(int len, int zseed)
 	srand(zseed);
 	for(int i=0; i<ZOBRIST_LEN; i++)
 	{
-		zobrist_strings[i] = rand()<<16 | rand();
+		for(int z=0; z<4; z++)
+		{
+			zobrist_strings[i] <<= 16;
+			zobrist_strings[i] |= rand();
+		}
+		//zobrist_strings[i] = rand()<<48 | rand()<<32 | rand()<<16 | rand();
+		//printf("zstr %d is %s\n", i, sprintbig(zobrist_strings[i], "%b"));
 	}
+	//exit(0);
 }
 
 void zobrist_free(void)
@@ -40,13 +46,14 @@ void zobrist_free(void)
 	zobrist_strings = NULL;
 }
 
-void zobrist_place(uint32_t *h, int n)
+void zobrist_place(uint64_t *h, int n)
 {
 	assert(n < ZOBRIST_LEN);
 	*h ^= zobrist_strings[n];
+	//*(uint32_t *)h ^= (uint32_t)zobrist_strings[n];
 }
 
-void zobrist_move(uint32_t *h, int to, int from)
+void zobrist_move(uint64_t *h, int to, int from)
 {
 	assert(from < ZOBRIST_LEN);
 	assert(to < ZOBRIST_LEN);
@@ -54,7 +61,7 @@ void zobrist_move(uint32_t *h, int to, int from)
 	*h ^= zobrist_strings[from];
 }
 
-void zobrist_move_capture(uint32_t *h, int to, int from, int captured)
+void zobrist_move_capture(uint64_t *h, int to, int from, int captured)
 {
 	assert(from < ZOBRIST_LEN);
 	assert(to < ZOBRIST_LEN);
