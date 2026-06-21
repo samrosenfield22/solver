@@ -15,7 +15,7 @@
 //statics
 tt_t *tt_make(size_t ksize, size_t vsize, uint32_t len);
 void tt_enable_multithread(void);
-int tt_add_kvpair(tt_t *h, void *key, void *value, uint64_t *hash);
+int tt_add_kvpair(tt_t *h, void *key, void *value, uint64_t hash);
 bool tt_key_get_value(tt_t *h, void *key,
 	void *value, uint64_t *hash);
 void tt_attach_hash(uint64_t (*hash)(void *key, size_t size));
@@ -119,13 +119,19 @@ void tt_set_ancient(void)
 	}
 }
 
-int tt_add(void *pos, uint64_t *hash, result_t *result, int search_depth, int bound, int best_move)
+int tt_add(void *pos, uint64_t *hp, result_t *result, int search_depth, int bound, int best_move)
 {
 	assert(best_move >= 0);
 
 	//void *pos = &(gd->pos);
 	//uint64_t *hash = gdata_get_hash(gd);
 	//int search_depth = iddfs_depth - depth;
+
+	uint64_t hash;
+	if(hp)
+		hash = *hp;
+	else
+		hash = trans_tbl->hash(pos, 0);
 
 	trans_value_t value =
 	{
@@ -250,7 +256,7 @@ void tt_enable_multithread(void)
 }
 
 int tt_add_kvpair(tt_t *h, void *key, void *value,
-	uint64_t *hash)
+	uint64_t hash)
 {
 	if(!h)
 	{
@@ -261,7 +267,7 @@ int tt_add_kvpair(tt_t *h, void *key, void *value,
 	int add_result = -1;
 
 	//kvpair_t **bucket = tt_key_get_bucket(h, key, hash);
-	uint32_t index = tt_key_get_index(h, key, hash);
+	uint32_t index = tt_key_get_index(h, key, &hash);
 	void **bucket = &h->map[index];
 	//assert(bucket);
 
@@ -452,6 +458,7 @@ uint32_t tt_key_get_index(tt_t *h, void *key, uint64_t *hash)
 		index = (*hash);
 	else
 	{
+		//assert(0);
 		//printf("no hash\n");
 		index = h->hash(key, h->ksize);
 		//index %= h->len;

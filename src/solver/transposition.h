@@ -79,7 +79,7 @@ void tt_create(size_t ksize, uint32_t len);
 void tt_destroy(void);
 void tt_clear(void);
 void tt_set_ancient(void);
-int tt_add(void *pos, uint64_t *hash, result_t *result,
+int tt_add(void *pos, uint64_t *hp, result_t *result,
 	int search_depth, int bound, int best_move);
 bool tt_get(trans_value_t *value, gdata_t *gd, int depth);
 

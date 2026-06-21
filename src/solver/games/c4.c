@@ -12,7 +12,7 @@
 #include "../zobrist.h"
 #include "../../utils/utils.h"
 
-#define SHOW_WIN_TILES
+//#define SHOW_WIN_TILES
 
 float estimate_color(uint64_t x, uint64_t opp, uint64_t filled,
 	uint64_t wmap, uint64_t opp_wmap, bool verbose);
