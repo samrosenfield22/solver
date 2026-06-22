@@ -39,12 +39,12 @@ typedef struct
 	uint64_t hash;
 	trans_value_t value;
 } kvpair_t;
-/*
+
 typedef struct
 {
 	kvpair_t deeper_kv, always_kv;
 } bucket_t;
-*/
+
 
 typedef struct
 {
@@ -60,9 +60,10 @@ typedef struct
 	bool multithread;
 	omp_lock_t *locks;
 
-	kvpair_t map[];
+	//kvpair_t map[];
 	//void *map[];
 	//uint8_t map[];
+	bucket_t map[];
 } tt_t;
 
 enum

@@ -86,7 +86,9 @@ void tt_clear(void)
 
 	for(uint32_t i=0; i<trans_tbl->len; i++)
 	{
-		trans_tbl->map[i].value.value_filled = 0b0;
+		bucket_t *bucket = &trans_tbl->map[i];
+		bucket->deeper_kv.value.value_filled = 0b0;
+		bucket->always_kv.value.value_filled = 0b0;
 		/*if(trans_tbl->map[i])
 		{
 			void *kv = trans_tbl->map[i];
@@ -116,12 +118,16 @@ void tt_set_ancient(void)
 	for(uint32_t i=0; i<trans_tbl->len; i++)
 	{
 		//if(trans_tbl->map[i])
-		if(trans_tbl->map[i].value.value_filled)
+		bucket_t *bucket = &trans_tbl->map[i];
+		if(bucket->deeper_kv.value.value_filled)
+		//if(trans_tbl->map[i].value.value_filled)
 		{
 			//void *kv = trans_tbl->map[i];
 			//trans_value_t *v = tt_kv_get_value(trans_tbl, kv);
 			//v->ancient = true;
-			trans_tbl->map[i].value.ancient = 0b1;
+
+			//trans_tbl->map[i].value.ancient = 0b1;
+			bucket->deeper_kv.value.ancient = 0b1;
 		}
 	}
 }
@@ -277,8 +283,8 @@ int tt_add_kvpair(tt_t *h, void *key, trans_value_t *value,
 
 	//kvpair_t **bucket = tt_key_get_bucket(h, key, hash);
 	uint32_t index = tt_key_get_index(h, key, &hash);
-	//void **bucket = &h->map[index];
-	kvpair_t *kv = &h->map[index];
+	bucket_t *bucket = &h->map[index];
+	kvpair_t *kv = &bucket->deeper_kv;
 	//trans_value_t *val_p = &kv->value;
 
 
@@ -360,8 +366,9 @@ bool tt_key_get_value(tt_t *h, void *key,
 	//	printf("no multi!\n");
 
 	uint32_t index = tt_key_get_index(h, key, &hash);
-	//void **bucket = &h->map[index];
-	kvpair_t *kv = &h->map[index];
+
+	bucket_t *bucket = &h->map[index];
+	kvpair_t *kv = &bucket->deeper_kv;
 	if(!kv->value.value_filled)
 		return false;
 	/*assert(bucket);
