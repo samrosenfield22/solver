@@ -918,7 +918,7 @@ solver_t QUOR_SOLVER =
 
 	.initial_pos = &QUOR_INIT_POS,
 	.pos_size = sizeof(quor_pos_t),
-	.hash_size = (uint8_t*)&QUOR_INIT_POS.p1_map - (uint8_t*)&QUOR_INIT_POS,
+	//.hash_size = (uint8_t*)&QUOR_INIT_POS.p1_map - (uint8_t*)&QUOR_INIT_POS,
 	.possible_moves = 132,
 	.transtbl_buckets_ct = (1<<28),
 	.iddfs_increment = 2,

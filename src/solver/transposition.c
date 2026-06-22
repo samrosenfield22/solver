@@ -27,7 +27,7 @@ void tt_attach_hash(uint64_t (*hash)(void *key, size_t size));
 //void tt_attach_keycompare(bool (*compare_keys_fp)(void *k1, void *k2));
 void tt_attach_replace(bool (*replace_transpose)(void *old, void *new));
 
-void *tt_key_get_bucket(tt_t *h, void *key, uint64_t *hash);
+//void *tt_key_get_bucket(tt_t *h, void *key, uint64_t *hash);
 uint32_t tt_key_get_index(tt_t *h, void *key, uint64_t *hash);
 
 //bool tt_keys_match(tt_t *h, void *k1, void *k2);
@@ -218,9 +218,7 @@ tt_t *tt_make(size_t ksize, size_t vsize, uint32_t len)
 		return NULL;
 
 	h->ksize = ksize;
-	//h->ksize += 4 - (ksize%4);
 	h->vsize = vsize;
-	//h->vsize += 4 - (vsize%4);
 	h->len = len;
 	h->collisions = 0;
 	h->filled = 0;
@@ -451,7 +449,7 @@ uint64_t tt_avalanche(uint64_t index)
 	return x;
 }
 
-void *tt_key_get_bucket(tt_t *h, void *key, uint64_t *hash)
+/*void *tt_key_get_bucket(tt_t *h, void *key, uint64_t *hash)
 {
 	if(!h)
 		return NULL;
@@ -459,7 +457,7 @@ void *tt_key_get_bucket(tt_t *h, void *key, uint64_t *hash)
 	uint32_t index = tt_key_get_index(h, key, hash);
 
 	return &h->map[index];
-}
+}*/
 
 uint32_t tt_key_get_index(tt_t *h, void *key, uint64_t *hash)
 {
