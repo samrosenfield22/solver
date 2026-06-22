@@ -1494,7 +1494,7 @@ solver_t C4_SOLVER =
 
 	.initial_pos = &C4_INIT_POS,
 	.pos_size = sizeof(c4_pos_t),
-	.hash_size = (uint8_t*)&C4_INIT_POS.x_wmap - (uint8_t*)&C4_INIT_POS,
+	//.hash_size = (uint8_t*)&C4_INIT_POS.x_wmap - (uint8_t*)&C4_INIT_POS,
 	.possible_moves = 7,
 	.possible_placements = 42*2,
 	//.transtbl_buckets_ct = 180000001,

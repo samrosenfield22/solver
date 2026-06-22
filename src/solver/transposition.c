@@ -19,13 +19,13 @@ int tt_add_kvpair(tt_t *h, void *key, void *value, uint64_t hash);
 bool tt_key_get_value(tt_t *h, void *key,
 	void *value, uint64_t hash);
 void tt_attach_hash(uint64_t (*hash)(void *key, size_t size));
-void tt_attach_keycompare(bool (*compare_keys_fp)(void *k1, void *k2));
+//void tt_attach_keycompare(bool (*compare_keys_fp)(void *k1, void *k2));
 void tt_attach_replace(bool (*replace_transpose)(void *old, void *new));
 
 void *tt_key_get_bucket(tt_t *h, void *key, uint64_t *hash);
 uint32_t tt_key_get_index(tt_t *h, void *key, uint64_t *hash);
 
-bool tt_keys_match(tt_t *h, void *k1, void *k2);
+//bool tt_keys_match(tt_t *h, void *k1, void *k2);
 //kvpair_t *alloc_kvpair(tt_t *h);
 //void free_kvpair(kvpair_t *kv);
 void *tt_kv_get_value(tt_t *h, void *kv);
@@ -40,7 +40,7 @@ bool tt_replace_by_ancient(void *old, void *new);
 tt_t *trans_tbl = NULL;
 
 
-void tt_create(size_t ksize, uint32_t len)
+void tt_create(uint32_t len)
 {
 	if(trans_tbl)
 		return;
@@ -58,8 +58,8 @@ void tt_create(size_t ksize, uint32_t len)
 		tt_enable_multithread();
 	if(solver->hash)
 		tt_attach_hash(solver->hash);
-	if(solver->keys_match)
-		tt_attach_keycompare(solver->keys_match);
+	//if(solver->keys_match)
+		//tt_attach_keycompare(solver->keys_match);
 	tt_attach_replace(REPLACE_STRATEGY);
 }
 
@@ -217,7 +217,7 @@ tt_t *tt_make(size_t ksize, size_t vsize, uint32_t len)
 	h->collisions = 0;
 	h->filled = 0;
 	h->hash = NULL;
-	h->compare_keys_fp = NULL;
+	//h->compare_keys_fp = NULL;
 	h->multithread = false;
 
 	h->p2_mask = 0;
@@ -291,7 +291,8 @@ int tt_add_kvpair(tt_t *h, void *key, void *value,
 
 		//if(keys_match(h, kv->key, key))
 		//if(tt_keys_match(h, kv, key))	//key is the first elem of kvpair
-		if(tt_keys_match(h, kv, &hash))	//key is the first elem of kvpair
+		//if(tt_keys_match(h, kv, &hash))	//key is the first elem of kvpair
+		if(hash == *(uint64_t *)kv)
 		{
 			//replace value
 			memcpy(val_p, value, h->vsize);
@@ -364,7 +365,8 @@ bool tt_key_get_value(tt_t *h, void *key,
 			return false;
 	}
 
-	bool match = tt_keys_match(h, kv, &hash);
+	//bool match = tt_keys_match(h, kv, &hash);
+	bool match = (hash == *(uint64_t *)kv);
 	//void *val = match? kv->value : NULL;
 	if(match)
 	{
@@ -401,13 +403,13 @@ void tt_attach_hash(uint64_t (*hash)(void *value, size_t size))
 	trans_tbl->hash = hash;
 }
 
-void tt_attach_keycompare(bool (*compare_keys_fp)(void *k1, void *k2))
+/*void tt_attach_keycompare(bool (*compare_keys_fp)(void *k1, void *k2))
 {
 	if(!trans_tbl)
 		return;
 
 	trans_tbl->compare_keys_fp = compare_keys_fp;
-}
+}*/
 
 void tt_attach_replace(bool (*replace_fp)(void *old, void *new))
 {
@@ -446,16 +448,6 @@ void *tt_key_get_bucket(tt_t *h, void *key, uint64_t *hash)
 
 uint32_t tt_key_get_index(tt_t *h, void *key, uint64_t *hash)
 {
-	/*if(!h)
-		return 0;
-
-
-	uint64_t index = h->hash(key, h->ksize);
-	//index %= h->len;
-
-	return index;*/
-
-
 
 	uint64_t index;
 	if(hash)
@@ -481,17 +473,17 @@ uint32_t tt_key_get_index(tt_t *h, void *key, uint64_t *hash)
 	return index;
 }
 
-bool tt_keys_match(tt_t *h, void *k1, void *k2)
+/*bool tt_keys_match(tt_t *h, void *k1, void *k2)
 {
 	uint64_t *u1 = k1;
 	uint64_t *u2 = k2;
 	return (*u1 == *u2);
 
-	if(h->compare_keys_fp)
-		return h->compare_keys_fp(k1, k2);
-	else
-		return (memcmp(k1, k2, h->ksize)==0);
-}
+	//if(h->compare_keys_fp)
+	//	return h->compare_keys_fp(k1, k2);
+	//else
+	//	return (memcmp(k1, k2, h->ksize)==0);
+}*/
 
 /*kvpair_t *alloc_kvpair(tt_t *h)
 {

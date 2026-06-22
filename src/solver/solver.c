@@ -107,12 +107,12 @@ void solver_init(solver_t *game_solver)
 	solver_check(game_solver);
 
 	solver = game_solver;
-	if(!solver->hash_size)
-		solver->hash_size = solver->pos_size;
+	//if(!solver->hash_size)
+	//	solver->hash_size = solver->pos_size;
 	gdata_size = sizeof(gdata_t) + solver->pos_size;
 
 	#ifdef USE_TRANSPOSITION_TABLE
-	tt_create(solver->hash_size, solver->transtbl_buckets_ct);
+	tt_create(solver->transtbl_buckets_ct);
 	#endif	//USE_TRANSPOSITION_TABLE
 }
 
