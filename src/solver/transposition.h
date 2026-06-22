@@ -60,8 +60,8 @@ typedef struct
 	bool multithread;
 	omp_lock_t *locks;
 
-	//kvpair_t *map[];
-	void *map[];
+	kvpair_t map[];
+	//void *map[];
 	//uint8_t map[];
 } tt_t;
 

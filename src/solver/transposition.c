@@ -82,7 +82,8 @@ void tt_clear(void)
 
 	for(uint32_t i=0; i<trans_tbl->len; i++)
 	{
-		if(trans_tbl->map[i])
+		trans_tbl->map[i].value.value_filled = 0b0;
+		/*if(trans_tbl->map[i])
 		{
 			void *kv = trans_tbl->map[i];
 
@@ -94,10 +95,10 @@ void tt_clear(void)
 			}
 
 			trans_tbl->filled--;
-		}
+		}*/
 	}
 
-	//h->filled = 0;
+	trans_tbl->filled = 0;
 	trans_tbl->collisions = 0;
 }
 
@@ -110,11 +111,13 @@ void tt_set_ancient(void)
 
 	for(uint32_t i=0; i<trans_tbl->len; i++)
 	{
-		if(trans_tbl->map[i])
+		//if(trans_tbl->map[i])
+		if(trans_tbl->map[i].value.value_filled)
 		{
-			void *kv = trans_tbl->map[i];
-			trans_value_t *v = tt_kv_get_value(trans_tbl, kv);
-			v->ancient = true;
+			//void *kv = trans_tbl->map[i];
+			//trans_value_t *v = tt_kv_get_value(trans_tbl, kv);
+			//v->ancient = true;
+			trans_tbl->map[i].value.ancient = 0b1;
 		}
 	}
 }
@@ -206,7 +209,7 @@ bool tt_replace_by_ancient(void *old, void *new)
 
 tt_t *tt_make(size_t ksize, size_t vsize, uint32_t len)
 {
-	tt_t *h = mem_calloc((len * sizeof(void *)) + sizeof(*h), 1);
+	tt_t *h = mem_calloc((len * sizeof(trans_tbl->map[0])) + sizeof(*h), 1);
 	if(!h)
 		return NULL;
 
@@ -272,8 +275,10 @@ int tt_add_kvpair(tt_t *h, void *key, void *value,
 
 	//kvpair_t **bucket = tt_key_get_bucket(h, key, hash);
 	uint32_t index = tt_key_get_index(h, key, &hash);
-	void **bucket = &h->map[index];
-	//assert(bucket);
+	//void **bucket = &h->map[index];
+	kvpair_t *kv = &h->map[index];
+	//trans_value_t *val_p = &kv->value;
+
 
 	if(h->multithread)
 	{
@@ -284,19 +289,21 @@ int tt_add_kvpair(tt_t *h, void *key, void *value,
 			return TT_NO_ADD;
 	}
 
-	void *kv;
-	if(*bucket)	//bucket already filled
+	//void *kv;
+	//if(*bucket)	//bucket already filled
+	if(kv->value.value_filled)	//bucket already filled
 	{
-		kv = *bucket;
-		void *val_p = tt_kv_get_value(h, kv);
+		//kv = *bucket;
+		//void *val_p = tt_kv_get_value(h, kv);
+
 
 		//if(keys_match(h, kv->key, key))
 		//if(tt_keys_match(h, kv, key))	//key is the first elem of kvpair
 		//if(tt_keys_match(h, kv, &hash))	//key is the first elem of kvpair
-		if(hash == *(uint64_t *)kv)
+		if(hash == kv->hash)
 		{
 			//replace value
-			memcpy(val_p, value, h->vsize);
+			memcpy(&kv->value, value, h->vsize);
 			add_result = TT_KEYS_MATCHED_REPLACED_VALUE;
 		}
 		else	//collision, apply replacement policy
@@ -306,13 +313,14 @@ int tt_add_kvpair(tt_t *h, void *key, void *value,
 			if(h->replace_fp)
 			{
 				//replace = h->replace_fp(kv->key, kv->value, key, value);
-				replace = h->replace_fp(val_p, value);
+				replace = h->replace_fp(&kv->value, value);
 			}
 
 			if(replace)
 			{
-				memcpy(kv, &hash, h->ksize);
-				memcpy(val_p, value, h->vsize);
+				//kv->hash = hash;
+				memcpy(&kv->hash, &hash, h->ksize);
+				memcpy(&kv->value, value, h->vsize);
 				add_result = TT_POLICY_OVERWRITE_KV;
 			}
 			else
@@ -322,12 +330,13 @@ int tt_add_kvpair(tt_t *h, void *key, void *value,
 	}
 	else	//bucket empty, add the kv pair
 	{
-		kv = mem_malloc(h->ksize + h->vsize);
-		*bucket = kv;
+		//kv = mem_malloc(h->ksize + h->vsize);
+		//*bucket = kv;
 
-		void *val_p = tt_kv_get_value(h, kv);
-		memcpy(kv, &hash, h->ksize);
-		memcpy(val_p, value, h->vsize);
+		//void *val_p = tt_kv_get_value(h, kv);
+		//memcpy(kv, &hash, h->ksize);
+		kv->hash = hash;
+		memcpy(&kv->value, value, h->vsize);
 
 		//printf("kvpair added!\n");
 		h->filled++;
@@ -352,13 +361,16 @@ bool tt_key_get_value(tt_t *h, void *key,
 	//	printf("no multi!\n");
 
 	uint32_t index = tt_key_get_index(h, key, &hash);
-	void **bucket = &h->map[index];
+	//void **bucket = &h->map[index];
+	kvpair_t *kv = &h->map[index];
+	if(!kv->value.value_filled)
+		return false;
 	/*assert(bucket);
 	if(!bucket)
 		return false;*/
-	void *kv = *bucket;
-	if(!kv)	//slot not filled
-		return false;
+	//void *kv = *bucket;
+	//if(!kv)	//slot not filled
+	//	return false;
 
 	if(h->multithread)
 	{
@@ -367,16 +379,16 @@ bool tt_key_get_value(tt_t *h, void *key,
 	}
 
 	//bool match = tt_keys_match(h, kv, &hash);
-	bool match = (hash == *(uint64_t *)kv);
+	bool match = (hash == kv->hash);
 	//void *val = match? kv->value : NULL;
 	if(match)
 	{
 		//memcpy(value, kv->value, h->vsize);
-		trans_value_t *val_p = tt_kv_get_value(h, kv);
-		memcpy(value, val_p, h->vsize);
+		//trans_value_t *val_p = tt_kv_get_value(h, kv);
+		memcpy(value, &kv->value, h->vsize);
 
 		if(trans_tbl->replace_fp == tt_replace_by_ancient)
-			val_p->ancient = false;
+			kv->value.ancient = false;
 	}
 
 	if(h->multithread)
