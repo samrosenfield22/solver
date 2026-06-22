@@ -301,6 +301,7 @@ int tt_add_kvpair(tt_t *h, void *key, trans_value_t *value,
 	{
 		bucket->deeper_kv.hash = hash;
 		bucket->deeper_kv.value = *value;
+		trans_tbl->filled++;
 	}
 	else if(bucket->deeper_kv.hash == hash)
 		bucket->deeper_kv.value = *value;
@@ -308,6 +309,7 @@ int tt_add_kvpair(tt_t *h, void *key, trans_value_t *value,
 	{
 		bucket->always_kv.hash = hash;
 		bucket->always_kv.value = *value;
+		trans_tbl->filled++;
 	}
 	else if(bucket->always_kv.hash == hash)
 		bucket->always_kv.value = *value;
@@ -451,7 +453,8 @@ bool tt_key_get_value(tt_t *h, void *key,
 int tt_load(void)
 {
 	uint64_t f = trans_tbl->filled;
-	return (f * 100) / trans_tbl->len;
+	//return (f * 100) / trans_tbl->len;
+	return (f * 50) / trans_tbl->len;	//2 kv per bucket
 }
 
 uint32_t tt_collisions(void)
