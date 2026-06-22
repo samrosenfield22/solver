@@ -138,7 +138,8 @@ int tt_add(void *pos, uint64_t *hp, result_t *result, int search_depth, int boun
 		.score = result->score,
 		.full = result->full,
 		.bound = bound,
-		.ancient = false,
+		.value_filled = 0b1,
+		.ancient = 0b0,
 		.search_depth = search_depth,
 		.best_move = best_move,
 	};

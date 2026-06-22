@@ -14,15 +14,35 @@
 #define REPLACE_STRATEGY	(tt_replace_by_depth)
 //#define REPLACE_STRATEGY	(tt_replace_by_ancient)
 
-/*typedef struct
+enum
+{
+	BOUND_EXACT,
+	BOUND_UPPER,
+	BOUND_LOWER,
+};
+
+typedef struct
+{
+	float score;
+	uint8_t search_depth;
+	bool full;
+	uint8_t best_move;
+
+	uint8_t value_filled	: 1;
+	uint8_t bound	: 2;
+	uint8_t ancient	: 1;
+	//age??
+} trans_value_t;
+
+typedef struct
 {
 	uint64_t hash;
 	trans_value_t value;
 } kvpair_t;
-
+/*
 typedef struct
 {
-	kvpair_t first, second;
+	kvpair_t deeper_kv, always_kv;
 } bucket_t;
 */
 
@@ -44,25 +64,6 @@ typedef struct
 	void *map[];
 	//uint8_t map[];
 } tt_t;
-
-enum
-{
-	BOUND_EXACT,
-	BOUND_UPPER,
-	BOUND_LOWER,
-};
-
-typedef struct
-{
-	float score;
-	uint8_t search_depth;
-	bool full;
-	uint8_t best_move;
-
-	uint8_t bound	: 2;
-	uint8_t ancient	: 1;
-	//age??
-} trans_value_t;
 
 enum
 {
