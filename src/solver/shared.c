@@ -6,10 +6,10 @@ size_t gdata_size;
 
 uint64_t *gdata_get_hash(gdata_t *gd)
 {
-	if(solver->uses_zobrist)
-		return &(gd->hash);
-	else
-		return NULL;
+	if(!solver->uses_zobrist)
+		gd->hash = solver->hash(gd->pos, 0);
+
+	return &(gd->hash);
 }
 
 bool make_new_move(gdata_t *child, gdata_t *gd, int move)

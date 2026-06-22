@@ -164,7 +164,8 @@ typedef struct
 	/*required:
 	computes the hash. in updating hash systems like zobrist,
 	this is still required (currently) for the initial pos
-	(although it doesn't really need to be)*/
+	(although it doesn't really need to be)
+	(maybe it does tho, still used for flip pos)*/
 	uint64_t (*hash)(void *key, size_t size);
 
 	int (*moves_remaining)(void *pos);
