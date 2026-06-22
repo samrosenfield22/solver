@@ -129,6 +129,8 @@ void tt_set_ancient(void)
 			//trans_tbl->map[i].value.ancient = 0b1;
 			bucket->deeper_kv.value.ancient = 0b1;
 		}
+		if(bucket->always_kv.value.value_filled)
+			bucket->always_kv.value.ancient = 0b1;
 	}
 }
 
@@ -281,34 +283,63 @@ int tt_add_kvpair(tt_t *h, void *key, trans_value_t *value,
 
 	int add_result = -1;
 
-	//kvpair_t **bucket = tt_key_get_bucket(h, key, hash);
 	uint32_t index = tt_key_get_index(h, key, &hash);
 	bucket_t *bucket = &h->map[index];
-	kvpair_t *kv = &bucket->deeper_kv;
-	//trans_value_t *val_p = &kv->value;
 
+	/*
+	if deeper isn't filled, or has same hash key
+		add
+	else if always isn't filled, or has same hash key
+		add
+	else if greater depth than deeper
+		replace
+	else
+		replace always
+	*/
 
-	if(h->multithread)
+	if(!bucket->deeper_kv.value.value_filled)
 	{
-		//printf("getting lock... ");
-		//tt_set_lock(h, index);
-		//printf("got!\n");
+		bucket->deeper_kv.hash = hash;
+		bucket->deeper_kv.value = *value;
+	}
+	else if(bucket->deeper_kv.hash == hash)
+		bucket->deeper_kv.value = *value;
+	else if(!bucket->always_kv.value.value_filled)
+	{
+		bucket->always_kv.hash = hash;
+		bucket->always_kv.value = *value;
+	}
+	else if(bucket->always_kv.hash == hash)
+		bucket->always_kv.value = *value;
+	else if(bucket->deeper_kv.value.search_depth < value->search_depth)
+	{
+		bucket->deeper_kv.hash = hash;
+		bucket->deeper_kv.value = *value;
+	}
+	else
+	{
+		bucket->always_kv.hash = hash;
+		bucket->always_kv.value = *value;
+	}
+	return 0;
+	////////////////////////////////////////////////
+
+
+
+	/*if(h->multithread)
+	{
 		if(!tt_try_lock(h, index))
 			return TT_NO_ADD;
-	}
+	}*/
 
-	//void *kv;
-	//if(*bucket)	//bucket already filled
+	kvpair_t *kv = &bucket->deeper_kv;
+
 	if(kv->value.value_filled)	//bucket already filled
 	{
-		//if(keys_match(h, kv->key, key))
-		//if(tt_keys_match(h, kv, key))	//key is the first elem of kvpair
-		//if(tt_keys_match(h, kv, &hash))	//key is the first elem of kvpair
 		if(hash == kv->hash)
 		{
 			//replace value
 			kv->value = *value;
-			//memcpy(&kv->value, value, h->vsize);
 			add_result = TT_KEYS_MATCHED_REPLACED_VALUE;
 		}
 		else	//collision, apply replacement policy
@@ -317,15 +348,12 @@ int tt_add_kvpair(tt_t *h, void *key, trans_value_t *value,
 			bool replace = true;
 			if(h->replace_fp)
 			{
-				//replace = h->replace_fp(kv->key, kv->value, key, value);
 				replace = h->replace_fp(&kv->value, value);
 			}
 
 			if(replace)
 			{
 				kv->hash = hash;
-				//memcpy(&kv->hash, &hash, h->ksize);
-				//memcpy(&kv->value, value, h->vsize);
 				kv->value = *value;
 				add_result = TT_POLICY_OVERWRITE_KV;
 			}
@@ -336,21 +364,18 @@ int tt_add_kvpair(tt_t *h, void *key, trans_value_t *value,
 	}
 	else	//bucket empty, add the kv pair
 	{
-		//memcpy(&kv->value, value, h->vsize);
 		kv->hash = hash;
 		kv->value = *value;
 
 		//atomic_uint128_t =
 		//*kv = atomic_load()
 
-		//printf("kvpair added!\n");
 		h->filled++;
 		add_result = TT_ADDED_KV_NEW;
 	}
 
 	if(h->multithread)
 		tt_unset_lock(h, index);
-		//omp_unset_lock(&h->locks[index]);
 	return add_result;
 }
 
@@ -368,7 +393,26 @@ bool tt_key_get_value(tt_t *h, void *key,
 	uint32_t index = tt_key_get_index(h, key, &hash);
 
 	bucket_t *bucket = &h->map[index];
-	kvpair_t *kv = &bucket->deeper_kv;
+	//kvpair_t *kv = &bucket->deeper_kv;
+	kvpair_t *kv = NULL;
+	if(bucket->deeper_kv.value.value_filled
+		&& (hash == bucket->deeper_kv.hash))
+		kv = &bucket->deeper_kv;
+	if(bucket->always_kv.value.value_filled
+		&& (hash == bucket->always_kv.hash))
+		kv = &bucket->always_kv;
+
+	if(kv)
+	{
+		*value = kv->value;
+		return true;
+	}
+	else
+		return false;
+
+
+
+
 	if(!kv->value.value_filled)
 		return false;
 	/*assert(bucket);
