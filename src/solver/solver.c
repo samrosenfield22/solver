@@ -33,7 +33,7 @@ result_t eval(gdata_t *gd, int depth,
 	float alpha, float beta, bool is_pv);
 int build_movelist(sorter_t *order, void *pos);
 int sort_movelist(sorter_t *order, int len,
-	gdata_t *gd, int depth);
+	gdata_t *gd, int depth, trans_value_t *vp);
 bool move_is_forcing(void *pos, int move);
 result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 	sorter_t *order, int len, int depth, float alpha, float beta,
@@ -519,7 +519,8 @@ result_t eval(gdata_t *gd, int depth,
 		else
 			len = build_movelist(movelist, pos);
 
-		len = sort_movelist(movelist, len, gd, depth);
+		len = sort_movelist(movelist, len, gd, depth,
+			got? &ttval : NULL);
 	}
 
 	//main analysis -- recursive tree search
@@ -891,14 +892,16 @@ int build_movelist(sorter_t *order, void *pos)
 }
 
 
-int sort_movelist(sorter_t *order, int len, gdata_t *gd, int depth)
+int sort_movelist(sorter_t *order, int len, gdata_t *gd, int depth,
+	trans_value_t *vp)
 {
 	void *pos = &(gd->pos);
 
 
-	trans_value_t v;
-	bool got = tt_get(&v, gd, depth);
-	int best = got? v.best_move : -1;
+	//trans_value_t v;
+	//bool got = tt_get(&v, gd, depth);
+	//int best = got? v.best_move : -1;
+	int best = vp? vp->best_move : -1;
 
 	uint8_t *killers_ply = killers[depth];
 	(void)killers_ply;

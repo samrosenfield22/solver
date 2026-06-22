@@ -17,7 +17,7 @@ tt_t *tt_make(size_t ksize, size_t vsize, uint32_t len);
 void tt_enable_multithread(void);
 int tt_add_kvpair(tt_t *h, void *key, void *value, uint64_t hash);
 bool tt_key_get_value(tt_t *h, void *key,
-	void *value, uint64_t *hash);
+	void *value, uint64_t hash);
 void tt_attach_hash(uint64_t (*hash)(void *key, size_t size));
 void tt_attach_keycompare(bool (*compare_keys_fp)(void *k1, void *k2));
 void tt_attach_replace(bool (*replace_transpose)(void *old, void *new));
@@ -46,7 +46,7 @@ void tt_create(size_t ksize, uint32_t len)
 		return;
 
 	//create the table
-	trans_tbl = tt_make(ksize,
+	trans_tbl = tt_make(sizeof(uint64_t),
 		sizeof(trans_value_t),
 		len);
 	if(!trans_tbl)
@@ -152,19 +152,22 @@ bool tt_get(trans_value_t *value, gdata_t *gd, int depth)
 {
 	void *pos = &(gd->pos);
 	uint64_t *hash = gdata_get_hash(gd);
-	//trans_value_t *value = tt_key_get_value(trans_tbl, pos, hash);
-	bool got = tt_key_get_value(trans_tbl, pos, value, hash);
+	bool got = tt_key_get_value(trans_tbl, pos, value, *hash);
 
 
-	if(!got && solver->flip && depth<=solver->flip_depth)
+	/*if(!got && solver->flip && depth<=solver->flip_depth)
 	{
 		uint8_t flipped[solver->pos_size];
 		solver->flip(flipped, pos);
-		//uint64_t temp_hash;
-		//temp_hash = trans_tbl->hash(flipped, trans_tbl->ksize);
+		uint64_t temp_hash = trans_tbl->hash(flipped, trans_tbl->ksize);
 
-		got = tt_key_get_value(trans_tbl, flipped, value, NULL);
-	}
+		got = tt_key_get_value(trans_tbl, flipped, value, &temp_hash);
+
+		//catch_pos(pos);
+		//printf("%s\n", got? "got flip" : "no flip");
+		//catch_pos(flipped);
+		//assert(!got);
+	}*/
 
 
 	//return value;
@@ -287,7 +290,8 @@ int tt_add_kvpair(tt_t *h, void *key, void *value,
 		void *val_p = tt_kv_get_value(h, kv);
 
 		//if(keys_match(h, kv->key, key))
-		if(tt_keys_match(h, kv, key))	//key is the first elem of kvpair
+		//if(tt_keys_match(h, kv, key))	//key is the first elem of kvpair
+		if(tt_keys_match(h, kv, &hash))	//key is the first elem of kvpair
 		{
 			//replace value
 			memcpy(val_p, value, h->vsize);
@@ -305,7 +309,7 @@ int tt_add_kvpair(tt_t *h, void *key, void *value,
 
 			if(replace)
 			{
-				memcpy(kv, key, h->ksize);
+				memcpy(kv, &hash, h->ksize);
 				memcpy(val_p, value, h->vsize);
 				add_result = TT_POLICY_OVERWRITE_KV;
 			}
@@ -320,7 +324,7 @@ int tt_add_kvpair(tt_t *h, void *key, void *value,
 		*bucket = kv;
 
 		void *val_p = tt_kv_get_value(h, kv);
-		memcpy(kv, key, h->ksize);
+		memcpy(kv, &hash, h->ksize);
 		memcpy(val_p, value, h->vsize);
 
 		//printf("kvpair added!\n");
@@ -335,7 +339,7 @@ int tt_add_kvpair(tt_t *h, void *key, void *value,
 }
 
 bool tt_key_get_value(tt_t *h, void *key,
-	void *value, uint64_t *hash)
+	void *value, uint64_t hash)
 {
 	if(!h)
 	{
@@ -345,7 +349,7 @@ bool tt_key_get_value(tt_t *h, void *key,
 	//if(!h->multithread)
 	//	printf("no multi!\n");
 
-	uint32_t index = tt_key_get_index(h, key, hash);
+	uint32_t index = tt_key_get_index(h, key, &hash);
 	void **bucket = &h->map[index];
 	/*assert(bucket);
 	if(!bucket)
@@ -360,7 +364,7 @@ bool tt_key_get_value(tt_t *h, void *key,
 			return false;
 	}
 
-	bool match = tt_keys_match(h, kv, key);
+	bool match = tt_keys_match(h, kv, &hash);
 	//void *val = match? kv->value : NULL;
 	if(match)
 	{
@@ -458,7 +462,7 @@ uint32_t tt_key_get_index(tt_t *h, void *key, uint64_t *hash)
 		index = (*hash);
 	else
 	{
-		//assert(0);
+		assert(0);
 		//printf("no hash\n");
 		index = h->hash(key, h->ksize);
 		//index %= h->len;
@@ -479,6 +483,10 @@ uint32_t tt_key_get_index(tt_t *h, void *key, uint64_t *hash)
 
 bool tt_keys_match(tt_t *h, void *k1, void *k2)
 {
+	uint64_t *u1 = k1;
+	uint64_t *u2 = k2;
+	return (*u1 == *u2);
+
 	if(h->compare_keys_fp)
 		return h->compare_keys_fp(k1, k2);
 	else

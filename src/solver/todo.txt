@@ -5,6 +5,8 @@ GAME SOLVER -- TO DO
 general-fix:
 * why doesn't history heuristic work? :(				-
 * try using int for scores???							-
+* something wrong with flip/symmetry (helps w 0,32
+but hurts with 40 3,3,3,3,3,3)							-
 
 general-new:
 * NNUE?????												-

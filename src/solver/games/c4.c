@@ -375,6 +375,7 @@ int endgame_forced_win(c4_pos_t *pp)
 	//int win_col = -1;
 	int win_col_empties = -1;
 	uint64_t b = 0b111111;
+	int last_empty = -2;
 	for(int i=0; i<7; i++)
 	{
 		//if(!(b ^ p->filled))
@@ -385,6 +386,12 @@ int endgame_forced_win(c4_pos_t *pp)
 			win_found = true;
 			//win_col = i;
 			win_col_empties = 6 - __builtin_popcountll(b & p->filled);
+		}
+		if((b & p->filled) != b)	//look at empties to make sure they aren't adjacent
+		{
+			if(last_empty == i-1)
+				return 0;
+			last_empty = i;
 		}
 		b <<= 7;
 	}
@@ -438,7 +445,7 @@ int endgame_forced_win(c4_pos_t *pp)
 	else
 		assert(0);
 
-	window_unfocus();
+	/*window_unfocus();
 	term_move_cursor(0, 8);
 	printf("forced win value %d  \n", whowins);
 	printf("%s to move\n", (p->filled & WHOSEMOVE_BIT)? "red":"yellow");
@@ -448,7 +455,7 @@ int endgame_forced_win(c4_pos_t *pp)
 	printf("opp wmap: %s  \n", sprintbig(p->opp_wmap, "%b"));
 	printf("%d empties in non-win columns\n", empty_ct);
 	//printf("win col %d\n", win_col);
-	catch_pos(p);
+	catch_pos(p);*/
 
 	return whowins;
 }
@@ -1108,7 +1115,7 @@ void swap(uint8_t *a, uint8_t *b)
 
 uint64_t flip_64(uint64_t c)
 {
-	uint64_t flipped = c & (((uint64_t)1)<<63);
+	uint64_t flipped = c & WHOSEMOVE_BIT;
 	for(int i=0; i<7; i++)
 	{
 		uint64_t col = get_col(c, i);
@@ -1495,7 +1502,7 @@ solver_t C4_SOLVER =
 	.iddfs_increment = 8,
 	.aspiration_default_width = 1,
 	.default_order = (uint8_t[]){2, 4, 6, 7, 5, 3, 1},
-	.flip_depth = 20,
+	.flip_depth = 12,
 
 	.gameover = c4_gameover,
 	.estimate = c4_estimate,

@@ -22,7 +22,7 @@
 
 
 //#define COMP_TIME	(1 * 1000)
-#define TIME_ODDS	(10)
+#define TIME_ODDS	(1)
 
 #define DEV_MODE	(true)
 //#define DEV_MODE	(false)
