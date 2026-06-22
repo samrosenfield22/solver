@@ -9,15 +9,20 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <stdatomic.h>
+
 
 #define TT_LOCK_CT	(1000000)
+
+typedef unsigned __int128 uint128_t;
+typedef _Atomic uint128_t atomic_uint128_t;
 
 //statics
 tt_t *tt_make(size_t ksize, size_t vsize, uint32_t len);
 void tt_enable_multithread(void);
-int tt_add_kvpair(tt_t *h, void *key, void *value, uint64_t hash);
+int tt_add_kvpair(tt_t *h, void *key, trans_value_t *value, uint64_t hash);
 bool tt_key_get_value(tt_t *h, void *key,
-	void *value, uint64_t hash);
+	trans_value_t *value, uint64_t hash);
 void tt_attach_hash(uint64_t (*hash)(void *key, size_t size));
 //void tt_attach_keycompare(bool (*compare_keys_fp)(void *k1, void *k2));
 void tt_attach_replace(bool (*replace_transpose)(void *old, void *new));
@@ -28,7 +33,6 @@ uint32_t tt_key_get_index(tt_t *h, void *key, uint64_t *hash);
 //bool tt_keys_match(tt_t *h, void *k1, void *k2);
 //kvpair_t *alloc_kvpair(tt_t *h);
 //void free_kvpair(kvpair_t *kv);
-void *tt_kv_get_value(tt_t *h, void *kv);
 void tt_set_lock(tt_t *h, uint32_t index);
 bool tt_try_lock(tt_t *h, uint32_t index);
 void tt_unset_lock(tt_t *h, uint32_t index);
@@ -214,7 +218,7 @@ tt_t *tt_make(size_t ksize, size_t vsize, uint32_t len)
 		return NULL;
 
 	h->ksize = ksize;
-	h->ksize += 4 - (ksize%4);
+	//h->ksize += 4 - (ksize%4);
 	h->vsize = vsize;
 	//h->vsize += 4 - (vsize%4);
 	h->len = len;
@@ -262,7 +266,7 @@ void tt_enable_multithread(void)
 	//printf("done!\n");
 }
 
-int tt_add_kvpair(tt_t *h, void *key, void *value,
+int tt_add_kvpair(tt_t *h, void *key, trans_value_t *value,
 	uint64_t hash)
 {
 	if(!h)
@@ -293,17 +297,14 @@ int tt_add_kvpair(tt_t *h, void *key, void *value,
 	//if(*bucket)	//bucket already filled
 	if(kv->value.value_filled)	//bucket already filled
 	{
-		//kv = *bucket;
-		//void *val_p = tt_kv_get_value(h, kv);
-
-
 		//if(keys_match(h, kv->key, key))
 		//if(tt_keys_match(h, kv, key))	//key is the first elem of kvpair
 		//if(tt_keys_match(h, kv, &hash))	//key is the first elem of kvpair
 		if(hash == kv->hash)
 		{
 			//replace value
-			memcpy(&kv->value, value, h->vsize);
+			kv->value = *value;
+			//memcpy(&kv->value, value, h->vsize);
 			add_result = TT_KEYS_MATCHED_REPLACED_VALUE;
 		}
 		else	//collision, apply replacement policy
@@ -318,9 +319,10 @@ int tt_add_kvpair(tt_t *h, void *key, void *value,
 
 			if(replace)
 			{
-				//kv->hash = hash;
-				memcpy(&kv->hash, &hash, h->ksize);
-				memcpy(&kv->value, value, h->vsize);
+				kv->hash = hash;
+				//memcpy(&kv->hash, &hash, h->ksize);
+				//memcpy(&kv->value, value, h->vsize);
+				kv->value = *value;
 				add_result = TT_POLICY_OVERWRITE_KV;
 			}
 			else
@@ -330,13 +332,12 @@ int tt_add_kvpair(tt_t *h, void *key, void *value,
 	}
 	else	//bucket empty, add the kv pair
 	{
-		//kv = mem_malloc(h->ksize + h->vsize);
-		//*bucket = kv;
-
-		//void *val_p = tt_kv_get_value(h, kv);
-		//memcpy(kv, &hash, h->ksize);
+		//memcpy(&kv->value, value, h->vsize);
 		kv->hash = hash;
-		memcpy(&kv->value, value, h->vsize);
+		kv->value = *value;
+
+		//atomic_uint128_t =
+		//*kv = atomic_load()
 
 		//printf("kvpair added!\n");
 		h->filled++;
@@ -350,7 +351,7 @@ int tt_add_kvpair(tt_t *h, void *key, void *value,
 }
 
 bool tt_key_get_value(tt_t *h, void *key,
-	void *value, uint64_t hash)
+	trans_value_t *value, uint64_t hash)
 {
 	if(!h)
 	{
@@ -385,7 +386,8 @@ bool tt_key_get_value(tt_t *h, void *key,
 	{
 		//memcpy(value, kv->value, h->vsize);
 		//trans_value_t *val_p = tt_kv_get_value(h, kv);
-		memcpy(value, &kv->value, h->vsize);
+		//memcpy(value, &kv->value, h->vsize);
+		*value = kv->value;
 
 		if(trans_tbl->replace_fp == tt_replace_by_ancient)
 			kv->value.ancient = false;
@@ -498,34 +500,7 @@ uint32_t tt_key_get_index(tt_t *h, void *key, uint64_t *hash)
 	//	return (memcmp(k1, k2, h->ksize)==0);
 }*/
 
-/*kvpair_t *alloc_kvpair(tt_t *h)
-{
-	kvpair_t *kv = mem_malloc(sizeof(*kv));
-	assert(kv);
-	kv->key = mem_malloc(h->ksize);
-	kv->value = mem_malloc(h->vsize);
-	assert(kv->key);
-	assert(kv->value);
 
-	return kv;
-}*/
-
-/*void free_kvpair(kvpair_t *kv)
-{
-	if(kv->key)
-		mem_free(kv->key);
-	if(kv->value)
-		mem_free(kv->value);
-	mem_free(kv);
-}*/
-
-
-void *tt_kv_get_value(tt_t *h, void *kv)
-{
-	char *vp = kv;
-	vp += h->ksize;
-	return vp;
-}
 
 void tt_set_lock(tt_t *h, uint32_t index)
 {
