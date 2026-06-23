@@ -321,8 +321,8 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 			printf("N/A\n");
 		printf("evaluated %s unique positions\n", sprintbig(position_ct, "%d"));
 		#ifdef USE_TRANSPOSITION_TABLE
-		printf("hashmap load factor = %d%%\n", tt_load());
-		printf("number of collisions: %s\n", sprintbig(tt_collisions(), "%d"));
+		//printf("hashmap load factor = %d%%\n", tt_load());
+		//printf("number of collisions: %s\n", sprintbig(tt_collisions(), "%d"));
 		#endif
 	}
 

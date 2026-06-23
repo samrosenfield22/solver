@@ -6,9 +6,13 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include <stdatomic.h>
 #include <omp.h>
 
 #include "shared.h"
+
+typedef unsigned __int128 uint128_t;
+typedef _Atomic uint128_t atomic_uint128_t;
 
 //#define REPLACE_STRATEGY	(NULL)	//always replace
 #define REPLACE_STRATEGY	(tt_replace_by_depth)
@@ -34,10 +38,14 @@ typedef struct
 	//age??
 } trans_value_t;
 
-typedef struct
+typedef union
 {
-	uint64_t hash;
-	trans_value_t value;
+	struct
+	{
+		uint64_t hash;
+		trans_value_t value;
+	};
+	atomic_uint128_t raw;
 } kvpair_t;
 
 typedef struct

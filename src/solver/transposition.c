@@ -9,13 +9,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include <stdatomic.h>
 
 
 #define TT_LOCK_CT	(1000000)
 
-typedef unsigned __int128 uint128_t;
-typedef _Atomic uint128_t atomic_uint128_t;
+
 
 //statics
 tt_t *tt_make(size_t ksize, size_t vsize, uint32_t len);
@@ -322,6 +320,11 @@ int tt_add_kvpair(tt_t *h, void *key, trans_value_t *value,
 	{
 		bucket->always_kv.hash = hash;
 		bucket->always_kv.value = *value;
+		/*kvpair_t new_kv;
+		new_kv.hash = hash;
+		new_kv.value = *value;
+		//bucket->always_kv.raw = new_kv.raw;
+		bucket->always_kv.raw = atomic_load(&new_kv.raw);*/
 	}
 	return 0;
 	////////////////////////////////////////////////
@@ -369,8 +372,12 @@ int tt_add_kvpair(tt_t *h, void *key, trans_value_t *value,
 		kv->hash = hash;
 		kv->value = *value;
 
-		//atomic_uint128_t =
-		//*kv = atomic_load()
+		/*kvpair_t new_kv;
+		new_kv.hash = hash;
+		new_kv.value = *value;
+		//kv->raw = new_kv.raw;
+		kv->raw = atomic_load(&new_kv.raw);*/
+
 
 		h->filled++;
 		add_result = TT_ADDED_KV_NEW;
