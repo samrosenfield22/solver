@@ -1,9 +1,3 @@
-/*
-to remove from solver (not needed anymore for history):
-* possible_placements
-* get_placement
-*/
-
 #ifndef SOLVER_H_
 #define SOLVER_H_
 
@@ -41,23 +35,6 @@ typedef enum
 
 #define WIN_SCORE	(10000.0)
 #define MATE_LIMIT	(WIN_SCORE - 100)
-
-/*enum
-{
-	BOUND_EXACT,
-	BOUND_UPPER,
-	BOUND_LOWER,
-};
-
-typedef struct
-{
-	float score;
-	uint8_t search_depth;
-	bool full;
-	uint8_t bound;
-	uint8_t best_move;
-	//age??
-} trans_value_t;*/
 
 typedef struct
 {

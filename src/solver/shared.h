@@ -9,6 +9,7 @@ typedef struct
 {
 	float score;
 	bool full;
+	bool has_tt;
 	int best_move;
 } result_t;
 
