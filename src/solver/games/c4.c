@@ -1021,7 +1021,7 @@ void c4_make_move_temp(void *made, void *pos, int index, uint64_t *hash)
 	//assert(*hash == check_hash);
 }
 
-int c4_get_placement(void *pos, int index)
+/*int c4_get_placement(void *pos, int index)
 {
 	assert(index < 7);
 
@@ -1052,7 +1052,7 @@ int c4_get_placement(void *pos, int index)
 	assert(!(b & p->filled));
 
 	return player_place;
-}
+}*/
 
 void c4_make_move(void *pos, int index, uint64_t *hash)
 {
@@ -1590,11 +1590,8 @@ solver_t C4_SOLVER =
 
 	.initial_pos = &C4_INIT_POS,
 	.pos_size = sizeof(c4_pos_t),
-	//.hash_size = (uint8_t*)&C4_INIT_POS.x_wmap - (uint8_t*)&C4_INIT_POS,
 	.possible_moves = 7,
-	.possible_placements = 42*2,
-	//.transtbl_buckets_ct = 180000001,
-	.transtbl_buckets_ct = (1<<26),
+	//.possible_placements = 42*2,
 	.iddfs_increment = 8,
 	.aspiration_default_width = 1,
 	.default_order = (uint8_t[]){2, 4, 6, 7, 5, 3, 1},
@@ -1602,22 +1599,18 @@ solver_t C4_SOLVER =
 
 	.gameover = c4_gameover,
 	.estimate = c4_estimate,
-	.estimate_sort = c4_estimate_sort,
+	//.estimate_sort = c4_estimate_sort,
 	.whosemove = c4_whosemove,
 	.is_legal = c4_is_legal,
 	.make_move = c4_make_move,
 	.make_move_temp = c4_make_move_temp,
-	.get_placement = c4_get_placement,
 	.move_loses = c4_move_loses,
 	.make_movelist = c4_make_movelist,
 	.only_moves = c4_only_moves,
 
-	.print_pos = NULL,
 	.hash = c4_hash,
 	.moves_remaining = c4_moves_remaining,
 	.uses_zobrist = true,
-	//.hash = NULL,
-	.keys_match = c4_keys_match,
 	.flip = c4_flip_horiz,
 
 	.draw_full = c4_draw_full,

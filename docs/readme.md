@@ -12,9 +12,9 @@ makes it easy to integrate new games.
 * Powerful - uses a variety of solver-accelerating algorithms to
 speed up the analysis, with many more in progress:
 	* Alpha-beta pruning
-	* Transposition table with zobrist hashing and two-big replacement policy
+	* Transposition table with Zobrist hashing and two-big replacement policy
 	* Iterative deepening
-	* Move sorting with heuristics (PV move, forcing move, static move ordering)
+	* Move sorting heuristics (PV move, forcing move, static move ordering)
 	* Aspiration window
 	* Early losing move avoidance
 
@@ -37,3 +37,5 @@ moves, to a fixed depth:
 ```bash
 solver 40 3,3,3,3,3,3
 ```
+
+Have fun!

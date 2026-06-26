@@ -10,6 +10,7 @@
 #include <string.h>
 #include <assert.h>
 
+#define TRANSTBL_BUCKETS_CT (1<<26)
 
 #define TT_LOCK_CT	(1000000)
 
@@ -42,7 +43,7 @@ bool tt_replace_by_ancient(void *old, void *new);
 tt_t *trans_tbl = NULL;
 
 
-void tt_create(uint32_t len)
+void tt_create(void)
 {
 	if(trans_tbl)
 		return;
@@ -50,7 +51,7 @@ void tt_create(uint32_t len)
 	//create the table
 	trans_tbl = tt_make(sizeof(uint64_t),
 		sizeof(trans_value_t),
-		len);
+		TRANSTBL_BUCKETS_CT);
 	if(!trans_tbl)
 	{
 		printf("failed to allocate transposition table\n");

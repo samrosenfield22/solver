@@ -85,7 +85,7 @@ enum
 
 
 /////////////////////// protos ///////////////////////
-void tt_create(uint32_t len);
+void tt_create(void);
 void tt_destroy(void);
 void tt_clear(void);
 void tt_set_ancient(void);

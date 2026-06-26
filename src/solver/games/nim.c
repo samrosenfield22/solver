@@ -82,11 +82,6 @@ void nim_make_move(void *pos, int index, uint64_t *hash)
 		return 0;
 }*/
 
-int nim_print_pos(void *pos)
-{
-	nim_pos_t *np = pos;
-	return printf("%d,%d,%d", np->piles[0], np->piles[1], np->piles[2]);
-}
 
 uint64_t nim_hash(void *key, size_t size)
 {
@@ -340,34 +335,24 @@ solver_t NIM_SOLVER =
 	.initial_pos = &NIM_INIT_POS,
 	.pos_size = sizeof(nim_pos_t),
 	.possible_moves = 15,
-	.transtbl_buckets_ct = 5000,
-	//.default_order = (uint8_t[]){7, 14, 1, 2, 6, 13, 0, 5, 12, 4, 11, 3, 10, 9, 8},
 	.default_order = (uint8_t[]){9, 12, 11, 3, 6, 8, 10, 14, 0, 1, 3, 4, 7, 9, 13},
 	.aspiration_default_width = 1,
 
 	.gameover = nim_gameover,
 	.estimate = NULL,
 	.whosemove = nim_whosemove,
-	//.is_end = nim_is_end,
 	.is_legal = nim_is_legal,
 	.make_move = nim_make_move,
 	.only_moves = NULL,
-	//.get_move = nim_get_move,
-	//.evaluate_leaf = nim_evaluate_leaf,
 
-	.print_pos = nim_print_pos,
 	.hash = nim_hash,
 	.moves_remaining = nim_moves_remaining,
 	.uses_zobrist = false,
-	.keys_match = nim_keys_match,
-	//.normalize_position = nim_normalize,
-	//.normalize_position = NULL,
 
 	.menu_define = nim_menu_define,
 	.menu_update = nim_menu_update,
 	.draw_full = nim_draw_full,
 	.human_to_iter = nim_human_to_iter,
-	//.iter_to_human = nim_iter_to_human,
 	.iter_to_human = NULL,
 };
 

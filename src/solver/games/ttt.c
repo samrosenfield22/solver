@@ -94,7 +94,7 @@ void ttt_make_move(void *pos, int index, uint64_t *hash)
 	p->whosemove = !p->whosemove;
 }
 
-int ttt_print_pos(void *pos)
+/*int ttt_print_pos(void *pos)
 {
 	ttt_pos_t *p = pos;
 	for(int i=0; i<9; i++)
@@ -113,7 +113,7 @@ int ttt_print_pos(void *pos)
 	}
 
 	return 11;
-}
+}*/
 
 uint64_t ttt_hash(void *key, size_t size)
 {
@@ -284,7 +284,6 @@ solver_t TTT_SOLVER =
 	.initial_pos = &TTT_INIT_POS,
 	.pos_size = sizeof(ttt_pos_t),
 	.possible_moves = 9,
-	.transtbl_buckets_ct = 10000,
 	.default_order = (uint8_t[]){1, 0, 1, 0, 2, 1, 0, 1, 0},
 	.aspiration_default_width = 1,
 
@@ -294,13 +293,9 @@ solver_t TTT_SOLVER =
 	.is_legal = ttt_is_legal,
 	.make_move = ttt_make_move,
 
-	.print_pos = ttt_print_pos,
 	.hash = ttt_hash,
 	.moves_remaining = ttt_moves_remaining,
 	.uses_zobrist = false,
-	.keys_match = ttt_keys_match,
-	//.normalize_position = ttt_normalize,
-	//.normalize_position = NULL,
 
 	.draw_full = ttt_draw_full,
 	.menu_define = ttt_menu_define,

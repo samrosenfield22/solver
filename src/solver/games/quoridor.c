@@ -918,9 +918,7 @@ solver_t QUOR_SOLVER =
 
 	.initial_pos = &QUOR_INIT_POS,
 	.pos_size = sizeof(quor_pos_t),
-	//.hash_size = (uint8_t*)&QUOR_INIT_POS.p1_map - (uint8_t*)&QUOR_INIT_POS,
 	.possible_moves = 132,
-	.transtbl_buckets_ct = (1<<28),
 	.iddfs_increment = 2,
 	.aspiration_default_width = 1,
 	.default_order = (uint8_t[])
@@ -962,13 +960,9 @@ solver_t QUOR_SOLVER =
 	.estimate = quor_estimate,
 
 
-	.print_pos = NULL,
 	.hash = quor_hash,
 	.uses_zobrist = true,
-	.keys_match = quor_keys_match,
-	//.normalize_position = quor_normalize,
 	//.flip = quor_flip,
-	//.normalize_position = NULL,
 
 	.human_to_iter = quor_human_to_iter,
 	.iter_to_human = quor_iter_to_human,

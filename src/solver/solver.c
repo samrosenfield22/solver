@@ -112,7 +112,8 @@ void solver_init(solver_t *game_solver)
 	gdata_size = sizeof(gdata_t) + solver->pos_size;
 
 	#ifdef USE_TRANSPOSITION_TABLE
-	tt_create(solver->transtbl_buckets_ct);
+	//tt_create(solver->transtbl_buckets_ct);
+	tt_create();
 	#endif	//USE_TRANSPOSITION_TABLE
 }
 
@@ -139,14 +140,7 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 
 	if(verbose)
 	{
-		if(solver->print_pos)
-		{
-			printf("solving game position: ");
-			solver->print_pos(gd->pos);
-			printf("\n");
-		}
-		else
-			printf("solving ");
+		printf("solving ");
 		if(FORCE_SEARCH_DEPTH)
 			printf("(force search depth %d)", FORCE_SEARCH_DEPTH);
 		else

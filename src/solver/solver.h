@@ -78,20 +78,10 @@ typedef struct
 	sizeof(my_initial_pos)*/
 	size_t pos_size;
 
-	size_t hash_size;
-
 	/*required:
 	maximum value for move iteration
 	i.e. 9 for tictactoe, 7 for connect 4*/
 	int possible_moves;
-
-	int possible_placements;
-
-	/*optional (but not really):
-	size of the transposition table hashmap, if using one.
-	this should basically be as big as possible.
-	and also prime? hmmm*/
-	uint32_t transtbl_buckets_ct;
 
 	/*required:
 	how many iddfs iterations get skipped
@@ -124,13 +114,12 @@ typedef struct
 	float (*estimate)(void *pos);
 
 	/*optional:*/
-	float (*estimate_sort)(void *pos, int move);
+	//float (*estimate_sort)(void *pos, int move);
 
 	/*required:
 	returns true for p1, false for p2*/
 	bool (*whosemove)(void *pos);
 
-	//bool (*is_end)(void *pos);
 
 	/*required:
 	returns true if the move is legal*/
@@ -145,9 +134,6 @@ typedef struct
 	void (*make_move)(void *pos, int index, uint64_t *hash);
 
 	void (*make_move_temp)(void *made, void *pos, int index, uint64_t *hash);
-
-	//optional, for history heuristic
-	int (*get_placement)(void *pos, int index);
 
 	//optional
 	int (*make_movelist)(sorter_t *sorter, void *pos);
@@ -177,19 +163,11 @@ typedef struct
 
 	bool uses_zobrist;
 
-	/*optional:
-	determines if keys are the same
-	this is to avoid the problem of memcmp() reading slack bytes
-	in the key struct, and reporting false for keys that match*/
-	bool (*keys_match)(void *k1, void *k2);
 
 	/*optional:
 	creates a symmetrically equivalent version of the position*/
 	void (*flip)(void *to, void *from);
 
-	/*optional:
-	short print, for tree draw*/
-	int (*print_pos)(void *pos);
 
 	/*required:
 	draws the position, make it nice looking*/
