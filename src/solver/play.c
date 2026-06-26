@@ -200,7 +200,7 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 
 		int moves_est = 50;
 		if(solver->moves_remaining)
-			moves_est = solver->moves_remaining(pos);
+			moves_est = solver->moves_remaining(pos)/2;
 		int time_p_m = (1000 * 5*60 / TIME_ODDS) / moves_est;
 		if(time_p_m <= 1000)
 		{

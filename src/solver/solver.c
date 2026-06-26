@@ -57,6 +57,7 @@ bool who_goes_first = true;
 uint32_t position_ct = 0;
 int iddfs_depth;
 int time_lim;
+int full_solve_depth = 0;
 
 int *HISTORY_VALS;
 //uint8_t HISTORY_BEST[2] = {-1, -1};
@@ -138,6 +139,10 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 
 	who_goes_first = solver->whosemove(pos);
 
+	if(solver->moves_remaining)
+		full_solve_depth = solver->moves_remaining(pos);
+	printf("full solve depth = %d\n", full_solve_depth);
+
 	if(verbose)
 	{
 		printf("solving ");
@@ -182,6 +187,10 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 		if(FORCE_SEARCH_DEPTH)
 			if(iddfs > FORCE_SEARCH_DEPTH)
 				iddfs = FORCE_SEARCH_DEPTH;
+
+		//if(iddfs == 40)
+		//	iddfs = 42;
+
 		iddfs_depth = iddfs;
 
 		uint32_t last = toc_ms();
@@ -557,7 +566,8 @@ void update_history(void *pos, int index,
 
 	//apply bonuses/maluses
 	int off = solver->whosemove(pos)? 0 : solver->possible_moves;
-	for(int i=0; i<=index; i++)
+	//for(int i=0; i<=index; i++)
+	for(int i=0; i<len; i++)
 	{
 		int placement = order[i].move + off;
 		assert(placement < 2 * solver->possible_moves);
@@ -651,8 +661,38 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 		}*/
 
 		bool child_pv = is_pv && (i==0);
-		result = eval((gdata_t *)&child, depth+1,
+		//result = eval((gdata_t *)&child, depth+1,
+			//alpha, beta, child_pv);
+
+		const int lmr_start = 2;
+		int reduction = 0;
+		int late = i - lmr_start;
+		if(!is_pv && late > 0
+			&& 4 <= depth
+			&& iddfs_depth < full_solve_depth)
+		{
+			reduction = 2*(late/2 + 1);
+
+			//if(reduction >= (iddfs_depth - depth))
+			//	reduction = iddfs_depth - depth - 1;
+		}
+		assert(reduction >= 0);
+		assert(!(reduction & 0b1));
+		result = eval((gdata_t *)&child, depth+1+reduction,
 			alpha, beta, child_pv);
+		if(reduction)
+		{
+			if((is_max && result.score > alpha)
+				|| (!is_max && result.score < beta))
+			{
+				//redo
+				reduction = 0;
+				result = eval((gdata_t *)&child, depth+1+reduction,
+					alpha, beta, child_pv);
+			}
+
+		}
+
 		//sl_free(child);
 
 		if(multi_pv && !result.full)
@@ -725,7 +765,7 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 		{
 			//update history
 			#ifdef USE_HISTORY_HEURISTIC
-			if(!result.has_tt && len>1)
+			if(!result.has_tt && len<solver->possible_moves)
 				update_history(gd->pos, i, order, len, depth, true);
 			#endif
 
@@ -855,7 +895,6 @@ int sort_movelist(sorter_t *order, int len, gdata_t *gd, int depth,
 			history_thresh = HISTORY_VALS[i+off];
 		}
 	}
-
 	#endif	//USE_HISTORY_HEURISTIC
 
 

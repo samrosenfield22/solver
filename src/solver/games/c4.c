@@ -1184,8 +1184,8 @@ uint64_t c4_hash(void *key, size_t size)
 int c4_moves_remaining(void *pos)
 {
 	c4_pos_t *p = pos;
-	int played = __builtin_popcountll(p->filled);
-	return (42-played)/2;
+	int played = __builtin_popcountll(p->filled & ~WHOSEMOVE_BIT);
+	return (42-played);
 }
 
 bool c4_keys_match(void *k1, void *k2)
