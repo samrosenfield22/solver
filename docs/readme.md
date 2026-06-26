@@ -4,11 +4,11 @@ SWG-Solver is a general-purpose game solver engine!
 My goal is to implement a fast, flexible game solver framework that
 makes it easy to integrate new games.
 
-##Features
+## Features
 
 * Flexible - can play multiple games (Nim, Tic-Tac-Toe, Connect 4,
 	Quoridor is in progress)
-* Interactive - terminal-based user interface with arrow-key control, evaluation and principal variation(s) console
+* Interactive - terminal-based user interface with arrow-key control, chess-style clocks, evaluation and principal variation(s) console
 * Powerful - uses a variety of solver-accelerating algorithms to
 speed up the analysis, with many more in progress:
 	* Alpha-beta pruning
@@ -25,6 +25,7 @@ No arguments - play an interactive game against the computer:
 ```bash
 solver
 ```
+Computer difficulty can be adjusted by setting the time handicap macro TIME_ODDS (in src/solver/play.c) - the higher the value, the less time the computer gets to think!
 
 Solve a game from the initial position to a fixed depth:
 ```bash
