@@ -346,6 +346,26 @@ endstate_t c4_gameover(void *pos)
 	//if(c4_win_impossible(p))
 	//	return END_DRAW;
 
+	/*int move_ct = __builtin_popcountll(p->filled & ~WHOSEMOVE_BIT);
+	if(move_ct >= 40)
+		if(!p->x_wmap && !p->opp_wmap)
+			return END_DRAW;*/
+	/*
+	{
+		int endgame_status = endgame_forced_win_simple(p);
+		//est += 50 * endgame_status;
+		if(endgame_status)
+		{
+			if(endgame_status == 1)
+				return win;
+			else if(endgame_status == -1)
+			{
+				int loss = c4_whosemove(p)? END_P1_WON : END_P2_WON;
+				return loss;
+			}
+		}
+	}*/
+
 
 	//
 	return END_NOT_OVER;
@@ -460,6 +480,80 @@ int endgame_forced_win(c4_pos_t *pp)
 	return whowins;
 }
 
+int endgame_forced_win_simple(c4_pos_t *p)
+{
+	if(!p->x_wmap && !p->opp_wmap)
+		return 0;
+
+
+
+	uint64_t both_wins = p->x_wmap | p->opp_wmap;
+
+	//find the empty column (bail if there's >1)
+	int empty_col = -1;
+	uint64_t b = 0b111111;
+	for(int i=0; i<7; i++)
+	{
+		if((b & p->filled) != b)
+		{
+			//if we already found an empty, bail
+			if(empty_col != -1)
+				return 0;
+
+			//if the empty has no wins, draw
+			if(!(b & both_wins))
+				return 0;
+
+			empty_col = i;
+		}
+		b <<= 7;
+	}
+
+	//count spaces in columns without wins
+	//b = 0b111111;
+	int filled_ct = __builtin_popcountll(p->filled & ~WHOSEMOVE_BIT);
+	//int empty_ct = 42 - filled_ct;
+
+
+	//fill up the win column until we have a win
+	uint64_t alternate = 0b001010100101010010101001010100101010010101;
+	//bool me_first_in_death_col = !(0b1 & empty_ct);
+	bool me_first = (p->filled & WHOSEMOVE_BIT)? true : false;
+	bool even_shift = !(0b1 & filled_ct);
+	if(me_first ^ even_shift)
+		alternate = ~alternate;
+	uint64_t me_forced_win = alternate & p->x_wmap;
+	uint64_t opp_forced_win = ~alternate & p->opp_wmap;
+
+	int whowins = 0;
+	if(!me_forced_win && !opp_forced_win)
+		whowins = 0;
+	else if(me_forced_win && !opp_forced_win)
+		whowins = 1;
+	else if(!me_forced_win && opp_forced_win)
+		whowins = -1;
+	else if(me_forced_win < opp_forced_win)
+		whowins = 1;
+	else if(me_forced_win > opp_forced_win)
+		whowins = -1;
+	else
+		assert(0);
+
+	/*window_unfocus();
+	term_move_cursor(0, 8);
+	printf("forced win value %d  \n", whowins);
+	printf("%s to move\n", (p->filled & WHOSEMOVE_BIT)? "red":"yellow");
+	//printf("my forced wins: %s  \n", sprintbig(me_forced_win, "%b"));
+	//printf("my wmap: %s  \n", sprintbig(p->x_wmap, "%b"));
+	//printf("opp forced wins: %s  \n", sprintbig(opp_forced_win, "%b"));
+	//printf("opp wmap: %s  \n", sprintbig(p->opp_wmap, "%b"));
+	//printf("%d empties in non-win columns\n", empty_ct);
+	//printf("win col %d\n", win_col);
+	catch_pos(p);*/
+
+	return whowins;
+}
+
 float c4_estimate(void *pos)
 {
 	assert(c4_ok(pos));
@@ -483,7 +577,12 @@ float c4_estimate(void *pos)
 	est -= estimate_color(opp, x, p->filled, opp_wmap, x_wmap, false);
 
 	//endgame analysis
-	//int move_ct = __builtin_popcountll(p->filled & ~WHOSEMOVE_BIT);
+	/*int move_ct = __builtin_popcountll(p->filled & ~WHOSEMOVE_BIT);
+	if(move_ct >= 36)
+	{
+		int endgame_status = endgame_forced_win_simple(p);
+		est += 50 * endgame_status;
+	}*/
 	/*
 	//const int C4_ENDGAME_CT = 26;
 	if(move_ct >= C4_ENDGAME_CT)
@@ -492,11 +591,7 @@ float c4_estimate(void *pos)
 		if(p->x_wmap && !p->opp_wmap)	est += 100;
 		else if(p->opp_wmap && !p->x_wmap)	est -= 100;
 	}*/
-	/*if(move_ct >= 30)
-	{
-		int endgame_status = endgame_forced_win(p);
-		est += 50 * endgame_status;
-	}*/
+
 
 	if(!c4_whosemove(p))
 		est *= -1;
@@ -841,6 +936,7 @@ float estimate_color(uint64_t x, uint64_t opp, uint64_t filled,
 	if(stack && !(stack & opp_wmap)
 		 && !(stack>>1 & opp_wmap))
 		est += 100;
+
 	/*{
 		window_unfocus();
 		term_move_cursor(0, 12);

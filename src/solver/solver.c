@@ -38,8 +38,8 @@ bool move_is_forcing(void *pos, int move);
 result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 	sorter_t *order, int len, int depth, float alpha, float beta,
 	bool is_pv);
-bool alphabeta_cutoff(float cscore, float prune,
-	float *best_so_far, int depth);
+//bool alphabeta_cutoff(float cscore, float prune,
+//	float *best_so_far, int depth);
 float max(float x, float y);
 float min(float x, float y);
 bool time_up(void);
@@ -59,7 +59,7 @@ int iddfs_depth;
 int time_lim;
 
 int *HISTORY_VALS;
-uint8_t HISTORY_BEST[2] = {-1, -1};
+//uint8_t HISTORY_BEST[2] = {-1, -1};
 
 #define MAX_PLY	(42)
 #define NUM_KILLERS	(2)
@@ -158,8 +158,8 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 	tic();
 
 	#ifdef USE_HISTORY_HEURISTIC
-	int history_scores[solver->possible_placements];
-	for(int i=0; i<solver->possible_placements; i++)
+	int history_scores[2 * solver->possible_moves];
+	for(int i=0; i<2 * solver->possible_moves; i++)
 		history_scores[i] = 0;
 	HISTORY_VALS = history_scores;
 	#endif
@@ -276,7 +276,7 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 				break;
 
 		#ifdef USE_HISTORY_HEURISTIC
-		for(int i=0; i<solver->possible_placements; i++)
+		for(int i=0; i<2*solver->possible_moves; i++)
 			HISTORY_VALS[i] /= 2;
 		#endif
 	}
@@ -337,30 +337,20 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 	#ifdef USE_HISTORY_HEURISTIC
 	window_unfocus();
 	term_move_cursor(0, 36);
-	for(int c=5; c>=0; c--)
+	for(int r=0; r<7; r++)
 	{
-		for(int r=0; r<7; r++)
-		{
-			int place = 6*r + c;
-			int space = printf("%d:%d   ",
-				place, HISTORY_VALS[place]);
-			for(int i=0; i<10-space; i++)
-				putchar(' ');
-		}
-		printf("\n");
+		int space = printf("%d:%d   ",
+			r, HISTORY_VALS[r]);
+		for(int i=0; i<10-space; i++)
+			putchar(' ');
 	}
 	printf("\n\n");
-	for(int c=5; c>=0; c--)
+	for(int r=0; r<7; r++)
 	{
-		for(int r=0; r<7; r++)
-		{
-			int place = 6*r + c + 42;
-			int space = printf("%d:%d   ",
-				place, HISTORY_VALS[place]);
-			for(int i=0; i<10-space; i++)
-				putchar(' ');
-		}
-		printf("\n");
+		int space = printf("%d:%d   ",
+			r, HISTORY_VALS[r + solver->possible_moves]);
+		for(int i=0; i<10-space; i++)
+			putchar(' ');
 	}
 	#endif	//USE_HISTORY_HEURISTIC
 
@@ -589,43 +579,25 @@ void update_history(void *pos, int index,
 	}
 	assert(sdq > 0);
 
-	int placement = solver->get_placement(pos, order[index].move);
-	assert(placement != -1);
+	int placement = order[index].move;
+	bool p1 = solver->whosemove(pos);
+	if(!p1)
+		placement += solver->possible_moves;
+
+	//int placement = solver->get_placement(pos, order[index].move);
+	//assert(placement != -1);
 	HISTORY_VALS[placement] += sdq;
-	return;
 
-	///////////////////////////
-
-	for(int i=0; i<len; i++)
+	//maluses
+	for(int i=0; i<index; i++)
 	{
-		int placement = solver->get_placement(pos, order[i].move);
-		if(placement == -1)
-		{
-			assert(i != index);
-			continue;
-		}
-
-		if(i == index)
-		{
-			if(placement == 18)	printf("p18 += %d\n", sdq);
-			HISTORY_VALS[placement] += sdq;
-			if(was_cutoff)
-				break;
-		}
-		else
-		{
-			//printf("decrementing pl %d from %d to ", placement,
-			//	HISTORY_VALS[placement]);
-			if(placement == 18)	printf("p18 -= %d\n", sdq);
-			HISTORY_VALS[placement] -= sdq;
-			//printf("%d\n", HISTORY_VALS[placement]);
-		}
-
-		/*if(HISTORY_VALS[move] >= HISTORY_THRESH)
-		{
-
-		}*/
+		placement = order[i].move;
+		if(!p1)
+			placement += solver->possible_moves;
+		HISTORY_VALS[placement] -= sdq;
 	}
+
+	return;
 }
 
 result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
@@ -725,7 +697,7 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 			//best_move = move;
 
 			#ifdef USE_HISTORY_HEURISTIC
-			update_history(pos, i, order, len, depth, true);
+			update_history(gd->pos, i, order, len, depth, true);
 			#endif
 
 			goto analyze_end;
@@ -784,7 +756,7 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 		{
 			//update history
 			#ifdef USE_HISTORY_HEURISTIC
-			update_history(pos, i, order, len, depth, true);
+			update_history(gd->pos, i, order, len, depth, true);
 			#endif
 
 			//update killers
@@ -908,9 +880,20 @@ int sort_movelist(sorter_t *order, int len, gdata_t *gd, int depth,
 
 
 	#ifdef USE_HISTORY_HEURISTIC
-	int history_best, history_second, history_thresh=-100;
-	bool history_set = false;
+	int history_best=-1, history_thresh=-100;
+	int off = solver->whosemove(gd->pos)? 0 : solver->possible_moves;
+	//int history_second;
+	//bool history_set = false;
 	for(int i=0; i<solver->possible_moves; i++)
+	{
+		if(HISTORY_VALS[i+off] > history_thresh)
+		{
+			history_best = i;
+			history_thresh = HISTORY_VALS[i];
+		}
+	}
+
+	/*for(int i=0; i<solver->possible_moves; i++)
 	{
 		int placement = solver->get_placement(pos, i);
 		if(placement == -1)
@@ -938,7 +921,7 @@ int sort_movelist(sorter_t *order, int len, gdata_t *gd, int depth,
 			history_second = i;
 			history_thresh = HISTORY_VALS[placement];
 		}
-	}
+	}*/
 
 	#endif	//USE_HISTORY_HEURISTIC
 
@@ -965,8 +948,8 @@ int sort_movelist(sorter_t *order, int len, gdata_t *gd, int depth,
 		#ifdef USE_HISTORY_HEURISTIC
 		else if(move == history_best)
 			order[i].score += 700;
-		else if(move == history_second)
-			order[i].score += 600;
+		//else if(move == history_second)
+		//	order[i].score += 600;
 		#endif	//USE_HISTORY_HEURISTIC
 		else if(move_is_forcing(pos, move))
 			order[i].score += 800;

@@ -4,13 +4,14 @@ GAME SOLVER -- TO DO
 
 general-fix:
 * why doesn't history heuristic work? :(				-
+	* only update if not in tt (a new position)
+	* only update if pos is quiet (not forcing)
 * try using int for scores???							-
 * something wrong with flip/symmetry (helps w 0,32
 but hurts with 40 3,3,3,3,3,3)							-
 
 general-new:
 * NNUE?????												-
-* keyboard control for game playing						in progress
 * annotation (!, ?, ?!, !!)								-
 * ranger-style file selector							-
 * native engine support for bitboards (no
@@ -20,6 +21,8 @@ move indexes??)											-
 * multithread (lazy SMP approach - search root node
 w different	move orderings??)							-
 * widgets lib (bar, graph)								-
+* late move reductions									-
+* move extensions
 
 c4:
 * endgame estimate										-
@@ -41,3 +44,4 @@ use aspiration											DONE
 * draw most recent move different						DONE
 * time controls/time mgmt								DONE
 * highlight 4 in row for drawing						DONE
+* keyboard control for game playing						DONE

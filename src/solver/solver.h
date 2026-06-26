@@ -1,4 +1,8 @@
-
+/*
+to remove from solver (not needed anymore for history):
+* possible_placements
+* get_placement
+*/
 
 #ifndef SOLVER_H_
 #define SOLVER_H_
