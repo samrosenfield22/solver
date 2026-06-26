@@ -1,7 +1,7 @@
 
 #variables
 CC = gcc
-CFLAGS = -Wall -O3 -ggdb -fopenmp -latomic
+CFLAGS = -Wall -O3 -ggdb -fopenmp
 TARGET = solver.exe
 
 
@@ -27,7 +27,7 @@ all: $(TARGET)
 
 # linking rule
 $(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) $^ -o $@ -latomic
+	$(CC) $(CFLAGS) $^ -o $@
 
 # compiling rule for nested directories
 $(BUILD_DIR)/%.o: %.c

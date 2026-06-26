@@ -324,7 +324,7 @@ int tt_add_kvpair(tt_t *h, void *key, trans_value_t *value,
 		new_kv.hash = hash;
 		new_kv.value = *value;
 		//bucket->always_kv.raw = new_kv.raw;
-		bucket->always_kv.raw = atomic_load(&new_kv.raw);*/
+		bucket->always_kv.raw = atomic_load(&new_kv.raw); */
 	}
 	return 0;
 	////////////////////////////////////////////////
