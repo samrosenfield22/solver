@@ -661,10 +661,10 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 		}*/
 
 		bool child_pv = is_pv && (i==0);
-		//result = eval((gdata_t *)&child, depth+1,
-			//alpha, beta, child_pv);
+		result = eval((gdata_t *)&child, depth+1,
+			alpha, beta, child_pv);
 
-		const int lmr_start = 2;
+		/*const int lmr_start = 2;
 		int reduction = 0;
 		int late = i - lmr_start;
 		if(!is_pv && late > 0
@@ -691,7 +691,7 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 					alpha, beta, child_pv);
 			}
 
-		}
+		}*/
 
 		//sl_free(child);
 
