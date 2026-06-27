@@ -5,10 +5,7 @@
 #include "../utils/utils.h"
 #include "clock.h"
 
-#include "games/nim.h"
-#include "games/ttt.h"
-#include "games/c4.h"
-#include "games/quoridor.h"
+#include "games/game_includes.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,14 +19,13 @@
 
 
 //#define COMP_TIME	(1 * 1000)
-#define TIME_ODDS	(200)
+#define TIME_ODDS	(15)
 
 #define DEV_MODE	(true)
 //#define DEV_MODE	(false)
 
 void print_sequence(solver_t *solver, int8_t *seq, FILE *stream);
 void print_sequence_fancy(solver_t *solver, int8_t *seq, FILE *stream);
-bool load_pgn(solver_t *solver, void *pos, char *in);
 void save_pgn(solver_t *solver, char *path);
 bool read_pgn_file(solver_t *solver, char *name);
 void load_seq_string(solver_t *solver, char *seq);
@@ -49,10 +45,7 @@ void play_menu(void)
 
 	solver_t gamelist[] =
 	{
-		NIM_SOLVER,
-		TTT_SOLVER,
-		C4_SOLVER,
-		QUOR_SOLVER,
+		#include "games/gamelist.txt"
 	};
 	//bool game_selected = false;
 	solver_t *game = NULL;
@@ -331,7 +324,7 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 				//int time_lim = 1000;
 				if(solver->moves_remaining)
 				{
-					int remaining = solver->moves_remaining(pos);
+					int remaining = solver->moves_remaining(pos)/2;
 					if(remaining)
 						time_lim = clock_get_time() / remaining;
 					else
@@ -342,7 +335,7 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 			}
 			window_focus(analysis_hdl);
 			window_clear();
-			move = solve(solver, pos, seq_ct, time_lim, true);
+			move = solve(solver, pos, time_lim, true);
 			solver->make_move(pos, move, NULL);
 		}
 
@@ -388,16 +381,20 @@ bool load_pgn(solver_t *solver, void *pos, char *in)
 	seq_ct = 0;
 	seq_entire = 0;
 
+	char *in_cpy = strdup(in);
+
 	//void *pos = solver->initial_pos;
-	if(in[strlen(in)-1] == '\n')
-		in[strlen(in)-1] = '\0';
-	if(strstr(in, ".txt"))
+	if(in[strlen(in_cpy)-1] == '\n')
+		in[strlen(in_cpy)-1] = '\0';
+	if(strstr(in_cpy, ".txt"))
 	{
-		if(!read_pgn_file(solver, in))
+		if(!read_pgn_file(solver, in_cpy))
 			return false;
 	}
 	else
-		load_seq_string(solver, in);
+		load_seq_string(solver, in_cpy);
+
+	free(in_cpy);
 	return make_sequence_moves(solver, pos);
 }
 

@@ -28,7 +28,8 @@ enum
 
 //statics
 bool set_aspiration_window(float *asp_window,
-	float *asp_window_size, float *last_score, float score);
+	float *asp_window_size, float *last_score, float score,
+	bool verbose);
 result_t eval(gdata_t *gd, int depth,
 	float alpha, float beta, bool is_pv);
 int build_movelist(sorter_t *order, void *pos);
@@ -111,6 +112,7 @@ void solver_init(solver_t *game_solver)
 	//if(!solver->hash_size)
 	//	solver->hash_size = solver->pos_size;
 	gdata_size = sizeof(gdata_t) + solver->pos_size;
+	position_ct = 0;
 
 	#ifdef USE_TRANSPOSITION_TABLE
 	//tt_create(solver->transtbl_buckets_ct);
@@ -121,9 +123,10 @@ void solver_init(solver_t *game_solver)
 void solver_clear(void)
 {
 	tt_destroy();
+	zobrist_free();
 }
 
-float solve(solver_t *game_solver, void *pos, int init_depth,
+float solve(solver_t *game_solver, void *pos,
 	int time_lim_ms, bool verbose)
 {
 	//tic();
@@ -137,11 +140,12 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 	gd->hash = solver->hash(pos, solver->pos_size);
 	memcpy(&(gd->pos), pos, solver->pos_size);
 
+
 	who_goes_first = solver->whosemove(pos);
 
 	if(solver->moves_remaining)
 		full_solve_depth = solver->moves_remaining(pos);
-	printf("full solve depth = %d\n", full_solve_depth);
+	//printf("full solve depth = %d\n", full_solve_depth);
 
 	if(verbose)
 	{
@@ -154,6 +158,7 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 
 		//printf("pre setup time = %d ms\n", toc_ms());
 	}
+
 	tic();
 
 	#ifdef USE_HISTORY_HEURISTIC
@@ -195,7 +200,7 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 
 		uint32_t last = toc_ms();
 
-		tt_set_ancient();
+		//tt_set_ancient();
 
 
 		float asp_window_size[] = {solver->aspiration_default_width,
@@ -204,9 +209,9 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 		(void)last_iddfs_score;
 		while(1)
 		{
-
-			printf("\niddfs=%d in window [%.1f,%.1f] ",
-				iddfs, asp_window[0], asp_window[1]);
+			if(verbose)
+				printf("\niddfs=%d in window [%.1f,%.1f] ",
+					iddfs, asp_window[0], asp_window[1]);
 
 			if(MULTICORE_CT > 1)
 			{
@@ -238,7 +243,7 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 			#ifdef ASPIRATION_WINDOW
 			in_window = set_aspiration_window(asp_window,
 				asp_window_size, &last_iddfs_score,
-				result.score);
+				result.score, verbose);
 			#endif
 			if(in_window)
 				break;
@@ -247,7 +252,7 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 		if(time_up())
 		{
 			result = last_result;
-			printf("(time up)\n");
+			if(verbose) printf("(time up)\n");
 			break;
 		}
 
@@ -266,7 +271,7 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 			last = now;
 		}
 		//printf("      ");
-		window_focus(analysis_hdl);
+		//window_focus(analysis_hdl);
 
 
 
@@ -302,17 +307,15 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 	{
 		printf("\n\n--- search ran to depth = %d%s ---\n",
 			iddfs_complete, result.full? " (full solve)":"");
-	}
 
-	printf("best move: \t");
-	if(solver->iter_to_human)
-		printf("%s\n", solver->iter_to_human(best_move));
-	else
-		printf("%d\n", best_move);
-	printf("evaluation:\t%+.1f\n", result.score);
 
-	if(verbose)
-	{
+		printf("best move: \t");
+		if(solver->iter_to_human)
+			printf("%s\n", solver->iter_to_human(best_move));
+		else
+			printf("%d\n", best_move);
+		printf("evaluation:\t%+.1f\n", result.score);
+
 		if(ms < 1500)
 			printf("\n\nposition solved in %d ms\n", ms);
 		else
@@ -332,7 +335,6 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 
 	//clean up
 	mem_free(gd);
-	zobrist_free();
 
 
 	//term_move_cursor(0, 15);
@@ -362,7 +364,8 @@ float solve(solver_t *game_solver, void *pos, int init_depth,
 
 //returns true if we're in the window
 bool set_aspiration_window(float *asp_window,
-	float *asp_window_size, float *last_score, float score)
+	float *asp_window_size, float *last_score, float score,
+	bool verbose)
 {
 	bool in_window = (asp_window[0] < score
 		&& score < asp_window[1]);
@@ -385,7 +388,8 @@ bool set_aspiration_window(float *asp_window,
 		//asp_window[1] = WIN_SCORE;
 		//return false;
 
-		printf("\n--- score %.1f out of window ---", score);
+		if(verbose)
+			printf("\n--- score %.1f out of window ---", score);
 		/*if(score <= asp_window[0])
 			asp_window_size[0] *= 2;
 		else if(score >= asp_window[1])
@@ -458,8 +462,8 @@ result_t eval(gdata_t *gd, int depth,
 	#endif
 
 	//update metrics
-	if(!(position_ct & 0xFFFFF))	//every few 100k
-		draw_tt_load();
+	//if(!(position_ct & 0xFFFFF))	//every few 100k
+	//	draw_tt_load();
 	position_ct++;
 
 	//evaluate end states/leaf nodes
@@ -661,14 +665,15 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 		}*/
 
 		bool child_pv = is_pv && (i==0);
-		result = eval((gdata_t *)&child, depth+1,
-			alpha, beta, child_pv);
+		//result = eval((gdata_t *)&child, depth+1,
+		//	alpha, beta, child_pv);
 
-		/*const int lmr_start = 2;
+		const int lmr_start = 2;
+		const int lmr_min_depth = 4;
 		int reduction = 0;
 		int late = i - lmr_start;
 		if(!is_pv && late > 0
-			&& 4 <= depth
+			&& lmr_min_depth <= depth
 			&& iddfs_depth < full_solve_depth)
 		{
 			reduction = 2*(late/2 + 1);
@@ -691,7 +696,7 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 					alpha, beta, child_pv);
 			}
 
-		}*/
+		}
 
 		//sl_free(child);
 

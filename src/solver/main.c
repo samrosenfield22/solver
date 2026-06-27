@@ -7,10 +7,11 @@
 
 #include "solver.h"
 #include "play.h"
+#include "testsuite.h"
 
-#include "games/nim.h"
+/*#include "games/nim.h"
 #include "games/ttt.h"
-#include "games/c4.h"
+#include "games/c4.h"*/
 
 #include <windows.h>
 
@@ -20,6 +21,11 @@ int main(int argc, char **argv)
 {
 	if(argc >= 2)
 	{
+		if(strcmp(argv[1], "testsuite")==0)
+		{
+			run_testsuite();
+			return 0;
+		}
 		FORCE_SEARCH_DEPTH = strtol(argv[1], NULL, 10);
 	}
 	if(argc == 3)

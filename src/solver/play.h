@@ -35,6 +35,6 @@ enum
 
 void play_menu(void);
 game_outcome_t play(solver_t *solver, void *pos, bool p1, bool p2);
-
+bool load_pgn(solver_t *solver, void *pos, char *in);
 
 #endif	//PLAY_H_

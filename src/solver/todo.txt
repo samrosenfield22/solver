@@ -9,10 +9,15 @@ general-fix:
 * try using int for scores???							-
 * something wrong with flip/symmetry (helps w 0,32
 but hurts with 40 3,3,3,3,3,3)							-
-* portability (get it working on linux, mac)			-
+* portability (get it working on linux, mac, embedded?)	-
+	* mechanical turk???
 
 general-new:
 * NNUE?????												-
+* game-making tools
+	* gui form for creating a new game shell code		-
+	* game templates (ie m,n,k)							-
+	* bitboard library									-
 * annotation (!, ?, ?!, !!)								-
 * ranger-style file selector							-
 * native engine support for bitboards (no
@@ -27,7 +32,6 @@ w different	move orderings??)							-
 
 c4:
 * endgame estimate										-
-* make a general m,n,k solver							-
 
 quoridor:
 * A*? pathfinding										-

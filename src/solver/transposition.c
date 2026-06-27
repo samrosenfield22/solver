@@ -12,13 +12,13 @@
 
 #define TRANSTBL_BUCKETS_CT (1<<26)
 
-#define TT_LOCK_CT	(1000000)
+//#define TT_LOCK_CT	(1000000)
 
 
 
 //statics
 tt_t *tt_make(size_t ksize, size_t vsize, uint32_t len);
-void tt_enable_multithread(void);
+//void tt_enable_multithread(void);
 int tt_add_kvpair(tt_t *h, void *key, trans_value_t *value, uint64_t hash);
 bool tt_key_get_value(tt_t *h, void *key,
 	trans_value_t *value, uint64_t hash);
@@ -32,12 +32,12 @@ uint32_t tt_key_get_index(tt_t *h, void *key, uint64_t *hash);
 //bool tt_keys_match(tt_t *h, void *k1, void *k2);
 //kvpair_t *alloc_kvpair(tt_t *h);
 //void free_kvpair(kvpair_t *kv);
-void tt_set_lock(tt_t *h, uint32_t index);
+/*void tt_set_lock(tt_t *h, uint32_t index);
 bool tt_try_lock(tt_t *h, uint32_t index);
-void tt_unset_lock(tt_t *h, uint32_t index);
+void tt_unset_lock(tt_t *h, uint32_t index);*/
 
-bool tt_replace_by_depth(void *old, void *new);
-bool tt_replace_by_ancient(void *old, void *new);
+//bool tt_replace_by_depth(void *old, void *new);
+//bool tt_replace_by_ancient(void *old, void *new);
 
 
 tt_t *trans_tbl = NULL;
@@ -47,6 +47,7 @@ void tt_create(void)
 {
 	if(trans_tbl)
 		return;
+	assert(sizeof(kvpair_t) <= 16);
 
 	//create the table
 	trans_tbl = tt_make(sizeof(uint64_t),
@@ -57,23 +58,23 @@ void tt_create(void)
 		printf("failed to allocate transposition table\n");
 		exit(0);
 	}
-	if(MULTICORE_CT > 1)
-		tt_enable_multithread();
+	//if(MULTICORE_CT > 1)
+	//	tt_enable_multithread();
 	if(solver->hash)
 		tt_attach_hash(solver->hash);
 	//if(solver->keys_match)
 		//tt_attach_keycompare(solver->keys_match);
-	tt_attach_replace(REPLACE_STRATEGY);
+	//tt_attach_replace(REPLACE_STRATEGY);
 }
 
 void tt_destroy(void)
 {
 	tt_clear();
-	if(trans_tbl->multithread)
+	/*if(trans_tbl->multithread)
 	{
 		for(int i=0; i<TT_LOCK_CT; i++)
 			omp_destroy_lock(&trans_tbl->locks[i]);
-	}
+	}*/
 	mem_free(trans_tbl);
 	trans_tbl = NULL;
 }
@@ -107,7 +108,7 @@ void tt_clear(void)
 	trans_tbl->collisions = 0;
 }
 
-void tt_set_ancient(void)
+/*void tt_set_ancient(void)
 {
 	if(!trans_tbl)
 		return;
@@ -131,7 +132,7 @@ void tt_set_ancient(void)
 		if(bucket->always_kv.value.value_filled)
 			bucket->always_kv.value.ancient = 0b1;
 	}
-}
+}*/
 
 int tt_add(void *pos, uint64_t *hp, result_t *result, int search_depth, int bound, int best_move)
 {
@@ -153,7 +154,7 @@ int tt_add(void *pos, uint64_t *hp, result_t *result, int search_depth, int boun
 		.full = result->full,
 		.bound = bound,
 		.value_filled = 0b1,
-		.ancient = 0b0,
+		//.ancient = 0b0,
 		.search_depth = search_depth,
 		.best_move = best_move,
 	};
@@ -194,7 +195,7 @@ bool tt_get(trans_value_t *value, gdata_t *gd, int depth)
 
 
 //1 (old val) gets replaced with 2 (new val)
-bool tt_replace_by_depth(void *old, void *new)
+/*bool tt_replace_by_depth(void *old, void *new)
 {
 	//return false;
 
@@ -216,7 +217,7 @@ bool tt_replace_by_ancient(void *old, void *new)
 
 	return (val_old->ancient);
 	//return (val_new->search_depth >= val_old->search_depth);
-}
+}*/
 
 tt_t *tt_make(size_t ksize, size_t vsize, uint32_t len)
 {
@@ -231,7 +232,7 @@ tt_t *tt_make(size_t ksize, size_t vsize, uint32_t len)
 	h->filled = 0;
 	h->hash = NULL;
 	//h->compare_keys_fp = NULL;
-	h->multithread = false;
+	//h->multithread = false;
 
 	h->p2_mask = 0;
 	uint32_t b = 0b1;
@@ -253,7 +254,7 @@ tt_t *tt_make(size_t ksize, size_t vsize, uint32_t len)
 	return h;
 }
 
-void tt_enable_multithread(void)
+/*void tt_enable_multithread(void)
 {
 	if(!trans_tbl || trans_tbl->multithread)
 		return;
@@ -269,7 +270,7 @@ void tt_enable_multithread(void)
 		omp_init_lock(&trans_tbl->locks[i]);
 	}
 	//printf("done!\n");
-}
+}*/
 
 int tt_add_kvpair(tt_t *h, void *key, trans_value_t *value,
 	uint64_t hash)
@@ -280,7 +281,7 @@ int tt_add_kvpair(tt_t *h, void *key, trans_value_t *value,
 		exit(0);
 	}
 
-	int add_result = -1;
+	//int add_result = -1;
 
 	uint32_t index = tt_key_get_index(h, key, &hash);
 	bucket_t *bucket = &h->map[index];
@@ -338,7 +339,7 @@ int tt_add_kvpair(tt_t *h, void *key, trans_value_t *value,
 			return TT_NO_ADD;
 	}*/
 
-	kvpair_t *kv = &bucket->deeper_kv;
+	/*kvpair_t *kv = &bucket->deeper_kv;
 
 	if(kv->value.value_filled)	//bucket already filled
 	{
@@ -373,20 +374,17 @@ int tt_add_kvpair(tt_t *h, void *key, trans_value_t *value,
 		kv->hash = hash;
 		kv->value = *value;
 
-		/*kvpair_t new_kv;
-		new_kv.hash = hash;
-		new_kv.value = *value;
-		//kv->raw = new_kv.raw;
-		kv->raw = atomic_load(&new_kv.raw);*/
+
 
 
 		h->filled++;
 		add_result = TT_ADDED_KV_NEW;
 	}
 
-	if(h->multithread)
-		tt_unset_lock(h, index);
+	//if(h->multithread)
+	//	tt_unset_lock(h, index);
 	return add_result;
+	*/
 }
 
 bool tt_key_get_value(tt_t *h, void *key,
@@ -423,8 +421,8 @@ bool tt_key_get_value(tt_t *h, void *key,
 
 
 
-	if(!kv->value.value_filled)
-		return false;
+	//if(!kv->value.value_filled)
+	//	return false;
 	/*assert(bucket);
 	if(!bucket)
 		return false;*/
@@ -432,7 +430,7 @@ bool tt_key_get_value(tt_t *h, void *key,
 	//if(!kv)	//slot not filled
 	//	return false;
 
-	if(h->multithread)
+	/*if(h->multithread)
 	{
 		if(!tt_try_lock(h, index))
 			return false;
@@ -454,7 +452,7 @@ bool tt_key_get_value(tt_t *h, void *key,
 
 	if(h->multithread)
 		tt_unset_lock(h, index);
-	return match;
+	return match;*/
 }
 
 //returns the load factor out of 100
@@ -486,13 +484,13 @@ void tt_attach_hash(uint64_t (*hash)(void *value, size_t size))
 	trans_tbl->compare_keys_fp = compare_keys_fp;
 }*/
 
-void tt_attach_replace(bool (*replace_fp)(void *old, void *new))
+/*void tt_attach_replace(bool (*replace_fp)(void *old, void *new))
 {
 	if(!trans_tbl)
 		return;
 
 	trans_tbl->replace_fp = replace_fp;
-}
+}*/
 
 
 
@@ -562,7 +560,7 @@ uint32_t tt_key_get_index(tt_t *h, void *key, uint64_t *hash)
 
 
 
-void tt_set_lock(tt_t *h, uint32_t index)
+/*void tt_set_lock(tt_t *h, uint32_t index)
 {
 	omp_lock_t *lock = &h->locks[index / TT_LOCK_CT];
 	omp_set_lock(lock);
@@ -578,4 +576,4 @@ void tt_unset_lock(tt_t *h, uint32_t index)
 {
 	omp_lock_t *lock = &h->locks[index / TT_LOCK_CT];
 	omp_unset_lock(lock);
-}
+}*/
