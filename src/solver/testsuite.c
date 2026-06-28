@@ -36,6 +36,11 @@ test_case_t ALL_TEST_CASES[] =
 {
 	{
 		.game="connect four",
+		.moves="3,3,3,3,3,2,5,2,6,4,4,4,4,5,4,3,2,2,2,0,1,1",
+		.expected={.score=9990, .best_move=0}
+	},
+	{
+		.game="connect four",
 		.moves="6,6,6,6,6,6,4,4,3,5,5,5,5,3,3,1,3,4",
 		.expected={.score=9990, .best_move=3}
 	},
@@ -53,6 +58,11 @@ test_case_t ALL_TEST_CASES[] =
 		.game="connect four",
 		.moves="2,2,2,2,3,1,1,1,5,4",
 		.expected={.score=0, .best_move=1}
+	},
+	{
+		.game="connect four",
+		.moves="4,3,4,4,3,3,3,6",
+		.expected={.score=9984, .best_move=1}
 	},
 	{
 		.game="connect four",
