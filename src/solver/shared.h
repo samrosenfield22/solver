@@ -4,6 +4,7 @@
 #define SHARED_H_
 
 #include <stdbool.h>
+#include <stdint.h>
 
 typedef struct
 {

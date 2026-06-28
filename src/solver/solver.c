@@ -296,12 +296,14 @@ float solve(solver_t *game_solver, void *pos,
 	uint32_t min = sec_total/60;
 	uint32_t sec = sec_total - (60*min);
 
-
-
+	if(result.best_move == -1)
+		result.best_move = random_move(gd->pos);
 	int best_move = result.best_move;
+
+	/*int best_move = result.best_move;
 	//assert(best_move != -1);
 	if(best_move == -1)
-		best_move = random_move(gd->pos);
+		best_move = random_move(gd->pos);*/
 
 	if(verbose)
 	{
@@ -360,6 +362,7 @@ float solve(solver_t *game_solver, void *pos,
 	#endif	//USE_HISTORY_HEURISTIC
 
 	return best_move;
+	//return result;
 }
 
 //returns true if we're in the window

@@ -20,6 +20,7 @@ test if pv is correct!
 
 #define INDENT_POS		(4)
 #define INDENT_RESULT	(32)
+#define TEST_WINDOW_X	(117)
 #define TEST_WINDOW_W	(49)
 
 #define printf(fmt, ...)	window_printf(fmt, ##__VA_ARGS__)
@@ -33,6 +34,16 @@ typedef struct
 
 test_case_t ALL_TEST_CASES[] =
 {
+	{
+		.game="connect four",
+		.moves="6,6,6,6,6,6,4,4,3,5,5,5,5,3,3,1,3,4",
+		.expected={.score=9990, .best_move=3}
+	},
+	{
+		.game="connect four",
+		.moves="1,2,2,3,4,2,2,3,3,4,2,1",
+		.expected={.score=9985, .best_move=0}
+	},
 	{
 		.game="connect four",
 		.moves="3,3,3,3,3,6,4,2,2,2",
@@ -52,7 +63,12 @@ test_case_t ALL_TEST_CASES[] =
 	{
 		.game="tic-tac-toe",
 		.moves="0,8,2,1",
-		.expected={.score=9982, .best_move=6}
+		.expected={.score=9997, .best_move=6}
+	},
+	{
+		.game="tic-tac-toe",
+		.moves="4,1,8,0",
+		.expected={.score=9997, .best_move=2}
 	},
 
 };
@@ -64,8 +80,8 @@ int testwin_hdl;
 
 void run_testsuite(void)
 {
-	testwin_hdl = window_wh(117, 3, TEST_WINDOW_W, 40);
-	window_set_colors(TERM_WHITE, TERM_WHITE);
+	testwin_hdl = window_wh(TEST_WINDOW_X, 3, TEST_WINDOW_W, 40);
+	window_set_colors(TERM_WHITE, TERM_BLACK_BG);
 	window_term_clear();
 	int pass_ct = 0;
 	int suite_len = sizeof(ALL_TEST_CASES)/sizeof(ALL_TEST_CASES[0]);
@@ -130,6 +146,8 @@ bool test_case(test_case_t *tcase)
 		exit(0);
 	}
 
+
+
 	//make test pos
 	uint8_t pos[solver->pos_size];
 	memcpy(pos, solver->initial_pos, solver->pos_size);
@@ -140,8 +158,18 @@ bool test_case(test_case_t *tcase)
 		exit(0);
 	}
 
-	//draw
+	//erase previous pos
 	window_unfocus();
+	term_move_cursor(0, 0);
+	for(int y=0; y<35; y++)
+	{
+		for(int x=0; x<TEST_WINDOW_X-3; x++)
+			putchar(' ');
+		putchar('\n');
+	}
+
+	//draw
+	//window_unfocus();
 	term_move_cursor(15, 10);
 	solver->draw_full(pos, -1);
 	window_focus(testwin_hdl);
@@ -149,6 +177,8 @@ bool test_case(test_case_t *tcase)
 	//solve it
 	FORCE_SEARCH_DEPTH = 100;
 	solver_init(solver);
+	//result_t result = solve(solver, pos, 0, false);
+	//int calculated_move = result.best_move;
 	int calculated_move = solve(solver, pos, 0, false);
 	solver_clear();
 
@@ -159,7 +189,7 @@ bool test_case(test_case_t *tcase)
 	if(pass)
 		printf("%sPASS%s\n", TERM_GREEN, TERM_WHITE);
 	else
-		printf("%sFAIL%s (expected move %d, got %d)\n",
+		printf("%sFAIL%s\n\texpected move %d, got %d\n",
 			TERM_RED, TERM_WHITE, tcase->expected.best_move, calculated_move);
 
 	return pass;

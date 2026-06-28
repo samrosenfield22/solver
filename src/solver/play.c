@@ -335,6 +335,8 @@ game_outcome_t play(solver_t *solver, void *start_pos, bool p1, bool p2)
 			}
 			window_focus(analysis_hdl);
 			window_clear();
+			//result_t result = solve(solver, pos, time_lim, true);
+			//move = result.best_move;
 			move = solve(solver, pos, time_lim, true);
 			solver->make_move(pos, move, NULL);
 		}
