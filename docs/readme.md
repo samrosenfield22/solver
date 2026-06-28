@@ -38,4 +38,10 @@ moves, to a fixed depth:
 solver 40 3,3,3,3,3,3
 ```
 
+Run the solver test suite, which evaluates a variety of positions
+from multiple games, checking each analysis:
+```bash
+solver test
+```
+
 Have fun!

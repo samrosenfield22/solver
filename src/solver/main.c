@@ -21,7 +21,8 @@ int main(int argc, char **argv)
 {
 	if(argc >= 2)
 	{
-		if(strcmp(argv[1], "testsuite")==0)
+		if(strcmp(argv[1], "testsuite")==0
+			|| strcmp(argv[1], "test")==0)
 		{
 			run_testsuite();
 			return 0;

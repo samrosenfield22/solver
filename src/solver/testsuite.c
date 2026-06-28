@@ -1,4 +1,9 @@
-
+/*
+needs to clear game draw
+fix printing for long move sequences (leave room for ...)
+solve() should return result so we can confirm pos score
+test if pv is correct!
+*/
 
 #include "testsuite.h"
 
@@ -13,6 +18,10 @@
 #include "../utils/misc/windowing.h"
 #include "games/game_includes.h"
 
+#define INDENT_POS		(4)
+#define INDENT_RESULT	(32)
+#define TEST_WINDOW_W	(49)
+
 #define printf(fmt, ...)	window_printf(fmt, ##__VA_ARGS__)
 
 typedef struct
@@ -26,9 +35,26 @@ test_case_t ALL_TEST_CASES[] =
 {
 	{
 		.game="connect four",
+		.moves="3,3,3,3,3,6,4,2,2,2",
+		.expected={.score=9984, .best_move=2}
+	},
+	{
+		.game="connect four",
+		.moves="2,2,2,2,3,1,1,1,5,4",
+		.expected={.score=0, .best_move=1}
+	},
+	{
+		.game="connect four",
 		.moves="3,3,3,3,3,5",
 		.expected={.score=9982, .best_move=5}
 	},
+
+	{
+		.game="tic-tac-toe",
+		.moves="0,8,2,1",
+		.expected={.score=9982, .best_move=6}
+	},
+
 };
 
 //
@@ -38,22 +64,47 @@ int testwin_hdl;
 
 void run_testsuite(void)
 {
-	testwin_hdl = window_wh(117, 3, 49, 40);
+	testwin_hdl = window_wh(117, 3, TEST_WINDOW_W, 40);
 	window_set_colors(TERM_WHITE, TERM_WHITE);
 	window_term_clear();
 	int pass_ct = 0;
 	int suite_len = sizeof(ALL_TEST_CASES)/sizeof(ALL_TEST_CASES[0]);
-	printf("RUNNING TEST SUITE\nn\tpos\t\tresult\n-------------------------------\n");
+	printf("\tsolver test suite (%d test cases)\n\n", suite_len);
+	int indent = printf("n");
+	for(int i=indent; i<INDENT_POS; i++)
+		printf(" ");
+	indent = INDENT_POS;
+	indent += printf("pos");
+	for(int i=indent; i<INDENT_RESULT; i++)
+		printf(" ");
+	indent = INDENT_RESULT;
+	printf("result\n");
+	for(int i=0; i<TEST_WINDOW_W; i++)
+		printf("-");
+
 	for(int i=0; i<suite_len; i++)
 	{
-		printf("%d\t%s\t", i, ALL_TEST_CASES[i].moves);
+		indent = printf("%d", i);
+		for(int i=indent; i<INDENT_POS; i++)
+			printf(" ");
+		indent = INDENT_POS;
+		int gap = INDENT_RESULT-INDENT_POS-4;	//room for "... "
+		char buf[gap];
+		snprintf(buf, gap-1, ALL_TEST_CASES[i].moves);
+		if(buf[gap-2] == ',')
+			buf[gap-2] = '\0';
+		indent += printf("%s", buf);
+		if(gap < strlen(ALL_TEST_CASES[i].moves))
+			indent += printf("... ");
+		for(int i=indent; i<INDENT_RESULT; i++)
+			printf(" ");
 		bool pass = test_case(&ALL_TEST_CASES[i]);
 		if(pass)
 			pass_ct++;
 	}
 
 	printf("\n%d out of %d cases passed (%.1f%%)\n",
-		pass_ct, suite_len, (((float)pass_ct))/suite_len);
+		pass_ct, suite_len, 100*(((float)pass_ct))/suite_len);
 }
 
 bool test_case(test_case_t *tcase)
@@ -101,7 +152,10 @@ bool test_case(test_case_t *tcase)
 	int calculated_move = solve(solver, pos, 0, false);
 	solver_clear();
 
-	bool pass = (calculated_move == tcase->expected.best_move);
+	bool pass = true;
+	if(calculated_move != tcase->expected.best_move)
+		pass = false;
+	//else if()
 	if(pass)
 		printf("%sPASS%s\n", TERM_GREEN, TERM_WHITE);
 	else
