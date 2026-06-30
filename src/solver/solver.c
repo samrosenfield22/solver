@@ -591,6 +591,29 @@ void update_history(void *pos, int index,
 	return;
 }
 
+int get_lmr_reduction(int i, int depth, bool is_pv)
+{
+	//const int lmr_start = 1;
+	const int candidates = 2;
+	const int lmr_min_depth = 4;
+
+	int reduction = 0;
+	int late = i - candidates + 1;
+	if(!is_pv && late > 0
+		&& lmr_min_depth <= depth
+		&& ((iddfs_depth < full_solve_depth) || !full_solve_depth))
+	{
+		reduction = 2*(late/2 + 1);
+
+		//if(reduction >= (iddfs_depth - depth))
+		//	reduction = iddfs_depth - depth - 1;
+	}
+	assert(reduction >= 0);
+	assert(!(reduction & 0b1));
+
+	return reduction;
+}
+
 result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 	sorter_t *order, int len, int depth, float alpha, float beta,
 	bool is_pv)
@@ -671,35 +694,32 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 		//result = eval((gdata_t *)&child, depth+1,
 		//	alpha, beta, child_pv);
 
-		const int lmr_start = 2;
-		const int lmr_min_depth = 4;
-		int reduction = 0;
-		int late = i - lmr_start;
-		if(!is_pv && late > 0
-			&& lmr_min_depth <= depth
-			&& iddfs_depth < full_solve_depth)
-		{
-			reduction = 2*(late/2 + 1);
+		/*int extension = 0;
+		if(solver->get_extension)
+			extension = solver->get_extension(gd->pos);
 
-			//if(reduction >= (iddfs_depth - depth))
-			//	reduction = iddfs_depth - depth - 1;
-		}
-		assert(reduction >= 0);
-		assert(!(reduction & 0b1));
-		result = eval((gdata_t *)&child, depth+1+reduction,
-			alpha, beta, child_pv);
-		if(reduction)
+		if(extension)
 		{
-			if((is_max && result.score > alpha)
-				|| (!is_max && result.score < beta))
+			result = eval((gdata_t *)&child, depth+1-extension,
+				alpha, beta, child_pv);
+		}
+		else	//reduction
+		{*/
+			int reduction = get_lmr_reduction(i, depth, is_pv);
+			result = eval((gdata_t *)&child, depth+1+reduction,
+				alpha, beta, child_pv);
+			if(reduction)
 			{
-				//redo
-				reduction = 0;
-				result = eval((gdata_t *)&child, depth+1+reduction,
-					alpha, beta, child_pv);
+				if((is_max && result.score > alpha)
+					|| (!is_max && result.score < beta))
+				{
+					//redo without reduction
+					reduction = 0;
+					result = eval((gdata_t *)&child, depth+1+reduction,
+						alpha, beta, child_pv);
+				}
 			}
-
-		}
+		//}
 
 		//sl_free(child);
 

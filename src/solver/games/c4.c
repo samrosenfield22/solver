@@ -1188,6 +1188,16 @@ int c4_moves_remaining(void *pos)
 	return (42-played);
 }
 
+int c4_get_extension(void *pos)
+{
+	c4_pos_t *p = pos;
+	int played = __builtin_popcountll(p->filled & ~WHOSEMOVE_BIT);
+	if(played < 39)
+		return 0;
+
+	return (p->x_wmap || p->opp_wmap)? 2 : 0;
+}
+
 bool c4_keys_match(void *k1, void *k2)
 {
 	c4_pos_t *n1 = k1, *n2 = k2;
@@ -1610,6 +1620,7 @@ solver_t C4_SOLVER =
 
 	.hash = c4_hash,
 	.moves_remaining = c4_moves_remaining,
+	.get_extension = c4_get_extension,
 	.uses_zobrist = true,
 	.flip = c4_flip_horiz,
 

@@ -46,6 +46,16 @@ test_case_t ALL_TEST_CASES[] =
 	},
 	{
 		.game="connect four",
+		.moves="3,3,3,3,3,2,2,2,2,3,5,6,5,0,4,4,5,5",
+		.expected={.score=9989, .best_move=4}
+	},
+	{
+		.game="connect four",
+		.moves="3,2,3,3,3,2,2,2,5,5,4,6,1,1",
+		.expected={.score=9988, .best_move=3}
+	},
+	{
+		.game="connect four",
 		.moves="1,2,2,3,4,2,2,3,3,4,2,1",
 		.expected={.score=9985, .best_move=0}
 	},

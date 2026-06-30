@@ -137,6 +137,8 @@ typedef struct
 
 	int (*moves_remaining)(void *pos);
 
+	int (*get_extension)(void *pos);
+
 
 	bool uses_zobrist;
 
