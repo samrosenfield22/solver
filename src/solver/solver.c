@@ -484,12 +484,32 @@ result_t eval(gdata_t *gd, int depth,
 	}
 	else if(depth >= iddfs_depth)
 	{
+		//quiescence search?
+		/*bool quiescence_extend = false;
+		if(iddfs_depth < full_solve_depth)
+		{
+			sorter_t ml[solver->possible_moves];
+			int test_len = 0;
+
+			if(solver->only_moves)
+				test_len = solver->only_moves(ml, pos);
+			if(test_len)	//forced moves - pos is not quiet
+			{
+				depth -= 2;
+				quiescence_extend = true;
+			}
+		}
+
+
+		if(!quiescence_extend)
+		{*/
 		if(solver->estimate)
 			gd->score = solver->estimate(pos);
 		else
 			gd->score = 0;
 		assert(-MATE_LIMIT < gd->score && gd->score < MATE_LIMIT);
 		return (result_t){.score=gd->score, .full=false, .has_tt=false, .best_move=-1};
+		//}
 	}
 
 	//make movelist
