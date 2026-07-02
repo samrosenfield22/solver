@@ -56,9 +56,9 @@ typedef struct
 
 typedef struct
 {
-	size_t ksize, vsize;
+	//size_t ksize, vsize;
 	uint32_t len, filled;
-	uint32_t collisions;
+	//uint32_t collisions;
 	uint32_t p2_mask;
 
 	uint64_t (*hash)(void *key, size_t size);
@@ -81,7 +81,7 @@ void tt_create(void);
 void tt_destroy(void);
 void tt_clear(void);
 //void tt_set_ancient(void);
-int tt_add(void *pos, uint64_t *hp, result_t *result,
+void tt_add(void *pos, uint64_t *hp, result_t *result,
 	int search_depth, int bound, int best_move);
 bool tt_get(trans_value_t *value, gdata_t *gd, int depth);
 
