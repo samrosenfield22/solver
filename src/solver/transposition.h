@@ -56,21 +56,13 @@ typedef struct
 
 typedef struct
 {
-	size_t ksize, vsize;//, kvsize;
+	size_t ksize, vsize;
 	uint32_t len, filled;
 	uint32_t collisions;
 	uint32_t p2_mask;
 
 	uint64_t (*hash)(void *key, size_t size);
-	//bool (*compare_keys_fp)(void *k1, void *k2);
-	//bool (*replace_fp)(void *old, void *new);
 
-	//bool multithread;
-	//omp_lock_t *locks;
-
-	//kvpair_t map[];
-	//void *map[];
-	//uint8_t map[];
 	bucket_t map[];
 } tt_t;
 

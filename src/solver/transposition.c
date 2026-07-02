@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <immintrin.h>
 
 #define TRANSTBL_BUCKETS_CT (1<<26)
 
@@ -23,18 +24,8 @@ int tt_add_kvpair(tt_t *h, void *key, trans_value_t *value, uint64_t hash);
 bool tt_key_get_value(tt_t *h, void *key,
 	trans_value_t *value, uint64_t hash);
 void tt_attach_hash(uint64_t (*hash)(void *key, size_t size));
-//void tt_attach_keycompare(bool (*compare_keys_fp)(void *k1, void *k2));
 void tt_attach_replace(bool (*replace_transpose)(void *old, void *new));
-
-//void *tt_key_get_bucket(tt_t *h, void *key, uint64_t *hash);
 uint32_t tt_key_get_index(tt_t *h, void *key, uint64_t *hash);
-
-//bool tt_keys_match(tt_t *h, void *k1, void *k2);
-//kvpair_t *alloc_kvpair(tt_t *h);
-//void free_kvpair(kvpair_t *kv);
-/*void tt_set_lock(tt_t *h, uint32_t index);
-bool tt_try_lock(tt_t *h, uint32_t index);
-void tt_unset_lock(tt_t *h, uint32_t index);*/
 
 //bool tt_replace_by_depth(void *old, void *new);
 //bool tt_replace_by_ancient(void *old, void *new);
@@ -62,14 +53,12 @@ void tt_create(void)
 	//	tt_enable_multithread();
 	if(solver->hash)
 		tt_attach_hash(solver->hash);
-	//if(solver->keys_match)
-		//tt_attach_keycompare(solver->keys_match);
 	//tt_attach_replace(REPLACE_STRATEGY);
 }
 
 void tt_destroy(void)
 {
-	tt_clear();
+	//tt_clear();
 	/*if(trans_tbl->multithread)
 	{
 		for(int i=0; i<TT_LOCK_CT; i++)
@@ -231,7 +220,6 @@ tt_t *tt_make(size_t ksize, size_t vsize, uint32_t len)
 	h->collisions = 0;
 	h->filled = 0;
 	h->hash = NULL;
-	//h->compare_keys_fp = NULL;
 	//h->multithread = false;
 
 	h->p2_mask = 0;
@@ -247,8 +235,6 @@ tt_t *tt_make(size_t ksize, size_t vsize, uint32_t len)
 			break;
 		b<<=1;
 	}
-	//printf("len=%d, mask=0x%0x\n", len, h->p2_mask);
-	//exit(0);
 
 
 	return h;
@@ -287,104 +273,53 @@ int tt_add_kvpair(tt_t *h, void *key, trans_value_t *value,
 	bucket_t *bucket = &h->map[index];
 
 	/*
-	if deeper isn't filled, or has same hash key
-		add
-	else if always isn't filled, or has same hash key
-		add
-	else if greater depth than deeper
-		replace
-	else
-		replace always
+	if either kv isn't filled, or has same hash key, add
+	else if greater depth than deeper, replace
+	else replace always
 	*/
-
+	//uint64_t hash_xor = hash ^ *(uint64_t)value;
 	if(!bucket->deeper_kv.value.value_filled)
 	{
-		bucket->deeper_kv.hash = hash;
-		bucket->deeper_kv.value = *value;
+		//bucket->deeper_kv.hash = hash_xor;
+
+		//bucket->deeper_kv.hash = hash;
+		//bucket->deeper_kv.value = *value;
+		bucket->deeper_kv.raw = (__int128)_mm_set_epi64x(*(uint64_t*)value, hash);
 		trans_tbl->filled++;
 	}
 	else if(bucket->deeper_kv.hash == hash)
+	//else if(kv_unlock(&bucket->deeper_kv) == hash)
 		bucket->deeper_kv.value = *value;
 	else if(!bucket->always_kv.value.value_filled)
 	{
-		bucket->always_kv.hash = hash;
-		bucket->always_kv.value = *value;
+		//bucket->always_kv.hash = hash_xor;
+
+		//bucket->always_kv.hash = hash;
+		//bucket->always_kv.value = *value;
+		bucket->always_kv.raw = (__int128)_mm_set_epi64x(*(uint64_t*)value, hash);
+		//bucket->always_kv.raw = (__int128)_mm_set_epi64x(hash, *(uint64_t*)value);
 		trans_tbl->filled++;
 	}
 	else if(bucket->always_kv.hash == hash)
+	//else if(kv_unlock(&bucket->deeper_kv) == hash)
 		bucket->always_kv.value = *value;
 	else if(bucket->deeper_kv.value.search_depth < value->search_depth)
 	{
-		bucket->deeper_kv.hash = hash;
-		bucket->deeper_kv.value = *value;
+		//bucket->deeper_kv.hash = hash_xor;
+		//bucket->deeper_kv.hash = hash;
+		//bucket->deeper_kv.value = *value;
+		bucket->deeper_kv.raw = (__int128)_mm_set_epi64x(*(uint64_t*)value, hash);
+
 	}
 	else
 	{
-		bucket->always_kv.hash = hash;
-		bucket->always_kv.value = *value;
-		/*kvpair_t new_kv;
-		new_kv.hash = hash;
-		new_kv.value = *value;
-		//bucket->always_kv.raw = new_kv.raw;
-		bucket->always_kv.raw = atomic_load(&new_kv.raw); */
+		//bucket->always_kv.hash = hash_xor;
+		//bucket->always_kv.hash = hash;
+		//bucket->always_kv.value = *value;
+		bucket->always_kv.raw = (__int128)_mm_set_epi64x(*(uint64_t*)value, hash);
 	}
 	return 0;
-	////////////////////////////////////////////////
 
-
-
-	/*if(h->multithread)
-	{
-		if(!tt_try_lock(h, index))
-			return TT_NO_ADD;
-	}*/
-
-	/*kvpair_t *kv = &bucket->deeper_kv;
-
-	if(kv->value.value_filled)	//bucket already filled
-	{
-		if(hash == kv->hash)
-		{
-			//replace value
-			kv->value = *value;
-			add_result = TT_KEYS_MATCHED_REPLACED_VALUE;
-		}
-		else	//collision, apply replacement policy
-		{
-			h->collisions++;
-			bool replace = true;
-			if(h->replace_fp)
-			{
-				replace = h->replace_fp(&kv->value, value);
-			}
-
-			if(replace)
-			{
-				kv->hash = hash;
-				kv->value = *value;
-				add_result = TT_POLICY_OVERWRITE_KV;
-			}
-			else
-				add_result = TT_POLICY_DENIED_KV;
-		}
-
-	}
-	else	//bucket empty, add the kv pair
-	{
-		kv->hash = hash;
-		kv->value = *value;
-
-
-
-
-		h->filled++;
-		add_result = TT_ADDED_KV_NEW;
-	}
-
-	//if(h->multithread)
-	//	tt_unset_lock(h, index);
-	return add_result;
-	*/
 }
 
 bool tt_key_get_value(tt_t *h, void *key,
@@ -395,8 +330,6 @@ bool tt_key_get_value(tt_t *h, void *key,
 		printf("you forgot to tt_create()!\n");
 		exit(0);
 	}
-	//if(!h->multithread)
-	//	printf("no multi!\n");
 
 	uint32_t index = tt_key_get_index(h, key, &hash);
 
@@ -417,49 +350,12 @@ bool tt_key_get_value(tt_t *h, void *key,
 	}
 	else
 		return false;
-
-
-
-
-	//if(!kv->value.value_filled)
-	//	return false;
-	/*assert(bucket);
-	if(!bucket)
-		return false;*/
-	//void *kv = *bucket;
-	//if(!kv)	//slot not filled
-	//	return false;
-
-	/*if(h->multithread)
-	{
-		if(!tt_try_lock(h, index))
-			return false;
-	}
-
-	//bool match = tt_keys_match(h, kv, &hash);
-	bool match = (hash == kv->hash);
-	//void *val = match? kv->value : NULL;
-	if(match)
-	{
-		//memcpy(value, kv->value, h->vsize);
-		//trans_value_t *val_p = tt_kv_get_value(h, kv);
-		//memcpy(value, &kv->value, h->vsize);
-		*value = kv->value;
-
-		if(trans_tbl->replace_fp == tt_replace_by_ancient)
-			kv->value.ancient = false;
-	}
-
-	if(h->multithread)
-		tt_unset_lock(h, index);
-	return match;*/
 }
 
 //returns the load factor out of 100
 int tt_load(void)
 {
 	uint64_t f = trans_tbl->filled;
-	//return (f * 100) / trans_tbl->len;
 	return (f * 50) / trans_tbl->len;	//2 kv per bucket
 }
 
@@ -475,22 +371,6 @@ void tt_attach_hash(uint64_t (*hash)(void *value, size_t size))
 
 	trans_tbl->hash = hash;
 }
-
-/*void tt_attach_keycompare(bool (*compare_keys_fp)(void *k1, void *k2))
-{
-	if(!trans_tbl)
-		return;
-
-	trans_tbl->compare_keys_fp = compare_keys_fp;
-}*/
-
-/*void tt_attach_replace(bool (*replace_fp)(void *old, void *new))
-{
-	if(!trans_tbl)
-		return;
-
-	trans_tbl->replace_fp = replace_fp;
-}*/
 
 
 
@@ -509,18 +389,9 @@ uint64_t tt_avalanche(uint64_t index)
 	return x;
 }
 
-/*void *tt_key_get_bucket(tt_t *h, void *key, uint64_t *hash)
-{
-	if(!h)
-		return NULL;
-
-	uint32_t index = tt_key_get_index(h, key, hash);
-
-	return &h->map[index];
-}*/
-
 uint32_t tt_key_get_index(tt_t *h, void *key, uint64_t *hash)
 {
+	//return tt_avalanche(*hash) & h->p2_mask;
 
 	uint64_t index;
 	if(hash)
@@ -528,7 +399,6 @@ uint32_t tt_key_get_index(tt_t *h, void *key, uint64_t *hash)
 	else
 	{
 		assert(0);
-		//printf("no hash\n");
 		index = h->hash(key, h->ksize);
 		//index %= h->len;
 		if(h->p2_mask)
@@ -544,36 +414,21 @@ uint32_t tt_key_get_index(tt_t *h, void *key, uint64_t *hash)
 		index %= h->len;
 
 	return index;
+
+
 }
 
-/*bool tt_keys_match(tt_t *h, void *k1, void *k2)
+/*uint64_t kv_lock(uint64_t hash, uint64_t value)
 {
-	uint64_t *u1 = k1;
-	uint64_t *u2 = k2;
-	return (*u1 == *u2);
+	return hash ^ value;
+}
 
-	//if(h->compare_keys_fp)
-	//	return h->compare_keys_fp(k1, k2);
-	//else
-	//	return (memcmp(k1, k2, h->ksize)==0);
+bool kv_lock_good(kvpair_t *kv)
+{
+	return ((kv->hash ^ kv->value) == kv->value)
 }*/
 
-
-
-/*void tt_set_lock(tt_t *h, uint32_t index)
+/*uint64_t kv_unlock(kvpair_t *kv)
 {
-	omp_lock_t *lock = &h->locks[index / TT_LOCK_CT];
-	omp_set_lock(lock);
-}
-
-bool tt_try_lock(tt_t *h, uint32_t index)
-{
-	omp_lock_t *lock = &h->locks[index / TT_LOCK_CT];
-	return omp_test_lock(lock);
-}
-
-void tt_unset_lock(tt_t *h, uint32_t index)
-{
-	omp_lock_t *lock = &h->locks[index / TT_LOCK_CT];
-	omp_unset_lock(lock);
+	return kv->hash ^ (uint64_t)kv->value;
 }*/
