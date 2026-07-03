@@ -265,8 +265,6 @@ void tt_add_kvpair(tt_t *h, void *key, trans_value_t *value,
 		exit(0);
 	}
 
-	//int add_result = -1;
-
 	uint32_t index = tt_key_get_index(h, key, &hash);
 	bucket_t *bucket = &h->map[index];
 

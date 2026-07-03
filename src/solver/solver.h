@@ -68,7 +68,7 @@ typedef struct
 
 	/*optional:
 	*/
-	int aspiration_default_width;
+	float aspiration_default_width;
 
 	/*optional: if checking for symmetrical positions in
 	the transposition table, only check for symmetries up

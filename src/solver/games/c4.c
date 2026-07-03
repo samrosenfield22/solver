@@ -1603,7 +1603,7 @@ solver_t C4_SOLVER =
 	.possible_moves = 7,
 	//.possible_placements = 42*2,
 	.iddfs_increment = 8,
-	.aspiration_default_width = 1,
+	.aspiration_default_width = 0.5,
 	.default_order = (uint8_t[]){2, 4, 6, 7, 5, 3, 1},
 	.flip_depth = 12,
 

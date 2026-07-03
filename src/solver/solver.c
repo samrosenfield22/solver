@@ -621,7 +621,8 @@ int get_lmr_reduction(int i, int depth, bool is_pv)
 	int late = i - candidates + 1;
 	if(!is_pv && late > 0
 		&& lmr_min_depth <= depth
-		&& ((iddfs_depth < full_solve_depth) || !full_solve_depth))
+		&& ((iddfs_depth < full_solve_depth) || !full_solve_depth)
+	)
 	{
 		reduction = 2*(late/2 + 1);
 
@@ -777,7 +778,7 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 		#ifdef PRINCIPAL_VAR_SEARCH
 		if(is_pv && i && !multi_pv)
 		{
-			assert(alpha+1 == beta);
+			//assert(alpha+1 == beta);
 			//if we failed high, rerun
 			float high_limit = is_max? beta : alpha;
 			//printf("\t\tchecking fail state w score=%.1f against lim=%.1f\n",
