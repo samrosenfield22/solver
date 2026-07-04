@@ -98,7 +98,7 @@ int nim_moves_remaining(void *pos)
 	int left = 0;
 	for(int i=0; i<3; i++)
 		left += p->piles[i];
-	return left/2;
+	return left;
 }
 
 bool nim_keys_match(void *k1, void *k2)

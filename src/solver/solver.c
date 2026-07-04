@@ -190,11 +190,18 @@ float solve(solver_t *game_solver, void *pos,
 	for(iddfs=0;; iddfs+=incr)
 	{
 		if(FORCE_SEARCH_DEPTH)
+		{
 			if(iddfs > FORCE_SEARCH_DEPTH)
 				iddfs = FORCE_SEARCH_DEPTH;
+		}
 
-		//if(iddfs == 40)
-		//	iddfs = 42;
+		//if we're almost at full depth, just go for it
+		if(solver->moves_remaining)
+		{
+			int remaining = solver->moves_remaining(gd->pos);
+			if(remaining - iddfs <= incr/2)
+				iddfs = remaining;
+		}
 
 		iddfs_depth = iddfs;
 

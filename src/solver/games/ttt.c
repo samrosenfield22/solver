@@ -136,7 +136,7 @@ int ttt_moves_remaining(void *pos)
 	for(int i=0; i<9; i++)
 		if(p->spaces[i] != EMPTY)
 			played++;
-	return (9-played)/2;
+	return (9-played);
 }
 
 bool ttt_keys_match(void *k1, void *k2)
