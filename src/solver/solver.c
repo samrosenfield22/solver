@@ -189,18 +189,19 @@ float solve(solver_t *game_solver, void *pos,
 		incr = 2;
 	for(iddfs=0;; iddfs+=incr)
 	{
-		if(FORCE_SEARCH_DEPTH)
-		{
-			if(iddfs > FORCE_SEARCH_DEPTH)
-				iddfs = FORCE_SEARCH_DEPTH;
-		}
-
 		//if we're almost at full depth, just go for it
 		if(solver->moves_remaining)
 		{
 			int remaining = solver->moves_remaining(gd->pos);
 			if(remaining - iddfs <= incr/2)
 				iddfs = remaining;
+		}
+
+		//clamp to given max depth
+		if(FORCE_SEARCH_DEPTH)
+		{
+			if(iddfs > FORCE_SEARCH_DEPTH)
+				iddfs = FORCE_SEARCH_DEPTH;
 		}
 
 		iddfs_depth = iddfs;
@@ -620,6 +621,8 @@ void update_history(void *pos, int index,
 
 int get_lmr_reduction(int i, int depth, bool is_pv)
 {
+	//return 0;
+
 	//const int lmr_start = 1;
 	const int candidates = 2;
 	const int lmr_min_depth = 4;

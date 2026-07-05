@@ -9,6 +9,7 @@
 #include <inttypes.h>
 #include <assert.h>
 
+#include "../bitboard.h"
 #include "../zobrist.h"
 #include "../../utils/utils.h"
 
@@ -1082,7 +1083,9 @@ void c4_make_move(void *pos, int index, uint64_t *hash)
 	//invert x
 	p->x ^= p->filled;
 
-	p->filled |= b;
+	//p->filled |= b;
+	p->filled = bb64_place(p->filled, b, hash,
+		c4_whosemove(p));
 
 	//p->whosemove = !p->whosemove;
 	p->filled ^= WHOSEMOVE_BIT;
@@ -1092,17 +1095,21 @@ void c4_make_move(void *pos, int index, uint64_t *hash)
 		NO_WIN_MAP : p->opp_wmap & ~b;
 	p->opp_wmap = NO_WIN_MAP;
 
+	/*
 	//update hash
 	if(!hash)
 		return;
 	//assert(zobrist_computed);
-	//*hash = check_hash;
+	// *hash = check_hash;
 
 
-	int hi = 6*index;
+	//int hi = 6*index;
+	//for(uint8_t c=col>>1; c; c>>=1)
+	//	hi++;
 
-	for(uint8_t c=col>>1; c; c>>=1)
-		hi++;
+	int hi = __builtin_ctzll(b);
+	hi -= __builtin_popcountll((b-1) & ~0b0111111011111101111110111111011111101111110111111);
+
 	//hi += __builtin_popcountll(col);
 	//printf("now hi is %d\n", hi);
 	//if(p->whosemove)
@@ -1115,6 +1122,7 @@ void c4_make_move(void *pos, int index, uint64_t *hash)
 	//test
 	//uint64_t check_hash = c4_hash(pos, 0);
 	//assert(*hash == check_hash);
+	*/
 }
 
 bool c4_move_loses(void *pos, int move)
