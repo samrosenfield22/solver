@@ -22,6 +22,7 @@ void get_win_maps(c4_pos_t *p);
 void c4_draw_full(void *pos, int last_move);
 uint64_t c4_hash(void *key, size_t size);
 
+#define C4_BOARD_MASK	(0b0111111011111101111110111111011111101111110111111)
 #define WHOSEMOVE_BIT	(((uint64_t)1)<<63)
 #define NO_WIN_MAP		(0xFFFFFFFFFFFFFFFF)
 
@@ -39,18 +40,17 @@ c4_pos_t C4_INIT_POS =
 	.won = false,
 };
 
-char *print64(uint64_t n)
-{
-	static char buf[64];
-	snprintf(buf, 63, "0x%016" PRIx64 "", n);
-	return buf;
-}
 
 uint8_t get_col(uint64_t col, int index)
 {
 	uint8_t c = 0b111111;
 	c &= col >> (7*index);
 	return c;
+}
+
+void c4_init(void)
+{
+	bb64_init(7, 6, C4_BOARD_MASK);
 }
 
 //#define c4_ok(pos)	true
@@ -333,14 +333,8 @@ endstate_t c4_gameover(void *pos)
 	//	return win;
 
 	//check draw
-	//printf("filled = %s\n", print64(p->filled));
-	uint64_t full = 0b0111111011111101111110111111011111101111110111111;
-	//assert(p->filled <= full);
-	//printf("good!\n");
-	if((p->filled & ~WHOSEMOVE_BIT) == full)
+	if(bb64_is_full(p->filled))
 	{
-		//printf("draw detected!\n");
-		//exit(0);
 		return END_DRAW;
 	}
 
@@ -671,7 +665,6 @@ float estimate_sort_color(uint64_t x, uint64_t opp, uint64_t filled)
 			b <<= 1;
 			continue;
 		}
-		//printf("b=%s, r=%d\n", print64(b), r);
 
 		if(filled & b)
 		{
@@ -778,7 +771,6 @@ float c4_estimate_sort(void *pos, int move)
 			b <<= 1;
 			continue;
 		}
-		//printf("b=%s, r=%d\n", print64(b), r);
 
 		if(filled & b)
 		{
@@ -836,7 +828,6 @@ float estimate_color_count_wins(uint64_t x, uint64_t filled,
 	}*/
 	bool parity = !(nmoves & 0b1);
 	//printf("%d moves played (%s)\n", nmoves, parity? "even":"odd");
-	//printf("filled: %s\n", print64(filled));
 
 	if((x & WHOSEMOVE_BIT))
 		parity = !parity;
@@ -1295,14 +1286,7 @@ int c4_only_moves(sorter_t *sorter, void *pos)
 		assert(0);
 	}*/
 
-	/*uint64_t alt_move_map = (p->filled<<1) & ~p->filled;
-	if(alt_move_map != move_map)
-	{
-		printf("%s\n", print64(p->filled));
-		printf("%s\n", print64(alt_move_map));
-		printf("%s\n", print64(move_map));
-		assert(0);
-	}*/
+
 
 
 	//get_win_map(&p->x_wmap, p->x, p->filled);
@@ -1615,6 +1599,7 @@ solver_t C4_SOLVER =
 	.default_order = (uint8_t[]){2, 4, 6, 7, 5, 3, 1},
 	.flip_depth = 12,
 
+	.init = c4_init,
 	.gameover = c4_gameover,
 	.estimate = c4_estimate,
 	//.estimate_sort = c4_estimate_sort,

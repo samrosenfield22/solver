@@ -140,6 +140,9 @@ float solve(solver_t *game_solver, void *pos,
 	gd->hash = solver->hash(pos, solver->pos_size);
 	memcpy(&(gd->pos), pos, solver->pos_size);
 
+	if(solver->init)
+		solver->init();
+
 
 	who_goes_first = solver->whosemove(pos);
 

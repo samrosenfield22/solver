@@ -82,6 +82,12 @@ typedef struct
 	(central moves are better than flank moves)*/
 	uint8_t *default_order;
 
+	/*
+	optional: for bitmap init, any procedural generation,
+	etc
+	*/
+	void (*init)(void);
+
 	/*required:
 	checks if the game is a win for either player, draw,
 	or is still in progress*/
