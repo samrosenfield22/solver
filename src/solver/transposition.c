@@ -26,7 +26,7 @@ bool tt_key_get_value(tt_t *h, void *key,
 void tt_attach_hash(uint64_t (*hash)(void *key, size_t size));
 void tt_attach_replace(bool (*replace_transpose)(void *old, void *new));
 uint32_t tt_key_get_index(tt_t *h, void *key, uint64_t *hash);
-
+uint64_t kv_unlock(kvpair_t *kv);
 //bool tt_replace_by_depth(void *old, void *new);
 //bool tt_replace_by_ancient(void *old, void *new);
 
@@ -270,8 +270,8 @@ void tt_add_kvpair(tt_t *h, void *key, trans_value_t *value,
 
 	//lockless
 	uint64_t hash_xor = hash ^ *(uint64_t *)value;
-	uint64_t deeper_hash = bucket->deeper_kv.hash ^ *(uint64_t *)(&bucket->deeper_kv.value);
-	uint64_t always_hash = bucket->always_kv.hash ^ *(uint64_t *)(&bucket->always_kv.value);
+	//uint64_t deeper_hash = bucket->deeper_kv.hash ^ *(uint64_t *)(&bucket->deeper_kv.value);
+	//uint64_t always_hash = bucket->always_kv.hash ^ *(uint64_t *)(&bucket->always_kv.value);
 
 	/*
 	if either kv isn't filled, or has same hash key, add
@@ -285,8 +285,8 @@ void tt_add_kvpair(tt_t *h, void *key, trans_value_t *value,
 		bucket->deeper_kv.raw = (__int128)_mm_set_epi64x(*(uint64_t*)value, hash);
 		trans_tbl->filled++;
 	}
-	else if(deeper_hash == hash)
-	//else if(kv_unlock(&bucket->deeper_kv) == hash)
+	//else if(deeper_hash == hash)
+	else if(kv_unlock(&bucket->deeper_kv) == hash)
 		bucket->deeper_kv.value = *value;
 	else if(!bucket->always_kv.value.value_filled)
 	{
@@ -296,8 +296,8 @@ void tt_add_kvpair(tt_t *h, void *key, trans_value_t *value,
 		//bucket->always_kv.raw = (__int128)_mm_set_epi64x(hash, *(uint64_t*)value);
 		trans_tbl->filled++;
 	}
-	else if(always_hash == hash)
-	//else if(kv_unlock(&bucket->deeper_kv) == hash)
+	//else if(always_hash == hash)
+	else if(kv_unlock(&bucket->always_kv) == hash)
 		bucket->always_kv.value = *value;
 	else if(bucket->deeper_kv.value.search_depth < value->search_depth)
 	{
@@ -330,15 +330,17 @@ bool tt_key_get_value(tt_t *h, void *key,
 	bucket_t *bucket = &h->map[index];
 	//kvpair_t *kv = &bucket->deeper_kv;
 
-	uint64_t deeper_hash = bucket->deeper_kv.hash ^ *(uint64_t *)(&bucket->deeper_kv.value);
-	uint64_t always_hash = bucket->always_kv.hash ^ *(uint64_t *)(&bucket->always_kv.value);
+	//uint64_t deeper_hash = bucket->deeper_kv.hash ^ *(uint64_t *)(&bucket->deeper_kv.value);
+	//uint64_t always_hash = bucket->always_kv.hash ^ *(uint64_t *)(&bucket->always_kv.value);
 
 	kvpair_t *kv = NULL;
 	if(bucket->deeper_kv.value.value_filled
-		&& (hash == deeper_hash))
+		//&& (hash == deeper_hash))
+		&& (hash == kv_unlock(&bucket->deeper_kv)))
 		kv = &bucket->deeper_kv;
 	else if(bucket->always_kv.value.value_filled
-		&& (hash == always_hash))
+		//&& (hash == always_hash))
+		&& (hash == kv_unlock(&bucket->always_kv)))
 		kv = &bucket->always_kv;
 
 	if(!kv)
@@ -435,7 +437,7 @@ bool kv_lock_good(kvpair_t *kv)
 	return ((kv->hash ^ kv->value) == kv->value)
 }*/
 
-/*uint64_t kv_unlock(kvpair_t *kv)
+uint64_t kv_unlock(kvpair_t *kv)
 {
-	return kv->hash ^ (uint64_t)kv->value;
-}*/
+	return kv->hash ^ *(uint64_t*)&(kv->value);
+}
