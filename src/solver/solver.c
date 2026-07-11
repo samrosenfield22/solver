@@ -59,6 +59,7 @@ uint32_t position_ct = 0;
 int iddfs_depth;
 int time_lim;
 int full_solve_depth = 0;
+bool main_thread_done = false;
 
 int *HISTORY_VALS;
 //uint8_t HISTORY_BEST[2] = {-1, -1};
@@ -226,16 +227,21 @@ float solve(solver_t *game_solver, void *pos,
 
 			if(MULTICORE_CT > 1)
 			{
-				//#pragma omp parallel for private(solver)
-				#pragma omp parallel for
+				main_thread_done = false;
+
+				#pragma omp parallel for private(solver)
+				//#pragma omp parallel for
 				for(int mp=0; mp<MULTICORE_CT; mp++)
 				{
-					//int tid = omp_get_thread_num();
+					int tid = omp_get_thread_num();
 					//printf("solving from thread %d\n", tid);
-					//solver = (tid==0)? game_solver : &alt_solvers[tid-1];
+					solver = (tid==0)? game_solver : &alt_solvers[tid-1];
 					result = eval(gd, 0,
 						asp_window[0], asp_window[1],
 						true);
+
+					if(tid==0)
+						main_thread_done = true;
 				}
 				//exit(0);
 			}
@@ -1128,6 +1134,9 @@ bool time_up(void)
 			return true;
 		}
 	}
+
+	if(main_thread_done && omp_get_thread_num())
+		return true;
 
 	if(time_lim == 0)
 		return false;

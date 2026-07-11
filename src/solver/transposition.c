@@ -348,7 +348,7 @@ bool tt_key_get_value(tt_t *h, void *key,
 
 	//check lockless integrity
 	uint64_t hash_xor = kv->hash ^ *(uint64_t *)(&kv->value);
-	assert(hash_xor == hash);
+	//assert(hash_xor == hash);
 	if(hash_xor != hash)
 		return false;
 
