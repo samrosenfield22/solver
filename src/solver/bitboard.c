@@ -15,6 +15,7 @@ void bb64_init(int w, int h, uint64_t mask)
 	assert(w > 0);
 	assert(h > 0);
 	assert(mask);
+	assert(__builtin_popcountll(mask) == w*h);
 
 	GAME_W = w;
 	GAME_H = h;
@@ -33,12 +34,17 @@ void bb64_init(int w, int h, uint64_t mask)
 	//printf("highest bit is %s\n", sprintbig(HIGHEST_BIT, "%b"));
 	//exit(0);
 
-	//zobrist_init()
+	//zobrist_init(2*__builtin_popcountll(mask), 0);
 }
 
 uint64_t bb64_get_open(uint64_t bb)
 {
 	return (~bb) & GAME_MASK;
+}
+
+int bb64_get_open_ct(uint64_t bb)
+{
+	return GAME_TILES_CT - __builtin_popcountll(bb);
 }
 
 bool bb64_is_full(uint64_t bb)

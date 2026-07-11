@@ -13,9 +13,6 @@
 
 #define TRANSTBL_BUCKETS_CT (1<<26)
 
-//#define TT_LOCK_CT	(1000000)
-
-
 
 //statics
 tt_t *tt_make(uint32_t len);
@@ -39,6 +36,8 @@ void tt_create(void)
 	if(trans_tbl)
 		return;
 	assert(sizeof(kvpair_t) == 16);
+	//printf("%d\n", sizeof(bucket_t));
+	//exit(0);
 
 	//create the table
 	trans_tbl = tt_make(TRANSTBL_BUCKETS_CT);
@@ -300,6 +299,7 @@ void tt_add_kvpair(tt_t *h, void *key, trans_value_t *value,
 	else if(kv_unlock(&bucket->always_kv) == hash)
 		bucket->always_kv.value = *value;
 	else if(bucket->deeper_kv.value.search_depth < value->search_depth)
+		//&& value->bound == BOUND_EXACT)
 	{
 		//bucket->deeper_kv.hash = hash;
 		//bucket->deeper_kv.value = *value;
@@ -326,7 +326,7 @@ bool tt_key_get_value(tt_t *h, void *key,
 	}
 
 	uint32_t index = tt_key_get_index(h, key, &hash);
-
+	//__builtin_prefetch(&h->map[index], 0, 3);
 	bucket_t *bucket = &h->map[index];
 	//kvpair_t *kv = &bucket->deeper_kv;
 
@@ -342,23 +342,23 @@ bool tt_key_get_value(tt_t *h, void *key,
 		//&& (hash == always_hash))
 		&& (hash == kv_unlock(&bucket->always_kv)))
 		kv = &bucket->always_kv;
-
-	if(!kv)
+	else
+	//if(!kv)
 		return false;
 
 	//check lockless integrity
-	uint64_t hash_xor = kv->hash ^ *(uint64_t *)(&kv->value);
+	/*uint64_t hash_xor = kv->hash ^ *(uint64_t *)(&kv->value);
 	//assert(hash_xor == hash);
 	if(hash_xor != hash)
-		return false;
+		return false;*/
 
-	if(kv)
-	{
+	//if(kv)
+	//{
 		*value = kv->value;
 		return true;
-	}
+	/*}
 	else
-		return false;
+		return false;*/
 }
 
 //returns the load factor out of 100

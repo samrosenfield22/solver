@@ -40,7 +40,7 @@ $(BUILD_DIR)/%.o: %.c
 clean:
 	@rmdir /s /q $(BUILD_DIR)
 
-prof: CFLAGS += -pg
+prof: CFLAGS = -pg -O0 -fno-inline -fopenmp
 prof: $(TARGET)
 
 release: CFLAGS += -DNDEBUG

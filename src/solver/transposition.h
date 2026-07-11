@@ -5,6 +5,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdalign.h>
 
 //#include <stdatomic.h>
 //#include <omp.h>
@@ -63,7 +64,7 @@ typedef struct
 
 	uint64_t (*hash)(void *key, size_t size);
 
-	bucket_t map[];
+	alignas(64) bucket_t map[];
 } tt_t;
 
 enum

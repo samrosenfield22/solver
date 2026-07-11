@@ -29,7 +29,7 @@ uint64_t c4_hash(void *key, size_t size);
 //tried srand seeds from 0 through 50
 //best: 17 (43 collisions at d=18)
 //worst: 19 (122)
-#define ZOBRIST_SEED	(9)
+#define ZOBRIST_SEED	(17)
 
 c4_pos_t C4_INIT_POS =
 {
@@ -43,9 +43,10 @@ c4_pos_t C4_INIT_POS =
 
 uint8_t get_col(uint64_t col, int index)
 {
-	uint8_t c = 0b111111;
+	/*uint8_t c = 0b111111;
 	c &= col >> (7*index);
-	return c;
+	return c;*/
+	return ((col >> (7*index)) & 0b111111);
 }
 
 void c4_init(void)
@@ -798,12 +799,25 @@ float estimate_color_count_middles(uint64_t x)
 {
 	int est = 0;
 
+	//est += __builtin_popcountll(x & 0b0000000011111100000000000000000000001111110000000);
+	//est += 2*__builtin_popcountll(x & 0b0000000000000001111110000000011111100000000000000);
+	//est += 3*__builtin_popcountll(x & 0b0000000000000000000000111111000000000000000000000);
+
+
+	//uint64_t mask = 0b111111;
 	int scores[] = {0, 1, 2, 3, 2, 1, 0};
 	for(int i=1; i<6; i++)
 	{
 		int col_bits = __builtin_popcount(get_col(x, i));
+		//int col_bits = __builtin_popcountll(x & mask);
 		est += scores[i] * col_bits;
+		//mask <<= 7;
 	}
+
+
+	//__m128i scores = _mm_setr_epi16(0, 1, 2, 3, 2, 1, 0);
+
+
 	return est;
 }
 
@@ -949,9 +963,10 @@ bool c4_is_legal(void *pos, int index)
 {
 	assert(c4_ok(pos));
 	c4_pos_t *p = pos;
+	//uint64_t mask = 0b111111 << (7*index);
+	//return ((p->filled & mask) != mask);
 
 	uint8_t col = get_col(p->filled, index);
-
 	return (col & 0b111111) != 0b111111;
 }
 
@@ -1183,8 +1198,9 @@ uint64_t c4_hash(void *key, size_t size)
 int c4_moves_remaining(void *pos)
 {
 	c4_pos_t *p = pos;
-	int played = __builtin_popcountll(p->filled & ~WHOSEMOVE_BIT);
-	return (42-played);
+	//int played = __builtin_popcountll(p->filled & ~WHOSEMOVE_BIT);
+	//return (42-played);
+	return bb64_get_open_ct(p->filled & ~WHOSEMOVE_BIT);
 }
 
 int c4_get_extension(void *pos)
@@ -1197,7 +1213,7 @@ int c4_get_extension(void *pos)
 	return (p->x_wmap || p->opp_wmap)? 2 : 0;
 }
 
-bool c4_keys_match(void *k1, void *k2)
+/*bool c4_keys_match(void *k1, void *k2)
 {
 	c4_pos_t *n1 = k1, *n2 = k2;
 
@@ -1209,7 +1225,7 @@ bool c4_keys_match(void *k1, void *k2)
 	//	return false;
 
 	return true;
-}
+}*/
 
 void swap(uint8_t *a, uint8_t *b)
 {
