@@ -48,6 +48,10 @@ void zobrist_free(void)
 
 void zobrist_place(uint64_t *h, int n)
 {
+	/*if(n >= ZOBRIST_LEN)
+	{
+		printf("bad zobrist index %d (zlen is %d)\n", n, ZOBRIST_LEN);
+	}*/
 	assert(n < ZOBRIST_LEN);
 	*h ^= zobrist_strings[n];
 	//*(uint32_t *)h ^= (uint32_t)zobrist_strings[n];

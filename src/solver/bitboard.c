@@ -44,7 +44,8 @@ uint64_t bb64_get_open(uint64_t bb)
 
 int bb64_get_open_ct(uint64_t bb)
 {
-	return GAME_TILES_CT - __builtin_popcountll(bb);
+	int placed_ct = __builtin_popcountll(bb & GAME_MASK);
+	return GAME_TILES_CT - placed_ct;
 }
 
 bool bb64_is_full(uint64_t bb)
@@ -80,6 +81,7 @@ uint64_t bb64_place(uint64_t bb, uint64_t nbit, uint64_t *hash, bool whosemove)
 	return bb | nbit;
 }
 
+//builds movelist for all open spaces
 int bb64_make_place_movelist(sorter_t *sorter, uint64_t bb)
 {
 	uint64_t moves = bb64_get_open(bb);
@@ -101,19 +103,27 @@ int bb64_make_place_movelist(sorter_t *sorter, uint64_t bb)
 	return ct;
 }
 
-/*uint64_t bb64_hash(uint64_t bb, bool whosemove)
+/*void bb64_draw(uint64_t bb, const char *piece,
+	int x_space, int y_space, )
+{
+
+}*/
+
+uint64_t bb64_hash(uint64_t bb, bool whosemove)
 {
 	uint64_t hash = 0;
 	int index = 0;
+	const int offset = whosemove? GAME_TILES_CT : 0;
+
 	for(uint64_t b=1; b<=HIGHEST_BIT; b<<=1)
 	{
 		if(!(b & GAME_MASK))
 			continue;
 
 		if(b & bb)
-			zobrist_place(&hash, index + whosemove? GAME_TILES_CT : 0);
+			zobrist_place(&hash, index + offset);
 		index++;
 	}
 
 	return hash;
-}*/
+}

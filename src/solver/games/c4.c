@@ -52,6 +52,7 @@ uint8_t get_col(uint64_t col, int index)
 void c4_init(void)
 {
 	bb64_init(7, 6, C4_BOARD_MASK);
+	zobrist_init(85, ZOBRIST_SEED);
 }
 
 //#define c4_ok(pos)	true
@@ -1155,17 +1156,24 @@ bool c4_move_loses(void *pos, int move)
 uint64_t c4_hash(void *key, size_t size)
 {
 	c4_pos_t *p = key;
-	uint64_t h = 0;
+	//uint64_t h = 0;
+
+	bool p1_move = !c4_whosemove(p);
+	uint64_t hash = bb64_hash(p->x, p1_move);
+	hash ^= bb64_hash(p->x ^ p->filled, !p1_move);
+	//uint64_t new_hash = p1_hash ^ p2_hash;
+	return hash;
+
 
 	//printf("hash for pos:\nx=0x%0x\nfilled=0x%0x\n",
 	//	p->x, p->filled);
 
 	//generate bitstrings
 	//if(!zobrist_computed)
-	zobrist_init(85, ZOBRIST_SEED);
+
 
 	//compute hash
-	int r=0, i=0;
+	/*int r=0, i=0;
 	uint64_t end = 0b1;
 	end <<= 49;
 	for(uint64_t b=0b1; b<end; b<<=1)
@@ -1192,7 +1200,8 @@ uint64_t c4_hash(void *key, size_t size)
 		r++;
 	}
 
-	return h;
+	//assert(h == new_hash);
+	return h;*/
 }
 
 int c4_moves_remaining(void *pos)
@@ -1200,7 +1209,7 @@ int c4_moves_remaining(void *pos)
 	c4_pos_t *p = pos;
 	//int played = __builtin_popcountll(p->filled & ~WHOSEMOVE_BIT);
 	//return (42-played);
-	return bb64_get_open_ct(p->filled & ~WHOSEMOVE_BIT);
+	return bb64_get_open_ct(p->filled);
 }
 
 int c4_get_extension(void *pos)

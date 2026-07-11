@@ -135,14 +135,16 @@ float solve(solver_t *game_solver, void *pos,
 	time_lim = time_lim_ms;
 	position_ct = 0;
 
+	if(solver->init)
+		solver->init();
+
 	if(!pos)
 		pos = solver->initial_pos;
 	gdata_t *gd = mem_malloc(gdata_size);
 	gd->hash = solver->hash(pos, solver->pos_size);
 	memcpy(&(gd->pos), pos, solver->pos_size);
 
-	if(solver->init)
-		solver->init();
+
 
 
 	who_goes_first = solver->whosemove(pos);
