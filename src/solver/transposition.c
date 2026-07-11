@@ -36,7 +36,7 @@ void tt_create(void)
 	if(trans_tbl)
 		return;
 	assert(sizeof(kvpair_t) == 16);
-	//printf("%d\n", sizeof(bucket_t));
+	//printf("%d\n", sizeof(trans_value_t));
 	//exit(0);
 
 	//create the table
@@ -268,7 +268,9 @@ void tt_add_kvpair(tt_t *h, void *key, trans_value_t *value,
 	bucket_t *bucket = &h->map[index];
 
 	//lockless
-	uint64_t hash_xor = hash ^ *(uint64_t *)value;
+	kvpair_t passed_kv = {.hash=hash, .value=*value};
+	uint64_t hash_xor = kv_unlock(&passed_kv);
+	//uint64_t hash_xor = hash ^ *(uint64_t *)value;
 	//uint64_t deeper_hash = bucket->deeper_kv.hash ^ *(uint64_t *)(&bucket->deeper_kv.value);
 	//uint64_t always_hash = bucket->always_kv.hash ^ *(uint64_t *)(&bucket->always_kv.value);
 
@@ -279,7 +281,7 @@ void tt_add_kvpair(tt_t *h, void *key, trans_value_t *value,
 	*/
 	if(!bucket->deeper_kv.value.value_filled)
 	{
-		//bucket->deeper_kv.hash = hash;
+		//bucket->deeper_kv.hash = hash_xor;
 		//bucket->deeper_kv.value = *value;
 		bucket->deeper_kv.raw = (__int128)_mm_set_epi64x(*(uint64_t*)value, hash);
 		trans_tbl->filled++;
@@ -289,10 +291,9 @@ void tt_add_kvpair(tt_t *h, void *key, trans_value_t *value,
 		bucket->deeper_kv.value = *value;
 	else if(!bucket->always_kv.value.value_filled)
 	{
-		//bucket->always_kv.hash = hash;
+		//bucket->always_kv.hash = hash_xor;
 		//bucket->always_kv.value = *value;
 		bucket->always_kv.raw = (__int128)_mm_set_epi64x(*(uint64_t*)value, hash_xor);
-		//bucket->always_kv.raw = (__int128)_mm_set_epi64x(hash, *(uint64_t*)value);
 		trans_tbl->filled++;
 	}
 	//else if(always_hash == hash)
@@ -301,14 +302,13 @@ void tt_add_kvpair(tt_t *h, void *key, trans_value_t *value,
 	else if(bucket->deeper_kv.value.search_depth < value->search_depth)
 		//&& value->bound == BOUND_EXACT)
 	{
-		//bucket->deeper_kv.hash = hash;
+		//bucket->deeper_kv.hash = hash_xor;
 		//bucket->deeper_kv.value = *value;
 		bucket->deeper_kv.raw = (__int128)_mm_set_epi64x(*(uint64_t*)value, hash_xor);
-
 	}
 	else
 	{
-		//bucket->always_kv.hash = hash;
+		//bucket->always_kv.hash = hash_xor;
 		//bucket->always_kv.value = *value;
 		bucket->always_kv.raw = (__int128)_mm_set_epi64x(*(uint64_t*)value, hash_xor);
 	}
@@ -347,7 +347,10 @@ bool tt_key_get_value(tt_t *h, void *key,
 		return false;
 
 	//check lockless integrity
-	/*uint64_t hash_xor = kv->hash ^ *(uint64_t *)(&kv->value);
+	/*
+	//uint64_t hash_xor = kv->hash ^ *(uint64_t *)(&kv->value);
+	kvpair_t passed_kv = {.hash=hash, .value=*value};
+	uint64_t hash_xor = kv_unlock(&passed_kv);
 	//assert(hash_xor == hash);
 	if(hash_xor != hash)
 		return false;*/
@@ -439,5 +442,12 @@ bool kv_lock_good(kvpair_t *kv)
 
 uint64_t kv_unlock(kvpair_t *kv)
 {
-	return kv->hash ^ *(uint64_t*)&(kv->value);
+	trans_value_t *tv = &kv->value;
+	uint64_t v = *(uint64_t *)tv;
+	assert((v & 0xFF) == 0);
+	//printbig(v, "%x");
+	//getchar();
+	return kv->hash ^ v;
+
+	//return kv->hash ^ *(uint64_t*)&(kv->value);
 }

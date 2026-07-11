@@ -29,14 +29,14 @@ enum
 typedef struct
 {
 	float score;
+	//int16_t score;
 	uint8_t search_depth;
-	bool full;
+	//bool full;
 	uint8_t best_move;
 
 	uint8_t value_filled	: 1;
-	uint8_t bound	: 2;
-	//uint8_t ancient	: 1;
-	//age??
+	uint8_t full			: 1;
+	uint8_t bound			: 2;
 } trans_value_t;
 
 typedef union
@@ -48,6 +48,11 @@ typedef union
 	};
 	__int128 raw;
 } kvpair_t;
+/*typedef struct
+{
+	uint64_t hash;
+	trans_value_t value;
+} kvpair_t;*/
 
 typedef struct
 {
@@ -64,7 +69,7 @@ typedef struct
 
 	uint64_t (*hash)(void *key, size_t size);
 
-	alignas(64) bucket_t map[];
+	bucket_t map[];
 } tt_t;
 
 enum
