@@ -103,11 +103,103 @@ int bb64_make_place_movelist(sorter_t *sorter, uint64_t bb)
 	return ct;
 }
 
-/*void bb64_draw(uint64_t bb, const char *piece,
-	int x_space, int y_space, )
+void bb64_draw(uint64_t bb, const char *piece,
+	int dir_1, int dir_2, int x_space, int y_space)
 {
+	int x, y;
+	int x_start=0, y_start=0;
+	int x_1_incr, x_2_incr, y_1_incr, y_2_incr;
+	switch(dir_1)
+	{
+		case DRAW_UP_DIR:
+			x_1_incr = 0;
+			y_1_incr = -1;
+			y_start = GAME_H-1;
+			break;
 
-}*/
+		case DRAW_DOWN_DIR:
+			x_1_incr = 0;
+			y_1_incr = 1;
+			y_start = 0;
+			break;
+
+		case DRAW_LEFT_DIR:
+			x_1_incr = 1;
+			y_1_incr = 0;
+			x_start = GAME_W-1;
+			break;
+
+		case DRAW_RIGHT_DIR:
+			x_1_incr = 1;
+			y_1_incr = 0;
+			x_start = 0;
+			break;
+
+		default: assert(0); exit(0);
+	}
+
+	switch(dir_2)
+	{
+		case DRAW_UP_DIR:
+			x_2_incr = 0;
+			y_2_incr = -1;
+			y_start = GAME_H-1;
+			break;
+
+		case DRAW_DOWN_DIR:
+			x_2_incr = 0;
+			y_2_incr = 1;
+			y_start = 0;
+			break;
+
+		case DRAW_LEFT_DIR:
+			x_2_incr = 1;
+			y_2_incr = 0;
+			x_start = GAME_W-1;
+			break;
+
+		case DRAW_RIGHT_DIR:
+			x_2_incr = 1;
+			y_2_incr = 0;
+			x_start = 0;
+			break;
+
+		default: assert(0); exit(0);
+	}
+
+	x = x_start;
+	y = y_start;
+	for(uint64_t b=1; b<=HIGHEST_BIT; b<<=1)
+	{
+		if(!(b & GAME_MASK))
+			continue;
+
+		if(b & bb)
+		{
+			//draw
+			int x_draw = 61 + x*x_space;
+			int y_draw = 19 + y*y_space;
+			window_unfocus();
+			term_move_cursor(x_draw, y_draw);
+			printf(piece);
+		}
+
+		x += x_1_incr;
+		y += y_1_incr;
+
+		//check out of bounds
+		if(x<0 || x>=GAME_W)
+		{
+			x = x_start;
+			y += y_2_incr;
+		}
+		if(y<0 || y>=GAME_H)
+		{
+			y = y_start;
+			x += x_2_incr;
+		}
+	}
+}
 
 uint64_t bb64_hash(uint64_t bb, bool whosemove)
 {

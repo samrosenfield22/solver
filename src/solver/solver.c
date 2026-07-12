@@ -110,6 +110,8 @@ void solver_init(solver_t *game_solver)
 	solver_check(game_solver);
 
 	solver = game_solver;
+	if(solver->init)
+		solver->init();
 	//if(!solver->hash_size)
 	//	solver->hash_size = solver->pos_size;
 	gdata_size = sizeof(gdata_t) + solver->pos_size;
@@ -134,9 +136,6 @@ float solve(solver_t *game_solver, void *pos,
 
 	time_lim = time_lim_ms;
 	position_ct = 0;
-
-	if(solver->init)
-		solver->init();
 
 	if(!pos)
 		pos = solver->initial_pos;

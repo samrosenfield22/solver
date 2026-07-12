@@ -1427,16 +1427,16 @@ void c4_draw_full(void *pos, int last_move)
 	char indent[] = "\t\t\t\t\t\t\t    ";
 
 	//test
-	uint64_t red;//, yel;
+	uint64_t red, yel;
 	if(c4_whosemove(p))
 	{
-		//yel = p->x ^ p->filled;
+		yel = p->x ^ p->filled;
 		red = p->x;
 	}
 	else
 	{
 		red = p->x ^ p->filled;
-		//yel = p->x;
+		yel = p->x;
 	}
 
 	uint64_t wb = 0;
@@ -1493,6 +1493,18 @@ void c4_draw_full(void *pos, int last_move)
 			}
 		}
 	}
+
+	char buf[8];
+	snprintf(buf, 7, "%s_", TERM_WHITE);
+	bb64_draw(0xFFFFFFFFFFFFFFFF, buf,
+		DRAW_UP_DIR, DRAW_RIGHT_DIR, 4, 2);
+	snprintf(buf, 7, "%sO", TERM_RED);
+	bb64_draw(red, buf,
+		DRAW_UP_DIR, DRAW_RIGHT_DIR, 4, 2);
+	snprintf(buf, 7, "%sO", TERM_YELLOW);
+	bb64_draw(yel, buf,
+		DRAW_UP_DIR, DRAW_RIGHT_DIR, 4, 2);
+	return;
 
 
 	//header
