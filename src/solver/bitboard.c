@@ -181,6 +181,7 @@ void bb64_draw(uint64_t bb, const char *piece,
 			int y_draw = 19 + y*y_space;
 			window_unfocus();
 			term_move_cursor(x_draw, y_draw);
+			printf("%s%s", TERM_WHITE, TERM_BLACK_BG);
 			printf(piece);
 		}
 

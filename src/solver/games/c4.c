@@ -1424,7 +1424,7 @@ void c4_draw_full(void *pos, int last_move)
 {
 	c4_pos_t *p = pos;
 
-	char indent[] = "\t\t\t\t\t\t\t    ";
+	//char indent[] = "\t\t\t\t\t\t\t    ";
 
 	//test
 	uint64_t red, yel;
@@ -1494,19 +1494,33 @@ void c4_draw_full(void *pos, int last_move)
 		}
 	}
 
-	char buf[8];
-	snprintf(buf, 7, "%s_", TERM_WHITE);
+	char buf[15];
+	char *justplayed = c4_whosemove(p)? TERM_YELLOW : TERM_RED;
+
+	//empty board
+	snprintf(buf, 14, "%s_", TERM_WHITE);
 	bb64_draw(0xFFFFFFFFFFFFFFFF, buf,
 		DRAW_UP_DIR, DRAW_RIGHT_DIR, 4, 2);
-	snprintf(buf, 7, "%sO", TERM_RED);
+	//red tokens
+	snprintf(buf, 14, "%sO", TERM_RED);
 	bb64_draw(red, buf,
 		DRAW_UP_DIR, DRAW_RIGHT_DIR, 4, 2);
-	snprintf(buf, 7, "%sO", TERM_YELLOW);
+	//yellow tokens
+	snprintf(buf, 14, "%sO", TERM_YELLOW);
 	bb64_draw(yel, buf,
 		DRAW_UP_DIR, DRAW_RIGHT_DIR, 4, 2);
+	//redraw recent token
+	snprintf(buf, 14, "%s%sO", justplayed, TERM_BLUE_BG);
+	bb64_draw(recent, buf,
+		DRAW_UP_DIR, DRAW_RIGHT_DIR, 4, 2);
+	//redraw win alignment
+	snprintf(buf, 14, "%s%sO", justplayed, TERM_WHITE_BG);
+	bb64_draw(wb, buf,
+		DRAW_UP_DIR, DRAW_RIGHT_DIR, 4, 2);
+	//draw win squares
 	return;
 
-
+	/*
 	//header
 	printf("\n\n\n\n\n");
 	//printf(indent);
@@ -1558,7 +1572,7 @@ void c4_draw_full(void *pos, int last_move)
 		}
 	}
 	putchar('\n');
-
+	*/
 	/*
 	//test
 	for(int c=0; c<7; c++)
