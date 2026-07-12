@@ -52,6 +52,7 @@ uint8_t get_col(uint64_t col, int index)
 void c4_init(void)
 {
 	bb64_init(7, 6, C4_BOARD_MASK);
+	bb64_init_draw(DRAW_UP_DIR, DRAW_RIGHT_DIR, 4, 2);
 	zobrist_init(85, ZOBRIST_SEED);
 }
 
@@ -1499,24 +1500,19 @@ void c4_draw_full(void *pos, int last_move)
 
 	//empty board
 	snprintf(buf, 14, "%s_", TERM_WHITE);
-	bb64_draw(0xFFFFFFFFFFFFFFFF, buf,
-		DRAW_UP_DIR, DRAW_RIGHT_DIR, 4, 2);
+	bb64_draw(0xFFFFFFFFFFFFFFFF, buf);
 	//red tokens
 	snprintf(buf, 14, "%sO", TERM_RED);
-	bb64_draw(red, buf,
-		DRAW_UP_DIR, DRAW_RIGHT_DIR, 4, 2);
+	bb64_draw(red, buf);
 	//yellow tokens
 	snprintf(buf, 14, "%sO", TERM_YELLOW);
-	bb64_draw(yel, buf,
-		DRAW_UP_DIR, DRAW_RIGHT_DIR, 4, 2);
+	bb64_draw(yel, buf);
 	//redraw recent token
 	snprintf(buf, 14, "%s%sO", justplayed, TERM_BLUE_BG);
-	bb64_draw(recent, buf,
-		DRAW_UP_DIR, DRAW_RIGHT_DIR, 4, 2);
+	bb64_draw(recent, buf);
 	//redraw win alignment
 	snprintf(buf, 14, "%s%sO", justplayed, TERM_WHITE_BG);
-	bb64_draw(wb, buf,
-		DRAW_UP_DIR, DRAW_RIGHT_DIR, 4, 2);
+	bb64_draw(wb, buf);
 	//draw win squares
 	return;
 

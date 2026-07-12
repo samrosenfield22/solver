@@ -10,6 +10,10 @@
 int GAME_W, GAME_H, GAME_TILES_CT;
 uint64_t GAME_MASK, HIGHEST_BIT=0;
 
+//drawing
+int DRAW_DIR1=DRAW_RIGHT_DIR, DRAW_DIR2=DRAW_DOWN_DIR;
+int DRAW_X_SPACE=2, DRAW_Y_SPACE=2;
+
 void bb64_init(int w, int h, uint64_t mask)
 {
 	assert(w > 0);
@@ -35,6 +39,14 @@ void bb64_init(int w, int h, uint64_t mask)
 	//exit(0);
 
 	//zobrist_init(2*__builtin_popcountll(mask), 0);
+}
+
+void bb64_init_draw(int dir_1, int dir_2, int x_space, int y_space)
+{
+	DRAW_DIR1 = dir_1;
+	DRAW_DIR2 = dir_2;
+	DRAW_X_SPACE = x_space;
+	DRAW_Y_SPACE = y_space;
 }
 
 uint64_t bb64_get_open(uint64_t bb)
@@ -103,13 +115,12 @@ int bb64_make_place_movelist(sorter_t *sorter, uint64_t bb)
 	return ct;
 }
 
-void bb64_draw(uint64_t bb, const char *piece,
-	int dir_1, int dir_2, int x_space, int y_space)
+void bb64_draw(uint64_t bb, const char *piece)
 {
 	int x, y;
 	int x_start=0, y_start=0;
 	int x_1_incr, x_2_incr, y_1_incr, y_2_incr;
-	switch(dir_1)
+	switch(DRAW_DIR1)
 	{
 		case DRAW_UP_DIR:
 			x_1_incr = 0;
@@ -138,7 +149,7 @@ void bb64_draw(uint64_t bb, const char *piece,
 		default: assert(0); exit(0);
 	}
 
-	switch(dir_2)
+	switch(DRAW_DIR2)
 	{
 		case DRAW_UP_DIR:
 			x_2_incr = 0;
@@ -177,8 +188,8 @@ void bb64_draw(uint64_t bb, const char *piece,
 		if(b & bb)
 		{
 			//draw
-			int x_draw = 61 + x*x_space;
-			int y_draw = 19 + y*y_space;
+			int x_draw = 61 + x*DRAW_X_SPACE;
+			int y_draw = 19 + y*DRAW_Y_SPACE;
 			window_unfocus();
 			term_move_cursor(x_draw, y_draw);
 			printf("%s%s", TERM_WHITE, TERM_BLACK_BG);
