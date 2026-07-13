@@ -56,6 +56,12 @@ void c4_init(void)
 	zobrist_init(85, ZOBRIST_SEED);
 }
 
+uint64_t move_map(uint64_t filled)
+{
+	const uint64_t bottom_row = 0b0000001000000100000010000001000000100000010000001;
+	return (filled + bottom_row) & C4_BOARD_MASK;
+}
+
 //#define c4_ok(pos)	true
 bool c4_ok(c4_pos_t *p)
 {
@@ -80,9 +86,7 @@ bool c4_ok(c4_pos_t *p)
 
 bool c4_whosemove(void *pos)
 {
-	//assert(c4_ok(pos));
 	c4_pos_t *p = pos;
-	//return p->whosemove;
 	return p->filled & WHOSEMOVE_BIT;
 }
 
@@ -91,9 +95,16 @@ bool c4_whosemove(void *pos)
 //both x and filled)
 uint64_t move_bit(c4_pos_t *p, int index)
 {
-	uint64_t col = get_col(p->filled, index)+1;
+	/*uint64_t mm = move_map(p);
+	uint64_t col_mask = ((uint64_t)0b111111) << (7*index);
+	return mm & col_mask;*/
+
+	uint64_t mod = p->filled + (((uint64_t)1) << (7*index));
+	return mod & ~p->filled;
+
+	/*uint64_t col = get_col(p->filled, index)+1;
 	col &= 0b111111;
-	return col<<(7*index);
+	return col<<(7*index);*/
 }
 
 bool is_win(uint64_t x)
@@ -344,10 +355,18 @@ endstate_t c4_gameover(void *pos)
 	//if(c4_win_impossible(p))
 	//	return END_DRAW;
 
-	/*int move_ct = __builtin_popcountll(p->filled & ~WHOSEMOVE_BIT);
-	if(move_ct >= 40)
-		if(!p->x_wmap && !p->opp_wmap)
+	//int move_ct = __builtin_popcountll(p->filled & ~WHOSEMOVE_BIT);
+	/*if(move_ct >= 40)
+		if((!p->x_wmap) && (!p->opp_wmap))
 			return END_DRAW;*/
+	/*if(move_ct >= 20)
+	{
+		uint64_t remaining = C4_BOARD_MASK & ~p->filled;
+		uint64_t fill_all_x = p->x | remaining;
+		uint64_t fill_all_opp = (p->x ^ p->filled) | remaining;
+		if(!is_win(fill_all_x) && !is_win(fill_all_opp))
+			return END_DRAW;
+	}*/
 	/*
 	{
 		int endgame_status = endgame_forced_win_simple(p);
@@ -590,6 +609,8 @@ float c4_estimate(void *pos)
 		else if(p->opp_wmap && !p->x_wmap)	est -= 100;
 	}*/
 
+	//bonus for player to move
+	//est += 0.5;
 
 	if(!c4_whosemove(p))
 		est *= -1;
@@ -801,11 +822,12 @@ float estimate_color_count_middles(uint64_t x)
 {
 	int est = 0;
 
-	//est += __builtin_popcountll(x & 0b0000000011111100000000000000000000001111110000000);
-	//est += 2*__builtin_popcountll(x & 0b0000000000000001111110000000011111100000000000000);
-	//est += 3*__builtin_popcountll(x & 0b0000000000000000000000111111000000000000000000000);
+	est += __builtin_popcountll(x & 0b0000000011111100000000000000000000001111110000000);
+	est += 2*__builtin_popcountll(x & 0b0000000000000001111110000000011111100000000000000);
+	est += 3*__builtin_popcountll(x & 0b0000000000000000000000111111000000000000000000000);
+	return est;
 
-
+	/*
 	//uint64_t mask = 0b111111;
 	int scores[] = {0, 1, 2, 3, 2, 1, 0};
 	for(int i=1; i<6; i++)
@@ -815,12 +837,7 @@ float estimate_color_count_middles(uint64_t x)
 		est += scores[i] * col_bits;
 		//mask <<= 7;
 	}
-
-
-	//__m128i scores = _mm_setr_epi16(0, 1, 2, 3, 2, 1, 0);
-
-
-	return est;
+	return est;*/
 }
 
 float estimate_color_count_wins(uint64_t x, uint64_t filled,
@@ -937,12 +954,18 @@ float estimate_color(uint64_t x, uint64_t opp, uint64_t filled,
 	//int move_ct = __builtin_popcountll(filled & ~WHOSEMOVE_BIT);
 	//if(move_ct < 32)
 	//	est /= 2;
-	est += 3*estimate_color_count_wins(x, filled, wmap, verbose);
-	//est += 3*(__builtin_popcountll(wmap));
+	//est += 3*estimate_color_count_wins(x, filled, wmap, verbose);
+	uint64_t useful = wmap & ~(opp_wmap<<1);
+	est += 3*(__builtin_popcountll(useful));
+
+	//uint64_t next_turn_moves = move_map(filled) << 1;
+	//est += __builtin_popcountll(useful & next_turn_moves);
 
 	uint64_t stack = wmap & (wmap>>1);
 	if(stack && !(stack & opp_wmap)
-		 && !(stack>>1 & opp_wmap))
+		 && !(stack>>1 & opp_wmap)
+		 //&& !(stack>>2 & opp_wmap)
+		)
 		est += 100;
 
 	/*{
@@ -979,8 +1002,9 @@ void c4_make_move_temp(void *made, void *pos, int index, uint64_t *hash)
 
 
 
-	uint64_t col = get_col(p->filled, index)+1;
-	uint64_t b = col<<(7*index);
+	//uint64_t col = get_col(p->filled, index)+1;
+	//uint64_t b = col<<(7*index);
+	uint64_t b = move_bit(p, index);
 
 	m->won = false;
 	if(p->x_wmap != NO_WIN_MAP)
@@ -1004,30 +1028,6 @@ void c4_make_move_temp(void *made, void *pos, int index, uint64_t *hash)
 
 	//return &made;
 
-	//update hash
-	if(!hash)
-		return;
-	//assert(zobrist_computed);
-	//*hash = check_hash;
-
-
-	int hi = 6*index;
-
-	for(uint8_t c=col>>1; c; c>>=1)
-		hi++;
-	//hi += 32 - __builtin_clz((unsigned int)col);
-	//hi += __builtin_popcountll(col);
-	//printf("now hi is %d\n", hi);
-	//if(p->whosemove)
-	if(c4_whosemove(m))
-		hi += 42;
-	//printf("final hi: %d\n", hi);
-
-	zobrist_place(hash, hi);
-
-	//test
-	//uint64_t check_hash = c4_hash(m, 0);
-	//assert(*hash == check_hash);
 }
 
 /*int c4_get_placement(void *pos, int index)
@@ -1074,8 +1074,13 @@ void c4_make_move(void *pos, int index, uint64_t *hash)
 	//b &= 0b0111111011111101111110111111011111101111110111111;
 	//printf("0x%0x\n", b);
 
-	uint64_t col = get_col(p->filled, index)+1;
-	uint64_t b = col<<(7*index);
+	//uint64_t col = get_col(p->filled, index)+1;
+	//uint64_t b = col<<(7*index);
+
+	/*uint64_t mm = move_map(p);
+	uint64_t col_mask = ((uint64_t)0b111111) << (7*index);
+	uint64_t b = mm & col_mask;*/
+	uint64_t b = move_bit(p, index);
 
 	p->won = false;
 	if(p->x_wmap != NO_WIN_MAP)
@@ -1270,7 +1275,7 @@ int c4_make_movelist(sorter_t *sorter, void *pos)
 	c4_pos_t *p = pos;
 	int ct = 0;
 	//int bad_move = -1;
-	get_win_maps(p);
+	/*get_win_maps(p);
 	for(int i=0; i<7; i++)
 	{
 		if(get_col(p->filled, i) != 0b111111)
@@ -1279,6 +1284,20 @@ int c4_make_movelist(sorter_t *sorter, void *pos)
 			sorter[ct].score = 0;
 			ct++;
 		}
+	}*/
+
+	uint64_t mm = move_map(p->filled);
+	uint64_t mask = 0b111111;
+	for(int i=0; i<7; i++)
+	{
+		if(mm & mask)
+		{
+			sorter[ct].move = i;
+			sorter[ct].score = 0;
+			ct++;
+		}
+
+		mask <<= 7;
 	}
 
 	return ct;
@@ -1297,12 +1316,21 @@ int c4_only_moves(sorter_t *sorter, void *pos)
 		move_map |= b;
 	}*/
 
-	uint64_t filled_alt = p->filled;
+	/*uint64_t filled_alt = p->filled;
 	filled_alt |= 0b100000010000001000000100000010000001000000;
 	uint64_t move_map = (filled_alt<<1) | filled_alt;
 	move_map ^= filled_alt;
 	if(!(filled_alt & 0b1))
-		move_map |= 0b1;
+		move_map |= 0b1;*/
+
+	uint64_t mm = move_map(p->filled);
+	/*if(mm != move_map)
+	{
+		printf("\nmm:\t\t%s\n", sprintbig(mm, "%b"));
+		printf("movemap:\t%s\n", sprintbig(move_map, "%b"));
+		catch_pos(p);
+		exit(0);
+	}*/
 
 	/*if(move_map != other_move_map)
 	{
@@ -1325,7 +1353,7 @@ int c4_only_moves(sorter_t *sorter, void *pos)
 	//uint64_t wmap = p->x_wmap;
 	if(p->x_wmap == NO_WIN_MAP)
 		p->x_wmap = win_map(p->x, p->filled);
-	uint64_t win_move = move_map & p->x_wmap;
+	uint64_t win_move = mm & p->x_wmap;
 	//uint64_t win_move = p->x_wmap & filled_1_higher;
 	//if(move_map & p->x_wmap)
 	if(win_move)
@@ -1362,7 +1390,7 @@ int c4_only_moves(sorter_t *sorter, void *pos)
 	if(p->opp_wmap == NO_WIN_MAP)
 		p->opp_wmap = win_map(p->x ^ p->filled, p->filled);
 	//win_move = p->opp_wmap & filled_1_higher;
-	win_move = move_map & p->opp_wmap;
+	win_move = mm & p->opp_wmap;
 	//if(move_map & p->opp_wmap)
 	if(win_move)
 	{

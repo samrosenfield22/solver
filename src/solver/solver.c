@@ -438,6 +438,7 @@ bool set_aspiration_window(float *asp_window,
 result_t eval(gdata_t *gd, int depth,
 	float alpha, float beta, bool is_pv)
 {
+
 	//printf("eval at d=%d (%d)\n", depth, omp_get_thread_num());
 	if(time_up())
 		return (result_t){.score=0, .full=false, .has_tt=false, .best_move=-1};
@@ -454,11 +455,14 @@ result_t eval(gdata_t *gd, int depth,
 	}
 	void *pos = &(gd->pos);
 
+
+
 	//trans_value_t *ttval = NULL;
 	trans_value_t ttval;
 	bool got = false;
 	#ifdef USE_TRANSPOSITION_TABLE
 	//check if position was already analyzed
+	//tt_prefetch(gd->hash);
 	got = tt_get(&ttval, gd, depth);
 	if(got)
 	{

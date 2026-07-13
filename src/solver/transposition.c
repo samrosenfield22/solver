@@ -316,6 +316,12 @@ void tt_add_kvpair(tt_t *h, void *key, trans_value_t *value,
 
 }
 
+void tt_prefetch(uint64_t hash)
+{
+	uint32_t index = tt_key_get_index(trans_tbl, NULL, &hash);
+	__builtin_prefetch(&trans_tbl->map[index], 0, 0);
+}
+
 bool tt_key_get_value(tt_t *h, void *key,
 	trans_value_t *value, uint64_t hash)
 {
@@ -326,7 +332,6 @@ bool tt_key_get_value(tt_t *h, void *key,
 	}
 
 	uint32_t index = tt_key_get_index(h, key, &hash);
-	//__builtin_prefetch(&h->map[index], 0, 3);
 	bucket_t *bucket = &h->map[index];
 	//kvpair_t *kv = &bucket->deeper_kv;
 
