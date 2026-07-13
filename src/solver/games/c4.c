@@ -21,6 +21,7 @@ void get_win_maps(c4_pos_t *p);
 //void get_win_map(uint64_t *wmap, uint64_t x, uint64_t filled);
 void c4_draw_full(void *pos, int last_move);
 uint64_t c4_hash(void *key, size_t size);
+int c4_moves_remaining(void *pos);
 
 #define C4_BOARD_MASK	(0b0111111011111101111110111111011111101111110111111)
 #define WHOSEMOVE_BIT	(((uint64_t)1)<<63)
@@ -280,8 +281,17 @@ void make_paths(uint64_t *paths)
 	exit(0);*/
 }
 
-bool c4_win_impossible(c4_pos_t *p)
+bool c4_win_impossible_for_current(void *pos)
 {
+	c4_pos_t *p = pos;
+	if(c4_moves_remaining(p) < 30)
+		return false;
+
+	uint64_t remaining = ~p->filled;
+	uint64_t fill_all_x = (p->x | remaining) & C4_BOARD_MASK;
+	return !is_win(fill_all_x);
+
+
 	//only relevant if column 3 is completely full
 	/*if(!(p->filled & 0b0111111000000000000000000000))
 	{
@@ -610,7 +620,7 @@ float c4_estimate(void *pos)
 	}*/
 
 	//bonus for player to move
-	//est += 0.5;
+	//est += 0.1;
 
 	if(!c4_whosemove(p))
 		est *= -1;
@@ -954,9 +964,14 @@ float estimate_color(uint64_t x, uint64_t opp, uint64_t filled,
 	//int move_ct = __builtin_popcountll(filled & ~WHOSEMOVE_BIT);
 	//if(move_ct < 32)
 	//	est /= 2;
-	//est += 3*estimate_color_count_wins(x, filled, wmap, verbose);
-	uint64_t useful = wmap & ~(opp_wmap<<1);
-	est += 3*(__builtin_popcountll(useful));
+
+	est += 3*estimate_color_count_wins(x, filled, wmap, verbose);
+
+	//next move threats
+	//uint64_t useful = wmap & ~(opp_wmap<<1) & C4_BOARD_MASK;
+	//est += 3*__builtin_popcountll(useful);
+	//est += __builtin_popcountll(wmap & (move_map(filled)<<1));
+	//est += 3*(__builtin_popcountll(useful));
 
 	//uint64_t next_turn_moves = move_map(filled) << 1;
 	//est += __builtin_popcountll(useful & next_turn_moves);
@@ -1286,11 +1301,16 @@ int c4_make_movelist(sorter_t *sorter, void *pos)
 		}
 	}*/
 
+	//get_win_maps(p);
+
 	uint64_t mm = move_map(p->filled);
 	uint64_t mask = 0b111111;
 	for(int i=0; i<7; i++)
 	{
-		if(mm & mask)
+		uint64_t movebit = mm & mask;
+		assert(!(movebit & p->x_wmap));	//should be caught by only_moves
+		//if(movebit && !(movebit<<1 & p->opp_wmap))
+		if(movebit)
 		{
 			sorter[ct].move = i;
 			sorter[ct].score = 0;
@@ -1685,6 +1705,7 @@ solver_t C4_SOLVER =
 	.move_loses = c4_move_loses,
 	.make_movelist = c4_make_movelist,
 	.only_moves = c4_only_moves,
+	.win_impossible_for_current = c4_win_impossible_for_current,
 
 	.hash = c4_hash,
 	.moves_remaining = c4_moves_remaining,

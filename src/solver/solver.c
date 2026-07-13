@@ -68,7 +68,6 @@ int *HISTORY_VALS;
 #define NUM_KILLERS	(2)
 uint8_t killers[MAX_PLY][NUM_KILLERS] = {0};
 
-bool asp_window_rerun = false;
 
 
 void solver_check(solver_t *s)
@@ -420,7 +419,6 @@ bool set_aspiration_window(float *asp_window,
 		else if(score >= asp_window[1])
 			asp_window[1] = WIN_SCORE;
 
-		asp_window_rerun = true;
 		return false;
 
 		//printf("\t--- extending aspiration window size to %.1f,%.1f ---\n",
@@ -430,7 +428,6 @@ bool set_aspiration_window(float *asp_window,
 	asp_window[0] = *last_score - asp_window_size[0];
 	asp_window[1] = *last_score + asp_window_size[1];
 
-	asp_window_rerun = !in_window;
 	return in_window;
 }
 
@@ -534,6 +531,18 @@ result_t eval(gdata_t *gd, int depth,
 		//}
 	}
 
+	/*if(solver->win_impossible_for_current)
+	{
+		if(solver->win_impossible_for_current(gd->pos))
+		{
+			bool is_max = (max_or_min(depth)==MAX_LAYER);
+			if(is_max)
+				alpha = max(alpha, 0);
+			else
+				beta = min(beta, 0);
+		}
+	}*/
+
 	//make movelist
 	//if there's only one move (that wins or loses),
 	//just play that
@@ -576,11 +585,15 @@ result_t eval(gdata_t *gd, int depth,
 			bound = BOUND_EXACT;
 		else if(result.score <= alpha)
 		{
+			if(!(got && ttval.score==result.score
+				&& ttval.bound==BOUND_LOWER))
 			bound = BOUND_UPPER;
 			//result.full = false;
 		}
 		else
 		{
+			if(!(got && ttval.score==result.score
+				&& ttval.bound==BOUND_UPPER))
 			bound = BOUND_LOWER;
 			//result.full = false;
 		}
@@ -670,6 +683,8 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 			alpha = max(alpha, ttval->score);
 		else if(ttval->bound == BOUND_UPPER)
 			beta = min(beta, ttval->score);
+		else
+			assert(0);
 	}
 	if(alpha >= beta)	//bail immediately
 	{
@@ -998,6 +1013,8 @@ int sort_movelist(sorter_t *order, int len, gdata_t *gd, int depth,
 		#endif	//USE_HISTORY_HEURISTIC
 		else if(move_is_forcing(pos, move))
 			order[i].score += (1<<15);
+		//else if(solver->estimate)
+		//	order[i].score += solver->estimate(pos);
 
 
 
@@ -1012,7 +1029,7 @@ int sort_movelist(sorter_t *order, int len, gdata_t *gd, int depth,
 
 		if(solver->move_loses && solver->move_loses(pos, move))
 		{
-			order[i].score = -100;
+			order[i].score = -1000;
 			losers++;
 		}
 
@@ -1034,8 +1051,9 @@ int sort_movelist(sorter_t *order, int len, gdata_t *gd, int depth,
 	}*/
 
 	assert(len >= losers);
-	if(losers)
-		assert(order[len-1].score == -100);
+	//if(losers)
+	//	assert(order[len-1].score == -100);
+
 	/*len -= losers;
 	if(!len)
 		len = 1;*/

@@ -134,6 +134,9 @@ typedef struct
 	if not, returns 0 (no only moves)*/
 	int (*only_moves)(sorter_t *onlies, void *pos);
 
+	//optional
+	bool (*win_impossible_for_current)(void *pos);
+
 	/*required:
 	computes the hash. in updating hash systems like zobrist,
 	this is still required (currently) for the initial pos

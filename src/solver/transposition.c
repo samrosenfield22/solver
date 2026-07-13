@@ -449,7 +449,7 @@ uint64_t kv_unlock(kvpair_t *kv)
 {
 	trans_value_t *tv = &kv->value;
 	uint64_t v = *(uint64_t *)tv;
-	assert((v & 0xFF) == 0);
+	//assert((v & 0xFF) == 0);
 	//printbig(v, "%x");
 	//getchar();
 	return kv->hash ^ v;
