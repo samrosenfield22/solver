@@ -37,6 +37,7 @@ typedef struct
 	uint8_t value_filled	: 1;
 	uint8_t full			: 1;
 	uint8_t bound			: 2;
+	uint8_t is_pv			: 1;
 } trans_value_t;
 
 typedef union
@@ -88,7 +89,7 @@ void tt_destroy(void);
 void tt_clear(void);
 //void tt_set_ancient(void);
 void tt_add(void *pos, uint64_t *hp, result_t *result,
-	int search_depth, int bound, int best_move);
+	int search_depth, int bound, int best_move, bool is_pv);
 void tt_prefetch(uint64_t hash);
 bool tt_get(trans_value_t *value, gdata_t *gd, int depth);
 

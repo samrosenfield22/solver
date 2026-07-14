@@ -235,13 +235,16 @@ float solve(solver_t *game_solver, void *pos,
 				{
 					int tid = omp_get_thread_num();
 					//printf("solving from thread %d\n", tid);
-					solver = (tid==0)? game_solver : &alt_solvers[tid-1];
-					result = eval(gd, 0,
+					//solver = (tid==0)? game_solver : &alt_solvers[tid-1];
+					result_t thread_result = eval(gd, 0,
 						asp_window[0], asp_window[1],
 						true);
 
 					if(tid==0)
+					{
 						main_thread_done = true;
+						result = thread_result;
+					}
 				}
 				//exit(0);
 			}
@@ -474,12 +477,10 @@ result_t eval(gdata_t *gd, int depth,
 		}
 		//if(ttval->iddfs >= iddfs_depth && !asp_window_rerun)
 		//if(ttval->iddfs >= iddfs_depth && ttval->bound==BOUND_EXACT)
-		//assert(!ttval->full);
+		//assert(!ttval.full);
 		if(ttval.search_depth >= (iddfs_depth - depth)
 			&& ttval.bound==BOUND_EXACT)
-		//if(val->iddfs >= iddfs_depth
-		//	&& !(asp_window_rerun && !val->exact))
-			return (result_t){.score=gd->score, .full=false, .has_tt=true, .best_move=ttval.best_move};
+			return (result_t){.score=gd->score, .full=ttval.full, .has_tt=true, .best_move=ttval.best_move};
 	}
 	#endif
 
@@ -599,7 +600,7 @@ result_t eval(gdata_t *gd, int depth,
 		}
 	}
 	tt_add(gd->pos, gdata_get_hash(gd), &result,
-		iddfs_depth-depth, bound, result.best_move);
+		iddfs_depth-depth, bound, result.best_move, is_pv);
 	#endif
 
 
@@ -1025,6 +1026,13 @@ int sort_movelist(sorter_t *order, int len, gdata_t *gd, int depth,
 		//add default move ordering
 		if(solver->default_order)
 			order[i].score += solver->default_order[move];
+
+		//jitter
+		//assert(!(omp_get_thread_num()));
+		/*if(omp_get_thread_num())
+		{
+			order[i].score += rand() % 10;
+		}*/
 
 
 		if(solver->move_loses && solver->move_loses(pos, move))

@@ -120,7 +120,8 @@ void tt_clear(void)
 	}
 }*/
 
-void tt_add(void *pos, uint64_t *hp, result_t *result, int search_depth, int bound, int best_move)
+void tt_add(void *pos, uint64_t *hp, result_t *result,
+	int search_depth, int bound, int best_move, bool is_pv)
 {
 	assert(best_move >= 0);
 
@@ -143,6 +144,7 @@ void tt_add(void *pos, uint64_t *hp, result_t *result, int search_depth, int bou
 		//.ancient = 0b0,
 		.search_depth = search_depth,
 		.best_move = best_move,
+		.is_pv = is_pv,
 	};
 
 
@@ -299,8 +301,8 @@ void tt_add_kvpair(tt_t *h, void *key, trans_value_t *value,
 	//else if(always_hash == hash)
 	else if(kv_unlock(&bucket->always_kv) == hash)
 		bucket->always_kv.value = *value;
-	else if(bucket->deeper_kv.value.search_depth < value->search_depth)
-		//&& value->bound == BOUND_EXACT)
+	else if(bucket->deeper_kv.value.search_depth < value->search_depth
+		)//&& !bucket->deeper_kv.value.is_pv)
 	{
 		//bucket->deeper_kv.hash = hash_xor;
 		//bucket->deeper_kv.value = *value;
