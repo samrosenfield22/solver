@@ -1378,16 +1378,22 @@ int c4_only_moves(sorter_t *sorter, void *pos)
 	//if(move_map & p->x_wmap)
 	if(win_move)
 	{
-		for(int i=0; i<7; i++)
+		if(sorter)
 		{
-			win_move >>= 7;
-			if(!win_move)
+			/*for(int i=0; i<7; i++)
 			{
-				if(sorter)
-					sorter[0].move = i;
-				return 1;
-			}
+				win_move >>= 7;
+				if(!win_move)
+				{
+					//if(sorter)
+						sorter[0].move = i;
+					//return 1;
+					break;
+				}
+			}*/
+			sorter[0].move = __builtin_ctzll(win_move)/7;
 		}
+		return 1;
 		/*uint64_t col_mask = 0b111111;
 		for(int i=0; i<7; i++)
 		{
@@ -1414,16 +1420,22 @@ int c4_only_moves(sorter_t *sorter, void *pos)
 	//if(move_map & p->opp_wmap)
 	if(win_move)
 	{
-		for(int i=0; i<7; i++)
+		if(sorter)
 		{
-			win_move >>= 7;
-			if(!win_move)
+			/*for(int i=0; i<7; i++)
 			{
-				if(sorter)
-					sorter[0].move = i;
-				return 1;
-			}
+				win_move >>= 7;
+				if(!win_move)
+				{
+					//if(sorter)
+						sorter[0].move = i;
+					//return 1;
+					break;
+				}
+			}*/
+			sorter[0].move = __builtin_ctzll(win_move)/7;
 		}
+		return 1;
 		/*uint64_t col_mask = 0b111111;
 		for(int i=0; i<7; i++)
 		{
@@ -1437,6 +1449,16 @@ int c4_only_moves(sorter_t *sorter, void *pos)
 			}
 			col_mask <<= 7;
 		}*/
+	}
+
+	//check if only 1 move is available (all other columns filled)
+	//uint64_t top_mask = 0b0100000010000001000000100000010000001000000100000;
+	//if(__builtin_popcountll(p->filled & top_mask) == 6)
+	if(__builtin_popcountll(mm) == 1)
+	{
+		if(sorter)
+			sorter[0].move = __builtin_ctzll(mm)/7;
+		return 1;
 	}
 
 	return 0;
