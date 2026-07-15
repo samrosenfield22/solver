@@ -23,7 +23,7 @@ typedef struct
 	uint64_t hash;
 	float score;
 	int move_index;
-	//uint8_t move_ct;
+	bool quiet;
 	uint8_t pos[];
 } gdata_t;
 

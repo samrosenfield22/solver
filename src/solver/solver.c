@@ -32,7 +32,7 @@ bool set_aspiration_window(float *asp_window,
 	bool verbose);
 result_t eval(gdata_t *gd, int depth,
 	float alpha, float beta, bool is_pv);
-int build_movelist(sorter_t *order, void *pos,
+int build_movelist(sorter_t *order, gdata_t *gd,
 	int depth, trans_value_t *ttval);
 int default_movelist(sorter_t *order, void *pos);
 int sort_movelist(sorter_t *order, int len,
@@ -545,7 +545,7 @@ result_t eval(gdata_t *gd, int depth,
 
 	//make list of moves, sorted with heuristics
 	sorter_t movelist[solver->possible_moves];
-	int len = build_movelist(movelist, pos, depth,
+	int len = build_movelist(movelist, gd, depth,
 		got? &ttval : NULL);
 
 	//main analysis -- recursive tree search
@@ -838,7 +838,7 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 		{
 			//update history
 			#ifdef USE_HISTORY_HEURISTIC
-			if(!result.has_tt && len<solver->possible_moves)
+			if(!result.has_tt && gd->quiet)	//&& result->quiet
 				update_history(gd->pos, i, order, len, depth, true);
 			#endif
 
@@ -921,13 +921,17 @@ int order_compare(const void *aa, const void *bb)
 //make movelist
 //if there's only one move (that wins or loses),
 //just play that
-int build_movelist(sorter_t *movelist, void *pos,
+int build_movelist(sorter_t *movelist, gdata_t *gd,
 	int depth, trans_value_t *ttval)
 {
 	int len = 0;
+	void *pos = gd->pos;
 
 	if(solver->only_moves)
 		len = solver->only_moves(movelist, pos);
+
+
+	gd->quiet = (len==0);
 
 	if(!len)
 	{
@@ -981,7 +985,7 @@ int sort_movelist(sorter_t *order, int len, void *pos, int depth,
 
 	#ifdef USE_HISTORY_HEURISTIC
 	int history_best=-1, history_thresh=-100000000;
-	int off = solver->whosemove(gd->pos)? 0 : solver->possible_moves;
+	int off = solver->whosemove(pos)? 0 : solver->possible_moves;
 	//int history_second;
 	//bool history_set = false;
 	for(int i=0; i<solver->possible_moves; i++)
