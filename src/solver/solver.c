@@ -32,9 +32,11 @@ bool set_aspiration_window(float *asp_window,
 	bool verbose);
 result_t eval(gdata_t *gd, int depth,
 	float alpha, float beta, bool is_pv);
-int build_movelist(sorter_t *order, void *pos);
+int build_movelist(sorter_t *order, void *pos,
+	int depth, trans_value_t *ttval);
+int default_movelist(sorter_t *order, void *pos);
 int sort_movelist(sorter_t *order, int len,
-	gdata_t *gd, int depth, trans_value_t *vp);
+	void *pos, int depth, trans_value_t *vp);
 bool move_is_forcing(void *pos, int move);
 result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 	sorter_t *order, int len, int depth, float alpha, float beta,
@@ -438,7 +440,6 @@ bool set_aspiration_window(float *asp_window,
 result_t eval(gdata_t *gd, int depth,
 	float alpha, float beta, bool is_pv)
 {
-
 	//printf("eval at d=%d (%d)\n", depth, omp_get_thread_num());
 	if(time_up())
 		return (result_t){.score=0, .full=false, .has_tt=false, .best_move=-1};
@@ -454,8 +455,6 @@ result_t eval(gdata_t *gd, int depth,
 		exit(0);
 	}
 	void *pos = &(gd->pos);
-
-
 
 	//trans_value_t *ttval = NULL;
 	trans_value_t ttval;
@@ -544,25 +543,10 @@ result_t eval(gdata_t *gd, int depth,
 		}
 	}*/
 
-	//make movelist
-	//if there's only one move (that wins or loses),
-	//just play that
+	//make list of moves, sorted with heuristics
 	sorter_t movelist[solver->possible_moves];
-	int len = 0;
-
-	if(solver->only_moves)
-		len = solver->only_moves(movelist, pos);
-
-	if(!len)
-	{
-		if(solver->make_movelist)
-			len = solver->make_movelist(movelist, pos);
-		else
-			len = build_movelist(movelist, pos);
-
-		len = sort_movelist(movelist, len, gd, depth,
-			got? &ttval : NULL);
-	}
+	int len = build_movelist(movelist, pos, depth,
+		got? &ttval : NULL);
 
 	//main analysis -- recursive tree search
 	trans_value_t *tv = got? &ttval : NULL;
@@ -934,7 +918,32 @@ int order_compare(const void *aa, const void *bb)
 	return (a->score > b->score)? -1 : 1;
 }
 
-int build_movelist(sorter_t *order, void *pos)
+//make movelist
+//if there's only one move (that wins or loses),
+//just play that
+int build_movelist(sorter_t *movelist, void *pos,
+	int depth, trans_value_t *ttval)
+{
+	int len = 0;
+
+	if(solver->only_moves)
+		len = solver->only_moves(movelist, pos);
+
+	if(!len)
+	{
+		if(solver->make_movelist)
+			len = solver->make_movelist(movelist, pos);
+		else
+			len = default_movelist(movelist, pos);
+	}
+
+	if(len > 1)
+		len = sort_movelist(movelist, len, pos, depth, ttval);
+
+	return len;
+}
+
+int default_movelist(sorter_t *order, void *pos)
 {
 	int ct = 0;
 
@@ -956,10 +965,9 @@ int build_movelist(sorter_t *order, void *pos)
 }
 
 
-int sort_movelist(sorter_t *order, int len, gdata_t *gd, int depth,
+int sort_movelist(sorter_t *order, int len, void *pos, int depth,
 	trans_value_t *vp)
 {
-	void *pos = &(gd->pos);
 
 
 	//trans_value_t v;
