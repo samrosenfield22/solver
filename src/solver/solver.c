@@ -45,6 +45,7 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 //	float *best_so_far, int depth);
 float max(float x, float y);
 float min(float x, float y);
+int clamp(int x, int minv, int maxv);
 bool time_up(void);
 
 
@@ -64,7 +65,8 @@ int full_solve_depth = 0;
 bool main_thread_done = false;
 
 int *HISTORY_VALS;
-//uint8_t HISTORY_BEST[2] = {-1, -1};
+int HISTORY_BEST_MOVE[2] = {-1, -1};
+int HISTORY_BEST_SCORE[2] = {0, 0};
 
 #define MAX_PLY	(42)
 #define NUM_KILLERS	(2)
@@ -168,8 +170,8 @@ float solve(solver_t *game_solver, void *pos,
 	tic();
 
 	#ifdef USE_HISTORY_HEURISTIC
-	int history_scores[2 * solver->possible_moves];
-	for(int i=0; i<2 * solver->possible_moves; i++)
+	int history_scores[2*solver->possible_moves];
+	for(int i=0; i<2*solver->possible_moves; i++)
 		history_scores[i] = 0;
 	HISTORY_VALS = history_scores;
 	#endif
@@ -242,6 +244,8 @@ float solve(solver_t *game_solver, void *pos,
 						asp_window[0], asp_window[1],
 						true);
 
+					//
+
 					if(tid==0)
 					{
 						main_thread_done = true;
@@ -260,6 +264,12 @@ float solve(solver_t *game_solver, void *pos,
 
 			if(time_up())
 				break;
+
+			//
+			#ifdef USE_HISTORY_HEURISTIC
+			for(int i=0; i<2*solver->possible_moves; i++)
+				HISTORY_VALS[i] /= 2;
+			#endif
 
 			bool in_window = true;
 			#ifdef ASPIRATION_WINDOW
@@ -305,10 +315,7 @@ float solve(solver_t *game_solver, void *pos,
 			if(iddfs >= FORCE_SEARCH_DEPTH)
 				break;
 
-		#ifdef USE_HISTORY_HEURISTIC
-		for(int i=0; i<2*solver->possible_moves; i++)
-			HISTORY_VALS[i] /= 2;
-		#endif
+
 	}
 
 	//count time
@@ -604,17 +611,41 @@ result_t eval(gdata_t *gd, int depth,
 		printf("incrementing 3cent by %d (d=%d)\n", sdq, depth);
 }*/
 
-void update_history(void *pos, int index,
-	sorter_t *order, int len, int depth, bool was_cutoff)
+void update_history(void *pos, int move, int depth, bool bonus)
 {
 	//int move = order[index].move;
 	int sdq = (iddfs_depth - depth) * (iddfs_depth - depth);
 	assert(sdq > 0);
 
 	//apply bonuses/maluses
-	int off = solver->whosemove(pos)? 0 : solver->possible_moves;
+	bool whosemove = solver->whosemove(pos);
+	int off = whosemove? 0 : solver->possible_moves;
+	int placement = move + off;
+	//int player = whosemove? 0 : 1;
+	assert(placement < 2 * solver->possible_moves);
+
+	if(bonus)
+	{
+		HISTORY_VALS[placement] += sdq;
+		/*if(HISTORY_VALS[placement] > HISTORY_BEST_SCORE[player])
+		{
+			HISTORY_BEST_SCORE[player] = HISTORY_VALS[placement];
+			HISTORY_BEST_MOVE[player] = move;
+		}*/
+	}
+	else
+	{
+		HISTORY_VALS[placement] -= sdq;
+		/*if(HISTORY_VALS[placement] < HISTORY_BEST_SCORE[player])
+		{
+			HISTORY_BEST_MOVE[player] = -1;
+		}*/
+	}
+	//HISTORY_VALS[placement] = clamp(HISTORY_VALS[placement],
+		//-(1<<24), 1<<24);
+
 	//for(int i=0; i<=index; i++)
-	for(int i=0; i<len; i++)
+	/*for(int i=0; i<len; i++)
 	{
 		int placement = order[i].move + off;
 		assert(placement < 2 * solver->possible_moves);
@@ -623,12 +654,7 @@ void update_history(void *pos, int index,
 			HISTORY_VALS[placement] += sdq;
 		else
 			HISTORY_VALS[placement] -= sdq;
-	}
-
-	//if(index == 0)
-	//	printf("hey!\n");
-
-	return;
+	}*/
 }
 
 int get_lmr_reduction(int i, int depth, bool is_pv)
@@ -686,6 +712,9 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 
 
 	bool is_max = (max_or_min(depth)==MAX_LAYER);
+
+	bool history_valid = (!result.has_tt && gd->quiet);
+	(void)history_valid;
 
 	bool multi_pv = (depth==0 && DISPLAY_VAR_CT>1);
 	bool multi_full = true;
@@ -828,19 +857,41 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 
 		if(!multi_pv)
 		{
+			bool bounds_tightened = false;
+			(void)bounds_tightened;
 			if(is_max)
-				alpha = max(alpha, result.score);
+			{
+				if(result.score > alpha)
+				{
+					alpha = result.score;
+					bounds_tightened = true;
+				}
+			}
+				//alpha = max(alpha, result.score);
 			else	//min
-				beta = min(beta, result.score);
+			{
+				if(result.score < beta)
+				{
+					beta = result.score;
+					bounds_tightened = true;
+				}
+			}
+				//beta = min(beta, result.score);
+
+			#ifdef USE_HISTORY_HEURISTIC
+			if(history_valid && !move_is_forcing(gd->pos, move))
+				update_history(gd->pos, move, depth, bounds_tightened);
+			#endif
+
 		}
 
 		if(alpha >= beta)
 		{
 			//update history
-			#ifdef USE_HISTORY_HEURISTIC
+			/*#ifdef USE_HISTORY_HEURISTIC
 			if(!result.has_tt && gd->quiet)	//&& result->quiet
 				update_history(gd->pos, i, order, len, depth, true);
-			#endif
+			#endif*/
 
 			//update killers
 			/*assert(depth < MAX_PLY);
@@ -972,11 +1023,7 @@ int default_movelist(sorter_t *order, void *pos)
 int sort_movelist(sorter_t *order, int len, void *pos, int depth,
 	trans_value_t *vp)
 {
-
-
-	//trans_value_t v;
-	//bool got = tt_get(&v, gd, depth);
-	//int best = got? v.best_move : -1;
+	//get hash move from tt entry
 	int best = vp? vp->best_move : -1;
 
 	uint8_t *killers_ply = killers[depth];
@@ -984,16 +1031,23 @@ int sort_movelist(sorter_t *order, int len, void *pos, int depth,
 
 
 	#ifdef USE_HISTORY_HEURISTIC
-	int history_best=-1, history_thresh=-100000000;
-	int off = solver->whosemove(pos)? 0 : solver->possible_moves;
+	bool whosemove = solver->whosemove(pos);
+	int player = whosemove? 0 : 1;
+	int history_best = HISTORY_BEST_MOVE[player];
+
 	//int history_second;
 	//bool history_set = false;
-	for(int i=0; i<solver->possible_moves; i++)
+	if(history_best == -1)
 	{
-		if(HISTORY_VALS[i+off] > history_thresh)
+		int off = whosemove? 0 : solver->possible_moves;
+		int history_thresh=-100000000;
+		for(int i=0; i<solver->possible_moves; i++)
 		{
-			history_best = i;
-			history_thresh = HISTORY_VALS[i+off];
+			if(HISTORY_VALS[i+off] > history_thresh)
+			{
+				history_best = i;
+				history_thresh = HISTORY_VALS[i+off];
+			}
 		}
 	}
 	#endif	//USE_HISTORY_HEURISTIC
@@ -1019,12 +1073,12 @@ int sort_movelist(sorter_t *order, int len, void *pos, int depth,
 		if(move == best)	//hash move
 			order[i].score += (1<<16);
 		#ifdef USE_HISTORY_HEURISTIC
-		else if(move == history_best)
+		if(move == history_best)
 			order[i].score += (1<<14);
 		//else if(move == history_second)
-		//	order[i].score += 600;
+		//	order[i].score += (1<<13);
 		#endif	//USE_HISTORY_HEURISTIC
-		else if(move_is_forcing(pos, move))
+		if(move_is_forcing(pos, move))
 			order[i].score += (1<<15);
 		//else if(solver->estimate)
 		//	order[i].score += solver->estimate(pos);
@@ -1165,6 +1219,16 @@ float max(float x, float y)
 float min(float x, float y)
 {
 	return (x<y)? x : y;
+}
+
+int clamp(int x, int minv, int maxv)
+{
+	if(x < minv)
+		return minv;
+	else if(x > maxv)
+		return maxv;
+	else
+		return x;
 }
 
 bool time_up(void)

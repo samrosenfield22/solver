@@ -17,6 +17,7 @@ speed up the analysis, with many more in progress:
 	* Move sorting heuristics (PV move, forcing move, static move ordering)
 	* Aspiration window
 	* Early losing move avoidance
+	* Late move reductions
 
 ## Use
 Compile with the given makefile, then run with the following syntax
