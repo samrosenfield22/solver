@@ -48,7 +48,8 @@ float min(float x, float y);
 int clamp(int x, int minv, int maxv);
 bool time_up(void);
 
-
+bool score_tightens_ab_bounds(bool update, float *alpha, float *beta,
+	float score, bool is_max);
 bool is_better(float s0, float s1, int depth);
 bool is_worse(float s0, float s1, int depth);
 float worst_score(int depth);
@@ -567,6 +568,8 @@ result_t eval(gdata_t *gd, int depth,
 		//assert(hash_result.best_move != -1);
 
 		//check if it produced a cutoff
+		//hash_cutoff = (score_tightens_ab_bounds(false, &alpha, &beta,
+		//	hash_result.score, max_or_min(depth)!=MAX_LAYER))
 		if(max_or_min(depth)==MAX_LAYER)
 		{
 			if(hash_result.score >= beta)
@@ -602,7 +605,7 @@ result_t eval(gdata_t *gd, int depth,
 			//got? &hash_result : NULL);
 	}
 
-
+	//update score's mate-in-n count
 	bool win = is_win_score(result.score, depth);
 	if(win)
 	{
@@ -611,6 +614,7 @@ result_t eval(gdata_t *gd, int depth,
 
 
 	#ifdef USE_TRANSPOSITION_TABLE
+	//determine bound type
 	int bound = BOUND_EXACT;
 	if(!win)
 	{
@@ -774,10 +778,11 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 	{
 		best_result = *hash_result;
 		best_result.best_move = order[0].move;
-		if(is_max)
+		score_tightens_ab_bounds(true, &alpha, &beta, hash_result->score, is_max);
+		/*if(is_max)
 			alpha = max(alpha, hash_result->score);
 		else	//min
-			beta = min(beta, hash_result->score);
+			beta = min(beta, hash_result->score);*/
 		assert(alpha < beta);	//should have been caught by eval
 		start = 1;
 	}
@@ -912,26 +917,10 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 
 		if(!multi_pv)
 		{
-			bool bounds_tightened = false;
+			bool bounds_tightened = score_tightens_ab_bounds(true,
+				&alpha, &beta,
+				result.score, is_max);
 			(void)bounds_tightened;
-			if(is_max)
-			{
-				if(result.score > alpha)
-				{
-					alpha = result.score;
-					bounds_tightened = true;
-				}
-			}
-				//alpha = max(alpha, result.score);
-			else	//min
-			{
-				if(result.score < beta)
-				{
-					beta = result.score;
-					bounds_tightened = true;
-				}
-			}
-				//beta = min(beta, result.score);
 
 			#ifdef USE_HISTORY_HEURISTIC
 			if(history_valid && !move_is_forcing(gd->pos, move))
@@ -1232,6 +1221,30 @@ void catch_pos(void *pos)
 	}
 	return false;
 }*/
+
+//returns whether or not the bounds were tightened
+bool score_tightens_ab_bounds(bool update, float *alpha, float *beta,
+	float score, bool is_max)
+{
+	if(is_max)
+	{
+		if(score > *alpha)
+		{
+			if(update)	*alpha = score;
+			return true;
+		}
+	}
+	else	//min
+	{
+		if(score < *beta)
+		{
+			if(update)	*beta = score;
+			return true;
+		}
+	}
+
+	return false;
+}
 
 bool is_better(float s0, float s1, int depth)
 {
