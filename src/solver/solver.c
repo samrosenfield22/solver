@@ -40,7 +40,7 @@ int sort_movelist(sorter_t *order, int len,
 bool move_is_forcing(void *pos, int move);
 result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 	sorter_t *order, int len, int depth, float alpha, float beta,
-	bool is_pv);
+	bool is_pv, result_t *hash_result);
 //bool alphabeta_cutoff(float cscore, float prune,
 //	float *best_so_far, int depth);
 float max(float x, float y);
@@ -550,15 +550,57 @@ result_t eval(gdata_t *gd, int depth,
 		}
 	}*/
 
-	//make list of moves, sorted with heuristics
-	sorter_t movelist[solver->possible_moves];
-	int len = build_movelist(movelist, gd, depth,
-		got? &ttval : NULL);
+	//try hash move first before making the full movelist,
+	//see if it produces a cutoff
+	result_t result;
+	bool hash_cutoff = false;
+	result_t hash_result;
+	/*if(got)
+	{
+		//make move
+		//assert(ttval.best_move != -1);
+		uint8_t hash_move[gdata_size];
+		make_new_move((gdata_t *)&hash_move, gd, ttval.best_move);
 
-	//main analysis -- recursive tree search
-	trans_value_t *tv = got? &ttval : NULL;
-	result_t result = analyze_all_children(gd, tv, movelist, len,
-		depth, alpha, beta, is_pv);
+		hash_result = eval((gdata_t *)hash_move, depth+1,
+			alpha, beta, true);
+		//assert(hash_result.best_move != -1);
+
+		//check if it produced a cutoff
+		if(max_or_min(depth)==MAX_LAYER)
+		{
+			if(hash_result.score >= beta)
+			//if(hash_result.score <= alpha)
+				hash_cutoff = true;
+		}
+		else
+		{
+			if(hash_result.score <= alpha)
+			//if(hash_result.score >= beta)
+				hash_cutoff = true;
+		}
+	}*/
+
+	if(hash_cutoff)
+	{
+		result = hash_result;
+		result.best_move = ttval.best_move;
+		//result.full = hash_result.full && (solver->only_moves(NULL, gd->pos)==1);
+	}
+	else
+	{
+		//make list of moves, sorted with heuristics
+		trans_value_t *tv = got? &ttval : NULL;
+		sorter_t movelist[solver->possible_moves];
+		int len = build_movelist(movelist, gd, depth,
+			tv);
+
+		//main analysis -- recursive tree search
+		result = analyze_all_children(gd, tv, movelist, len,
+			depth, alpha, beta, is_pv,
+			NULL);
+			//got? &hash_result : NULL);
+	}
 
 
 	bool win = is_win_score(result.score, depth);
@@ -685,7 +727,7 @@ int get_lmr_reduction(int i, int depth, bool is_pv)
 
 result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 	sorter_t *order, int len, int depth, float alpha, float beta,
-	bool is_pv)
+	bool is_pv, result_t *hash_result)
 {
 
 	if(ttval && ttval->search_depth >= (iddfs_depth - depth))
@@ -727,7 +769,20 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 		order[0].move = swap_move;
 	}*/
 
-	for(int i=0; i<len; i++)
+	int start = 0;
+	if(hash_result)
+	{
+		best_result = *hash_result;
+		best_result.best_move = order[0].move;
+		if(is_max)
+			alpha = max(alpha, hash_result->score);
+		else	//min
+			beta = min(beta, hash_result->score);
+		assert(alpha < beta);	//should have been caught by eval
+		start = 1;
+	}
+
+	for(int i=start; i<len; i++)
 	{
 		//get move to try
 		int move = order[i].move;
@@ -1080,6 +1135,8 @@ int sort_movelist(sorter_t *order, int len, void *pos, int depth,
 		#endif	//USE_HISTORY_HEURISTIC
 		if(move_is_forcing(pos, move))
 			order[i].score += (1<<15);
+		//if(move == 3)	//this should be the same as history hmmmm
+		//	order[i].score += (1<<14);
 		//else if(solver->estimate)
 		//	order[i].score += solver->estimate(pos);
 

@@ -14,7 +14,6 @@ uint64_t *gdata_get_hash(gdata_t *gd)
 
 bool make_new_move(gdata_t *child, gdata_t *gd, int move)
 {
-
 	memcpy(child, gd, gdata_size);
 
 	uint64_t *hp = gdata_get_hash(child);
