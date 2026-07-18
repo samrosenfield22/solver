@@ -553,9 +553,9 @@ result_t eval(gdata_t *gd, int depth,
 
 	//try hash move first before making the full movelist,
 	//see if it produces a cutoff
-	result_t result;
+	/*result_t result;
 	bool hash_cutoff = false;
-	result_t hash_result;
+	result_t hash_result;*/
 	/*if(got)
 	{
 		//make move
@@ -584,26 +584,35 @@ result_t eval(gdata_t *gd, int depth,
 		}
 	}*/
 
-	if(hash_cutoff)
+	/*if(hash_cutoff)
 	{
 		result = hash_result;
 		result.best_move = ttval.best_move;
 		//result.full = hash_result.full && (solver->only_moves(NULL, gd->pos)==1);
+	}*/
+	trans_value_t *tv = got? &ttval : NULL;
+	sorter_t movelist[solver->possible_moves];
+	int len;
+	//if(got)
+	if(0)
+	{
+		assert(ttval.best_move != -1);
+		movelist[0].move = ttval.best_move;
+		movelist[0].score = 0;	//prolly dont need
+		len = 1;
 	}
 	else
 	{
 		//make list of moves, sorted with heuristics
-		trans_value_t *tv = got? &ttval : NULL;
-		sorter_t movelist[solver->possible_moves];
-		int len = build_movelist(movelist, gd, depth,
+		len = build_movelist(movelist, gd, depth,
 			tv);
-
-		//main analysis -- recursive tree search
-		result = analyze_all_children(gd, tv, movelist, len,
-			depth, alpha, beta, is_pv,
-			NULL);
-			//got? &hash_result : NULL);
 	}
+
+	//main analysis -- recursive tree search
+	result_t result = analyze_all_children(gd, tv, movelist, len,
+		depth, alpha, beta, is_pv,
+		NULL);
+		//got? &hash_result : NULL);
 
 	//update score's mate-in-n count
 	bool win = is_win_score(result.score, depth);
@@ -774,18 +783,14 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 	}*/
 
 	int start = 0;
-	if(hash_result)
+	/*if(hash_result)
 	{
 		best_result = *hash_result;
 		best_result.best_move = order[0].move;
 		score_tightens_ab_bounds(true, &alpha, &beta, hash_result->score, is_max);
-		/*if(is_max)
-			alpha = max(alpha, hash_result->score);
-		else	//min
-			beta = min(beta, hash_result->score);*/
 		assert(alpha < beta);	//should have been caught by eval
 		start = 1;
-	}
+	}*/
 
 	for(int i=start; i<len; i++)
 	{
@@ -969,6 +974,27 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 		#endif	//PRINCIPAL_VAR_SEARCH
 		#endif	//USE_ALPHABETA_PRUNING
 
+		/*if we only tried the hash move, we need to make and
+		sort the move list*/
+		/*if(i==0 && ttval)
+		{
+			int prev_hash_move = order[0].move;
+			len = build_movelist(order, gd, depth,
+				ttval);
+			if(order[0].move != prev_hash_move)
+			{
+				printf("\n\nprevious hash move from eval: %d\n", prev_hash_move);
+				printf("move 0 after sorting:\t%d\n", order[0].move);
+				printf("ttval move: %d\n", ttval->best_move);
+
+				for(int i=0; i<len; i++)
+				{
+					printf("m %d: %d\n", i, order[i].move);
+				}
+			}
+			assert(order[0].move == prev_hash_move);
+		}*/
+
 	}
 
 	/*if(alpha < beta)
@@ -1149,8 +1175,20 @@ int sort_movelist(sorter_t *order, int len, void *pos, int depth,
 
 		if(solver->move_loses && solver->move_loses(pos, move))
 		{
+			/*if(move == best)
+			{
+				window_unfocus();
+				printf("\nmove: %d\n", move);
+				printf("best move in tt: %d\n", vp->best_move);
+				catch_pos(pos);
+
+				//exit(0);
+			}*/
 			order[i].score = -1000;
 			losers++;
+
+			//why are losing moves sometimes being stored as the hash
+			//best move??
 		}
 
 	}
@@ -1168,6 +1206,23 @@ int sort_movelist(sorter_t *order, int len, void *pos, int depth,
 		term_move_cursor(0, 12);
 		solver->draw_full(pos, -1);
 		getchar();
+	}*/
+
+	/*if(best != -1)
+	{
+		if(order[0].move != best)
+		{
+			window_unfocus();
+			printf("\n\n\n\n\n\n\n\n\n\n");
+			for(int i=0; i<len; i++)
+			{
+				printf("\tmove %d:\t%d (score=%f)\n",
+					i, order[i].move, order[i].score);
+			}
+			printf("best = %d\n", best);
+			//printf("")
+		}
+		assert(order[0].move == best);
 	}*/
 
 	assert(len >= losers);
