@@ -159,6 +159,7 @@ bool tt_get(trans_value_t *value, gdata_t *gd, int depth)
 	bool got = tt_key_get_value(trans_tbl, pos, value, *hash);
 
 
+
 	if(!got && solver->flip && depth<=solver->flip_depth)
 	{
 		uint8_t flipped[solver->pos_size];
@@ -166,6 +167,9 @@ bool tt_get(trans_value_t *value, gdata_t *gd, int depth)
 		uint64_t temp_hash = trans_tbl->hash(flipped, 8);
 
 		got = tt_key_get_value(trans_tbl, flipped, value, temp_hash);
+
+		if(got)
+			value->best_move = solver->flip_move_index(value->best_move);
 
 		//catch_pos(pos);
 		//printf("%s\n", got? "got flip" : "no flip");

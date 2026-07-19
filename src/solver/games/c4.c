@@ -1285,12 +1285,17 @@ void c4_flip_horiz(void *to, void *from)
 	t->filled = flip_64(f->filled);
 }
 
+int c4_flip_move_index(int index)
+{
+	return 6-index;
+}
+
 int c4_make_movelist(sorter_t *sorter, void *pos)
 {
 	c4_pos_t *p = pos;
 	int ct = 0;
-	//int bad_move = -1;
-	/*get_win_maps(p);
+	/*
+	//get_win_maps(p);
 	for(int i=0; i<7; i++)
 	{
 		if(get_col(p->filled, i) != 0b111111)
@@ -1299,7 +1304,8 @@ int c4_make_movelist(sorter_t *sorter, void *pos)
 			sorter[ct].score = 0;
 			ct++;
 		}
-	}*/
+	}
+	return ct;*/
 
 	//get_win_maps(p);
 
@@ -1714,7 +1720,7 @@ solver_t C4_SOLVER =
 	.iddfs_increment = 8,
 	.aspiration_default_width = 0.5,
 	.default_order = (uint8_t[]){2, 4, 6, 7, 5, 3, 1},
-	.flip_depth = 12,
+	.flip_depth = 8,
 
 	.init = c4_init,
 	.gameover = c4_gameover,
@@ -1734,6 +1740,7 @@ solver_t C4_SOLVER =
 	.get_extension = c4_get_extension,
 	.uses_zobrist = true,
 	.flip = c4_flip_horiz,
+	.flip_move_index = c4_flip_move_index,
 
 	.draw_full = c4_draw_full,
 	.menu_define = c4_menu_define,

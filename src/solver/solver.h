@@ -10,6 +10,7 @@
 //#define USE_HISTORY_HEURISTIC
 #define ASPIRATION_WINDOW
 #define PRINCIPAL_VAR_SEARCH
+#define USE_LATE_MOVE_REDUCTIONS
 
 //not working yet
 #define MULTICORE_CT	(1)
@@ -155,6 +156,8 @@ typedef struct
 	/*optional:
 	creates a symmetrically equivalent version of the position*/
 	void (*flip)(void *to, void *from);
+
+	int (*flip_move_index)(int index);
 
 
 	/*required:

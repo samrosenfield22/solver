@@ -796,12 +796,6 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 	{
 		//get move to try
 		int move = order[i].move;
-		/*assert(move != -1);
-		if(move == -1)
-		{
-			assert(len > 1);
-			continue;
-		}*/
 		assert(0 <= move && move < solver->possible_moves);
 
 		//make new position
@@ -844,6 +838,7 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 		}
 		else	//reduction
 		{*/
+			#ifdef USE_LATE_MOVE_REDUCTIONS
 			int reduction = get_lmr_reduction(i, depth, is_pv);
 			result = eval((gdata_t *)&child, depth+1+reduction,
 				alpha, beta, child_pv);
@@ -858,6 +853,10 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 						alpha, beta, child_pv);
 				}
 			}
+			#else
+			result = eval((gdata_t *)&child, depth+1,
+				alpha, beta, child_pv);
+			#endif	//USE_LATE_MOVE_REDUCTIONS
 		//}
 
 		//sl_free(child);
@@ -983,7 +982,8 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 				ttval);
 			if(order[0].move != prev_hash_move)
 			{
-				printf("\n\nprevious hash move from eval: %d\n", prev_hash_move);
+				printf("\n\nprevious hash move: %d\n", ttval->best_move);
+				printf("move 0 before sorting:\t%d\n", prev_hash_move);
 				printf("move 0 after sorting:\t%d\n", order[0].move);
 				printf("ttval move: %d\n", ttval->best_move);
 
@@ -1025,6 +1025,18 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 	//in multi pv, all nodes need to fully evaluate to depth
 	if(multi_pv && !multi_full)
 		best_result.full = false;
+
+	//make sure best result move is in the list lol
+	bool best_in_list = false;
+	for(int i=0; i<len; i++)
+	{
+		if(best_result.best_move == order[i].move)
+		{
+			best_in_list = true;
+			break;
+		}
+	}
+	assert(best_in_list);
 
 	//return (result_t){.score=best, .full=best_full, .best_move=best_move};
 	best_result.has_tt = false;
@@ -1089,6 +1101,18 @@ int default_movelist(sorter_t *order, void *pos)
 	return ct;
 }
 
+void movelist_dump(void *pos, int best, int len, sorter_t *movelist)
+{
+	window_unfocus();
+	term_move_cursor(0, 8);
+	printf("--- movelist (len=%d) ---\n", len);
+	printf("\tbest=%d\n", best);
+	for(int i=0; i<len; i++)
+		printf("[%d: %.1f], ", movelist[i].move, movelist[i].score);
+	term_move_cursor(0, 12);
+	solver->draw_full(pos, -1);
+	getchar();
+}
 
 int sort_movelist(sorter_t *order, int len, void *pos, int depth,
 	trans_value_t *vp)
@@ -1172,9 +1196,9 @@ int sort_movelist(sorter_t *order, int len, void *pos, int depth,
 			order[i].score += rand() % 10;
 		}*/
 
-
 		if(solver->move_loses && solver->move_loses(pos, move))
 		{
+			//assert(move != best);
 			/*if(move == best)
 			{
 				window_unfocus();
@@ -1184,7 +1208,7 @@ int sort_movelist(sorter_t *order, int len, void *pos, int depth,
 
 				//exit(0);
 			}*/
-			order[i].score = -1000;
+			order[i].score += -1000;
 			losers++;
 
 			//why are losing moves sometimes being stored as the hash
@@ -1196,15 +1220,15 @@ int sort_movelist(sorter_t *order, int len, void *pos, int depth,
 	//sort
 	qsort(order, len, sizeof(*order), order_compare);
 
+	if(!((best==-1 || best==order[0].move)))
+	{
+		movelist_dump(pos, best, len, order);
+	}
+	assert(best==-1 || best==order[0].move);
+
 	/*if(losers)
 	{
-		printf("\nscores: ");
-		for(int i=0; i<len; i++)
-			printf("[%d: %.1f], ", order[i].move, order[i].score);
-		printf("         \n%d losers\n", losers);
-		window_unfocus();
-		term_move_cursor(0, 12);
-		solver->draw_full(pos, -1);
+		movelist_dump(pos, order);
 		getchar();
 	}*/
 
@@ -1321,7 +1345,7 @@ bool is_worse(float s0, float s1, int depth)
 
 float worst_score(int depth)
 {
-	float worst = (max_or_min(depth)==MAX_LAYER)? -WIN_SCORE-1 : WIN_SCORE+1;
+	float worst = (max_or_min(depth)==MAX_LAYER)? (-WIN_SCORE)-1 : WIN_SCORE+1;
 	//float worst = max_or_min(depth)? -1 : 1;
 	assert(is_worse(worst, 0, depth));
 	return worst;
