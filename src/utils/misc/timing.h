@@ -13,6 +13,7 @@ uint64_t toc(void);
 uint32_t toc_ms(void);
 uint32_t toc_s(void);
 void delay(int ms);
+char *now_hms(void);
 
 
 #endif

@@ -15,6 +15,7 @@
 
 #include "timing.h"
 
+#include <stdio.h>
 #include <time.h>
 #include <windows.h>
 
@@ -49,6 +50,28 @@ void delay(int ms)
 {
 	tic();
 	while(toc_ms() < ms);
+}
+
+char *now_hms(void)
+{
+	static char timestr[10];
+
+	time_t raw_time;
+    struct tm *local_time;
+
+    // Get time as seconds since epoch
+    time(&raw_time);
+
+    // Convert to local time structure
+    local_time = localtime(&raw_time);
+
+    // Print formatted time (HH:MM:SS)
+    snprintf(timestr, 9, "%02d:%02d:%02d",
+            local_time->tm_hour,
+            local_time->tm_min,
+            local_time->tm_sec);
+
+	return timestr;
 }
 
 //returns the number of 1/10th-microsecond (100-nanosecond) counts since ???

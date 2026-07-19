@@ -281,6 +281,7 @@ void make_paths(uint64_t *paths)
 	exit(0);*/
 }
 
+//actually win impossible for opp
 bool c4_win_impossible_for_current(void *pos)
 {
 	c4_pos_t *p = pos;
@@ -288,7 +289,7 @@ bool c4_win_impossible_for_current(void *pos)
 		return false;
 
 	uint64_t remaining = ~p->filled;
-	uint64_t fill_all_x = (p->x | remaining) & C4_BOARD_MASK;
+	uint64_t fill_all_x = ((p->x^p->filled) | remaining) & C4_BOARD_MASK;
 	return !is_win(fill_all_x);
 
 
@@ -365,18 +366,21 @@ endstate_t c4_gameover(void *pos)
 	//if(c4_win_impossible(p))
 	//	return END_DRAW;
 
-	//int move_ct = __builtin_popcountll(p->filled & ~WHOSEMOVE_BIT);
-	/*if(move_ct >= 40)
+	int move_ct = __builtin_popcountll(p->filled & ~WHOSEMOVE_BIT);
+	if(move_ct >= 40)
+	{
+		get_win_maps(p);
 		if((!p->x_wmap) && (!p->opp_wmap))
-			return END_DRAW;*/
-	/*if(move_ct >= 20)
+			return END_DRAW;
+	}
+	if(move_ct >= 36)
 	{
 		uint64_t remaining = C4_BOARD_MASK & ~p->filled;
 		uint64_t fill_all_x = p->x | remaining;
 		uint64_t fill_all_opp = (p->x ^ p->filled) | remaining;
 		if(!is_win(fill_all_x) && !is_win(fill_all_opp))
 			return END_DRAW;
-	}*/
+	}
 	/*
 	{
 		int endgame_status = endgame_forced_win_simple(p);
@@ -1097,6 +1101,7 @@ void c4_make_move(void *pos, int index, uint64_t *hash)
 	uint64_t b = mm & col_mask;*/
 	uint64_t b = move_bit(p, index);
 
+	//get_win_maps(p);
 	p->won = false;
 	if(p->x_wmap != NO_WIN_MAP)
 		if(p->x_wmap & b)
@@ -1337,50 +1342,8 @@ int c4_only_moves(sorter_t *sorter, void *pos)
 {
 	c4_pos_t *p = pos;
 
-	//get_win_maps(p);
-
-	/*uint64_t move_map = 0;
-	for(int i=0; i<7; i++)
-	{
-		uint64_t b = move_bit(p, i);
-		move_map |= b;
-	}*/
-
-	/*uint64_t filled_alt = p->filled;
-	filled_alt |= 0b100000010000001000000100000010000001000000;
-	uint64_t move_map = (filled_alt<<1) | filled_alt;
-	move_map ^= filled_alt;
-	if(!(filled_alt & 0b1))
-		move_map |= 0b1;*/
-
 	uint64_t mm = move_map(p->filled);
-	/*if(mm != move_map)
-	{
-		printf("\nmm:\t\t%s\n", sprintbig(mm, "%b"));
-		printf("movemap:\t%s\n", sprintbig(move_map, "%b"));
-		catch_pos(p);
-		exit(0);
-	}*/
 
-	/*if(move_map != other_move_map)
-	{
-		printf("filled:\t%s\n", sprintbig(p->filled, "%b"));
-		printf("move map:\t%s\n", sprintbig(move_map, "%b"));
-		printf("alt map:\t%s\n", sprintbig(other_move_map, "%b"));
-		assert(0);
-	}*/
-
-
-
-
-	//get_win_map(&p->x_wmap, p->x, p->filled);
-	//get_win_map(&p->opp_wmap, p->x ^ p->filled, p->filled);
-
-	//uint64_t filled_1_higher = (p->filled<<1) | 0b000000100000010000001000000100000010000001;
-
-	//check if we have a win on next move
-	//uint64_t wmap = win_map(p->x, p->filled);
-	//uint64_t wmap = p->x_wmap;
 	if(p->x_wmap == NO_WIN_MAP)
 		p->x_wmap = win_map(p->x, p->filled);
 	uint64_t win_move = mm & p->x_wmap;
@@ -1389,40 +1352,11 @@ int c4_only_moves(sorter_t *sorter, void *pos)
 	if(win_move)
 	{
 		if(sorter)
-		{
-			/*for(int i=0; i<7; i++)
-			{
-				win_move >>= 7;
-				if(!win_move)
-				{
-					//if(sorter)
-						sorter[0].move = i;
-					//return 1;
-					break;
-				}
-			}*/
 			sorter[0].move = __builtin_ctzll(win_move)/7;
-		}
 		return 1;
-		/*uint64_t col_mask = 0b111111;
-		for(int i=0; i<7; i++)
-		{
-			//uint64_t mb = move_bit(p, i);
-			//if(mb & p->x_wmap)
-			if(col_mask & win_move)
-			{
-				if(sorter)
-					sorter[0].move = i;
-				return 1;
-			}
-			col_mask <<= 7;
-		}*/
 	}
 
 	//check if opp has a win we have to block on next move
-	//uint64_t opp = p->x ^ p->filled;
-	//uint64_t opp_wmap = win_map(opp, p->filled);
-	//uint64_t opp_wmap = p->opp_wmap;
 	if(p->opp_wmap == NO_WIN_MAP)
 		p->opp_wmap = win_map(p->x ^ p->filled, p->filled);
 	//win_move = p->opp_wmap & filled_1_higher;
@@ -1430,37 +1364,12 @@ int c4_only_moves(sorter_t *sorter, void *pos)
 	//if(move_map & p->opp_wmap)
 	if(win_move)
 	{
+		//if opp has 2 threats, we can't block both
 		if(__builtin_popcountll(win_move)>1)
 			return 0;
 		if(sorter)
-		{
-			/*for(int i=0; i<7; i++)
-			{
-				win_move >>= 7;
-				if(!win_move)
-				{
-					//if(sorter)
-						sorter[0].move = i;
-					//return 1;
-					break;
-				}
-			}*/
 			sorter[0].move = __builtin_ctzll(win_move)/7;
-		}
 		return 1;
-		/*uint64_t col_mask = 0b111111;
-		for(int i=0; i<7; i++)
-		{
-			//uint64_t mb = move_bit(p, i);
-			//if(mb & p->opp_wmap)
-			if(col_mask & win_move)
-			{
-				if(sorter)
-					sorter[0].move = i;
-				return 1;
-			}
-			col_mask <<= 7;
-		}*/
 	}
 
 	//check if only 1 move is available (all other columns filled)

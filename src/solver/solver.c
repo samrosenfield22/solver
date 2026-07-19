@@ -39,7 +39,7 @@ int sort_movelist(sorter_t *order, int len,
 	void *pos, int depth, trans_value_t *vp);
 void movelist_dump(void *pos, int best, int len, sorter_t *movelist);
 bool move_is_forcing(void *pos, int move);
-float check_forcing_line(void *pos, int depth);
+bool check_forcing_line(float *score, int *first, void *pos, int depth);
 result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 	sorter_t *order, int len, int depth, float alpha, float beta,
 	bool is_pv, result_t *hash_result);
@@ -160,6 +160,7 @@ float solve(solver_t *game_solver, void *pos,
 
 	if(verbose)
 	{
+		printf("solver started at %s\n", now_hms());
 		printf("solving ");
 		if(FORCE_SEARCH_DEPTH)
 			printf("(force search depth %d)", FORCE_SEARCH_DEPTH);
@@ -533,12 +534,17 @@ result_t eval(gdata_t *gd, int depth,
 		if(!quiescence_extend)
 		{*/
 
-		/*float forcing_line = check_forcing_line(pos, depth);
-		if(forcing_line)
+		float forcing_score;
+		int first;
+		bool decisive = check_forcing_line(&forcing_score, &first, pos, depth);
+		if(decisive)
 		{
-			gd->score = forcing_line;
-			return (result_t){.score=gd->score, .full=true, .has_tt=false, .best_move=-1};
-		}*/
+			gd->score = forcing_score;
+			result_t forcing_result = (result_t){.score=gd->score, .full=decisive, .has_tt=false, .best_move=first};
+			tt_add(gd->pos, gdata_get_hash(gd), &forcing_result,
+				iddfs_depth-depth, BOUND_EXACT, forcing_result.best_move, is_pv);
+			return forcing_result;
+		}
 
 		if(solver->estimate)
 			gd->score = solver->estimate(pos);
@@ -1242,12 +1248,12 @@ int sort_movelist(sorter_t *order, int len, void *pos, int depth,
 	return len;
 }
 
-float check_forcing_line(void *pos, int depth)
+bool check_forcing_line(float *score, int *first, void *pos, int depth)
 {
 	if(!solver->only_moves)
-		return 0;
+		return false;
 
-	const int max_forcing_line_len = 8;
+	const int max_forcing_line_len = 10;
 
 	uint8_t next_pos[solver->pos_size];
 	memcpy(next_pos, pos, solver->pos_size);
@@ -1256,38 +1262,46 @@ float check_forcing_line(void *pos, int depth)
 
 	for(int i=0; i<max_forcing_line_len; i++)
 	{
+		int endstate = solver->gameover(next_pos);
+		if(endstate != END_NOT_OVER)
+		{
+			switch(endstate)
+			{
+				case END_P1_WON:	*score = WIN_SCORE - i/2;	break;
+				case END_P2_WON:	*score = -WIN_SCORE + i/2;	break;
+				case END_DRAW:		*score = 0;					break;
+				default:			printf("endstate=%d\n", endstate); assert(0);
+			}
+			*first = 0;
+			return true;
+		}
+
 		int len = solver->only_moves(movelist, next_pos);
 		if(len == 0)
 		{
 			//return loss for current player
-			float loses_forcing = (max_or_min(depth+i)==MAX_LAYER)?
+			*score = (max_or_min(depth+i)==MAX_LAYER)?
 				(-WIN_SCORE)+i/2 : WIN_SCORE-i/2;
-			return loses_forcing;
+			*first = 0;
+			return true;
 		}
 		else if(len > 1)
 		{
 			break;
 		}
 
+		if(i == 0)
+			*first = movelist[0].move;
+
 
 		solver->make_move(next_pos, movelist[0].move, NULL);
-
-		int endstate = solver->gameover(next_pos);
-		if(endstate != END_NOT_OVER)
-		{
-			switch(endstate)
-			{
-				case END_P1_WON:	return WIN_SCORE - i/2;
-				case END_P2_WON:	return -WIN_SCORE + i/2;
-				case END_DRAW:		return 0;
-			}
-		}
-
 	}
 
-
-	return 0;
-	//return solver->estimate(next_pos);
+	/*if(solver->estimate)
+		*score = solver->estimate(next_pos);
+	else
+		*score = 0;*/
+	return false;
 }
 
 bool move_is_forcing(void *pos, int move)
