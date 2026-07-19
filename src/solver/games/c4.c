@@ -620,7 +620,7 @@ float c4_estimate(void *pos)
 	}*/
 
 	//bonus for player to move
-	//est += 0.1;
+	//est += 0.8;
 
 	if(!c4_whosemove(p))
 		est *= -1;

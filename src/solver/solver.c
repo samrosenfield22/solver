@@ -533,14 +533,12 @@ result_t eval(gdata_t *gd, int depth,
 		if(!quiescence_extend)
 		{*/
 
-		float forcing_line = check_forcing_line(pos, depth);
+		/*float forcing_line = check_forcing_line(pos, depth);
 		if(forcing_line)
 		{
 			gd->score = forcing_line;
 			return (result_t){.score=gd->score, .full=true, .has_tt=false, .best_move=-1};
-			//bool forcefull = (forcing_line < -MATE_LIMIT || forcing_line > MATE_LIMIT);
-			//return (result_t){.score=gd->score, .full=forcefull, .has_tt=false, .best_move=-1};
-		}
+		}*/
 
 		if(solver->estimate)
 			gd->score = solver->estimate(pos);

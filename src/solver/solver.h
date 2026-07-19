@@ -78,9 +78,10 @@ typedef struct
 	int flip_depth;
 
 	/*optional:
-	int array of move indices, in order from best guess to worst
+	int array of move values, where each number represent that
+	move index's priority
 	ex. for connect 4, this would be:
-	.default_order = (uint8_t[]){3, 2, 4, 1, 5, 0, 6}
+	.default_order = (uint8_t[]){2, 4, 6, 7, 5, 3, 1}
 	(central moves are better than flank moves)*/
 	uint8_t *default_order;
 
@@ -130,10 +131,10 @@ typedef struct
 	moves that should be played, and returns the number
 	of moves.
 	if there is a move that wins immediately, return it
-	if not,
 	if there are only a few moves that block opponent's
-	immediate win, play it
-	if not, returns 0 (no only moves)*/
+	immediate win, return them
+	if there are no moves that save the game, return 0
+	if not, return possible_moves*/
 	int (*only_moves)(sorter_t *onlies, void *pos);
 
 	//optional
@@ -158,6 +159,10 @@ typedef struct
 	creates a symmetrically equivalent version of the position*/
 	void (*flip)(void *to, void *from);
 
+	/*conditionally required (if flip() is implemented):
+	returns the index of the flipped position (ie for c4, if
+	the flipped position has best_move of 5, returns 1)
+	*/
 	int (*flip_move_index)(int index);
 
 
