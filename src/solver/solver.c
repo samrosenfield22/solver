@@ -39,6 +39,7 @@ int sort_movelist(sorter_t *order, int len,
 	void *pos, int depth, trans_value_t *vp);
 void movelist_dump(void *pos, int best, int len, sorter_t *movelist);
 bool move_is_forcing(void *pos, int move);
+float check_forcing_line(void *pos, int depth);
 result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 	sorter_t *order, int len, int depth, float alpha, float beta,
 	bool is_pv, result_t *hash_result);
@@ -531,6 +532,16 @@ result_t eval(gdata_t *gd, int depth,
 
 		if(!quiescence_extend)
 		{*/
+
+		float forcing_line = check_forcing_line(pos, depth);
+		if(forcing_line)
+		{
+			gd->score = forcing_line;
+			return (result_t){.score=gd->score, .full=true, .has_tt=false, .best_move=-1};
+			//bool forcefull = (forcing_line < -MATE_LIMIT || forcing_line > MATE_LIMIT);
+			//return (result_t){.score=gd->score, .full=forcefull, .has_tt=false, .best_move=-1};
+		}
+
 		if(solver->estimate)
 			gd->score = solver->estimate(pos);
 		else
@@ -552,51 +563,15 @@ result_t eval(gdata_t *gd, int depth,
 		}
 	}*/
 
-	//try hash move first before making the full movelist,
-	//see if it produces a cutoff
-	/*result_t result;
-	bool hash_cutoff = false;
-	result_t hash_result;*/
-	/*if(got)
-	{
-		//make move
-		//assert(ttval.best_move != -1);
-		uint8_t hash_move[gdata_size];
-		make_new_move((gdata_t *)&hash_move, gd, ttval.best_move);
 
-		hash_result = eval((gdata_t *)hash_move, depth+1,
-			alpha, beta, true);
-		//assert(hash_result.best_move != -1);
-
-		//check if it produced a cutoff
-		//hash_cutoff = (score_tightens_ab_bounds(false, &alpha, &beta,
-		//	hash_result.score, max_or_min(depth)!=MAX_LAYER))
-		if(max_or_min(depth)==MAX_LAYER)
-		{
-			if(hash_result.score >= beta)
-			//if(hash_result.score <= alpha)
-				hash_cutoff = true;
-		}
-		else
-		{
-			if(hash_result.score <= alpha)
-			//if(hash_result.score >= beta)
-				hash_cutoff = true;
-		}
-	}*/
-
-	/*if(hash_cutoff)
-	{
-		result = hash_result;
-		result.best_move = ttval.best_move;
-		//result.full = hash_result.full && (solver->only_moves(NULL, gd->pos)==1);
-	}*/
 	trans_value_t *tv = got? &ttval : NULL;
 	sorter_t movelist[solver->possible_moves];
 	int len;
 	if(got)
 	//if(0)
 	{
+		//try hash move first before making the full movelist,
+		//see if it produces a cutoff
 		assert(ttval.best_move != -1);
 		movelist[0].move = ttval.best_move;
 		movelist[0].score = 0;	//prolly dont need
@@ -664,6 +639,8 @@ result_t eval(gdata_t *gd, int depth,
 	assert(result.best_move != -1);
 	return result;
 }
+
+
 
 /*void history_bonus(void *pos, int move, int depth)
 {
@@ -1265,6 +1242,54 @@ int sort_movelist(sorter_t *order, int len, void *pos, int depth,
 
 
 	return len;
+}
+
+float check_forcing_line(void *pos, int depth)
+{
+	if(!solver->only_moves)
+		return 0;
+
+	const int max_forcing_line_len = 8;
+
+	uint8_t next_pos[solver->pos_size];
+	memcpy(next_pos, pos, solver->pos_size);
+
+	sorter_t movelist[solver->possible_moves];
+
+	for(int i=0; i<max_forcing_line_len; i++)
+	{
+		int len = solver->only_moves(movelist, next_pos);
+		if(len == 0)
+		{
+			//return loss for current player
+			float loses_forcing = (max_or_min(depth+i)==MAX_LAYER)?
+				(-WIN_SCORE)+i/2 : WIN_SCORE-i/2;
+			return loses_forcing;
+		}
+		else if(len > 1)
+		{
+			break;
+		}
+
+
+		solver->make_move(next_pos, movelist[0].move, NULL);
+
+		int endstate = solver->gameover(next_pos);
+		if(endstate != END_NOT_OVER)
+		{
+			switch(endstate)
+			{
+				case END_P1_WON:	return WIN_SCORE - i/2;
+				case END_P2_WON:	return -WIN_SCORE + i/2;
+				case END_DRAW:		return 0;
+			}
+		}
+
+	}
+
+
+	return 0;
+	//return solver->estimate(next_pos);
 }
 
 bool move_is_forcing(void *pos, int move)
