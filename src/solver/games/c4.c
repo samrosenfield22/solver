@@ -1170,6 +1170,10 @@ bool c4_move_loses(void *pos, int move)
 	if(mb & p->x_wmap)
 		return false;
 
+	uint64_t opp_threats = p->opp_wmap & move_map(p->filled);
+	if(opp_threats & ~mb)
+		return true;
+
 	//don't play under an opponent's win
 	return (mb<<1) & p->opp_wmap;
 }
@@ -1426,6 +1430,8 @@ int c4_only_moves(sorter_t *sorter, void *pos)
 	//if(move_map & p->opp_wmap)
 	if(win_move)
 	{
+		if(__builtin_popcountll(win_move)>1)
+			return 0;
 		if(sorter)
 		{
 			/*for(int i=0; i<7; i++)
@@ -1458,16 +1464,14 @@ int c4_only_moves(sorter_t *sorter, void *pos)
 	}
 
 	//check if only 1 move is available (all other columns filled)
-	//uint64_t top_mask = 0b0100000010000001000000100000010000001000000100000;
-	//if(__builtin_popcountll(p->filled & top_mask) == 6)
-	if(__builtin_popcountll(mm) == 1)
+	/*if(__builtin_popcountll(mm) == 1)
 	{
 		if(sorter)
 			sorter[0].move = __builtin_ctzll(mm)/7;
 		return 1;
-	}
+	}*/
 
-	return 0;
+	return 7;
 }
 
 /*void draw_color(uint8_t *cols, uint8_t *opp)
@@ -1716,16 +1720,14 @@ solver_t C4_SOLVER =
 	.initial_pos = &C4_INIT_POS,
 	.pos_size = sizeof(c4_pos_t),
 	.possible_moves = 7,
-	//.possible_placements = 42*2,
 	.iddfs_increment = 8,
 	.aspiration_default_width = 0.5,
 	.default_order = (uint8_t[]){2, 4, 6, 7, 5, 3, 1},
-	.flip_depth = 8,
+	.flip_depth = 20,
 
 	.init = c4_init,
 	.gameover = c4_gameover,
 	.estimate = c4_estimate,
-	//.estimate_sort = c4_estimate_sort,
 	.whosemove = c4_whosemove,
 	.is_legal = c4_is_legal,
 	.make_move = c4_make_move,

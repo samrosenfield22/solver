@@ -159,7 +159,7 @@ bool tt_get(trans_value_t *value, gdata_t *gd, int depth)
 	bool got = tt_key_get_value(trans_tbl, pos, value, *hash);
 
 
-
+	#ifdef USE_SYMMETRY
 	if(!got && solver->flip && depth<=solver->flip_depth)
 	{
 		uint8_t flipped[solver->pos_size];
@@ -176,6 +176,7 @@ bool tt_get(trans_value_t *value, gdata_t *gd, int depth)
 		//catch_pos(flipped);
 		//assert(!got);
 	}
+	#endif	//USE_SYMMETRY
 
 
 	//return value;

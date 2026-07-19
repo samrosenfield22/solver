@@ -37,6 +37,7 @@ int build_movelist(sorter_t *order, gdata_t *gd,
 int default_movelist(sorter_t *order, void *pos);
 int sort_movelist(sorter_t *order, int len,
 	void *pos, int depth, trans_value_t *vp);
+void movelist_dump(void *pos, int best, int len, sorter_t *movelist);
 bool move_is_forcing(void *pos, int move);
 result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 	sorter_t *order, int len, int depth, float alpha, float beta,
@@ -593,8 +594,8 @@ result_t eval(gdata_t *gd, int depth,
 	trans_value_t *tv = got? &ttval : NULL;
 	sorter_t movelist[solver->possible_moves];
 	int len;
-	//if(got)
-	if(0)
+	if(got)
+	//if(0)
 	{
 		assert(ttval.best_move != -1);
 		movelist[0].move = ttval.best_move;
@@ -606,6 +607,14 @@ result_t eval(gdata_t *gd, int depth,
 		//make list of moves, sorted with heuristics
 		len = build_movelist(movelist, gd, depth,
 			tv);
+		if(!len)	//all moves lose
+		{
+			float all_lose = (max_or_min(depth)==MAX_LAYER)? (-WIN_SCORE)+1 : WIN_SCORE-1;
+			result_t bad_result = (result_t){.score=all_lose, .full=true, .has_tt=false, .best_move=0};
+			tt_add(gd->pos, gdata_get_hash(gd), &bad_result,
+				iddfs_depth-depth, BOUND_EXACT, bad_result.best_move, is_pv);
+			return (result_t){.score=all_lose, .full=true, .has_tt=false, .best_move=-1};
+		}
 	}
 
 	//main analysis -- recursive tree search
@@ -798,6 +807,9 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 		int move = order[i].move;
 		assert(0 <= move && move < solver->possible_moves);
 
+		if(solver->move_loses && solver->move_loses(gd->pos, move))
+			continue;
+
 		//make new position
 		//gdata_t child;
 		//gdata_t *child = sl_alloc(gdata_size);
@@ -975,25 +987,18 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 
 		/*if we only tried the hash move, we need to make and
 		sort the move list*/
-		/*if(i==0 && ttval)
+		if(i==0 && ttval)
 		{
 			int prev_hash_move = order[0].move;
 			len = build_movelist(order, gd, depth,
 				ttval);
 			if(order[0].move != prev_hash_move)
 			{
-				printf("\n\nprevious hash move: %d\n", ttval->best_move);
-				printf("move 0 before sorting:\t%d\n", prev_hash_move);
-				printf("move 0 after sorting:\t%d\n", order[0].move);
-				printf("ttval move: %d\n", ttval->best_move);
-
-				for(int i=0; i<len; i++)
-				{
-					printf("m %d: %d\n", i, order[i].move);
-				}
+				printf("\n\nmove 0 before sorting:\t%d\n", prev_hash_move);
+				movelist_dump(gd->pos, ttval->best_move, len, order);
 			}
 			assert(order[0].move == prev_hash_move);
-		}*/
+		}
 
 	}
 
@@ -1057,16 +1062,20 @@ int order_compare(const void *aa, const void *bb)
 int build_movelist(sorter_t *movelist, gdata_t *gd,
 	int depth, trans_value_t *ttval)
 {
-	int len = 0;
+	int len = solver->possible_moves;
 	void *pos = gd->pos;
 
 	if(solver->only_moves)
+	{
 		len = solver->only_moves(movelist, pos);
+		if(!len)
+			return 0;
+	}
 
+	bool forced = (len!=solver->possible_moves);
+	gd->quiet = !forced;
 
-	gd->quiet = (len==0);
-
-	if(!len)
+	if(!forced)
 	{
 		if(solver->make_movelist)
 			len = solver->make_movelist(movelist, pos);
@@ -1109,9 +1118,7 @@ void movelist_dump(void *pos, int best, int len, sorter_t *movelist)
 	printf("\tbest=%d\n", best);
 	for(int i=0; i<len; i++)
 		printf("[%d: %.1f], ", movelist[i].move, movelist[i].score);
-	term_move_cursor(0, 12);
-	solver->draw_full(pos, -1);
-	getchar();
+	catch_pos(pos);
 }
 
 int sort_movelist(sorter_t *order, int len, void *pos, int depth,
@@ -1210,9 +1217,6 @@ int sort_movelist(sorter_t *order, int len, void *pos, int depth,
 			}*/
 			order[i].score += -1000;
 			losers++;
-
-			//why are losing moves sometimes being stored as the hash
-			//best move??
 		}
 
 	}
@@ -1222,9 +1226,11 @@ int sort_movelist(sorter_t *order, int len, void *pos, int depth,
 
 	if(!((best==-1 || best==order[0].move)))
 	{
+		printf("\n\nttval search depth = %d\n", vp->search_depth);
 		movelist_dump(pos, best, len, order);
+		//exit(0);
 	}
-	assert(best==-1 || best==order[0].move);
+	//assert(best==-1 || best==order[0].move);
 
 	/*if(losers)
 	{
@@ -1273,7 +1279,7 @@ bool move_is_forcing(void *pos, int move)
 	//solver->make_move(after, move, NULL);
 	solver->make_move_temp(&after, pos, move, NULL);
 	int len = solver->only_moves(NULL, after);
-	return (len > 0);
+	return (len < solver->possible_moves);
 }
 
 void catch_pos(void *pos)
