@@ -1114,8 +1114,9 @@ int sort_movelist(sorter_t *order, int len, void *pos, int depth,
 
 	#ifdef USE_HISTORY_HEURISTIC
 	bool whosemove = solver->whosemove(pos);
-	int player = whosemove? 0 : 1;
-	int history_best = HISTORY_BEST_MOVE[player];
+	//int player = whosemove? 0 : 1;
+	//int history_best = HISTORY_BEST_MOVE[player];
+	int history_best = -1, history_second = -1;
 
 	//int history_second;
 	//bool history_set = false;
@@ -1125,9 +1126,22 @@ int sort_movelist(sorter_t *order, int len, void *pos, int depth,
 		int history_thresh=-100000000;
 		for(int i=0; i<solver->possible_moves; i++)
 		{
+			if(i == best)
+				continue;
 			if(HISTORY_VALS[i+off] > history_thresh)
 			{
 				history_best = i;
+				history_thresh = HISTORY_VALS[i+off];
+			}
+		}
+		history_thresh=-100000000;
+		for(int i=0; i<solver->possible_moves; i++)
+		{
+			if(i == best || i == history_best)
+				continue;
+			if(HISTORY_VALS[i+off] > history_thresh)
+			{
+				history_second = i;
 				history_thresh = HISTORY_VALS[i+off];
 			}
 		}
@@ -1155,11 +1169,12 @@ int sort_movelist(sorter_t *order, int len, void *pos, int depth,
 		if(move == best)	//hash move
 			order[i].score += (1<<16);
 		#ifdef USE_HISTORY_HEURISTIC
-		if(move == history_best)
+		else if(move == history_best)
 			order[i].score += (1<<14);
-		//else if(move == history_second)
-		//	order[i].score += (1<<13);
+		else if(move == history_second)
+			order[i].score += (1<<13);
 		#endif	//USE_HISTORY_HEURISTIC
+
 		if(move_is_forcing(pos, move))
 			order[i].score += (1<<15);
 		//if(move == 3)	//this should be the same as history hmmmm

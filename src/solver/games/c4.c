@@ -363,6 +363,9 @@ endstate_t c4_gameover(void *pos)
 		return END_DRAW;
 	}
 
+
+
+
 	//if(c4_win_impossible(p))
 	//	return END_DRAW;
 
@@ -1344,11 +1347,10 @@ int c4_only_moves(sorter_t *sorter, void *pos)
 
 	uint64_t mm = move_map(p->filled);
 
+	//if we have an immediate move, play it
 	if(p->x_wmap == NO_WIN_MAP)
 		p->x_wmap = win_map(p->x, p->filled);
 	uint64_t win_move = mm & p->x_wmap;
-	//uint64_t win_move = p->x_wmap & filled_1_higher;
-	//if(move_map & p->x_wmap)
 	if(win_move)
 	{
 		if(sorter)
