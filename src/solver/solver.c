@@ -65,6 +65,7 @@ uint32_t position_ct = 0;
 int iddfs_depth;
 int time_lim;
 int full_solve_depth = 0;
+//bool lmr_enabled = true;
 bool main_thread_done = false;
 
 int *HISTORY_VALS;
@@ -75,6 +76,7 @@ int HISTORY_BEST_SCORE[2] = {0, 0};
 #define NUM_KILLERS	(2)
 uint8_t killers[MAX_PLY][NUM_KILLERS] = {0};
 
+int _solver_possible_moves;
 
 
 void solver_check(solver_t *s)
@@ -99,9 +101,9 @@ void solver_check(solver_t *s)
 int random_move(void *pos)
 {
 	int ct = 0;
-	int allowed[solver->possible_moves];
+	int allowed[_solver_possible_moves];
 
-	for(int i=0; i<solver->possible_moves; i++)
+	for(int i=0; i<_solver_possible_moves; i++)
 		if(solver->is_legal(pos, i))
 			allowed[ct++] = i;
 	assert(ct);
@@ -122,11 +124,14 @@ void solver_init(solver_t *game_solver)
 	//	solver->hash_size = solver->pos_size;
 	gdata_size = sizeof(gdata_t) + solver->pos_size;
 	position_ct = 0;
+	//lmr_enabled = true;
 
 	#ifdef USE_TRANSPOSITION_TABLE
 	//tt_create(solver->transtbl_buckets_ct);
 	tt_create();
 	#endif	//USE_TRANSPOSITION_TABLE
+
+	_solver_possible_moves = solver->possible_moves;
 }
 
 void solver_clear(void)
@@ -174,8 +179,8 @@ float solve(solver_t *game_solver, void *pos,
 	tic();
 
 	#ifdef USE_HISTORY_HEURISTIC
-	int history_scores[2*solver->possible_moves];
-	for(int i=0; i<2*solver->possible_moves; i++)
+	int history_scores[2*_solver_possible_moves];
+	for(int i=0; i<2*_solver_possible_moves; i++)
 		history_scores[i] = 0;
 	HISTORY_VALS = history_scores;
 	#endif
@@ -189,8 +194,8 @@ float solve(solver_t *game_solver, void *pos,
 	for(int i=0; i<cores-1; i++)
 	{
 		memcpy(&alt_solvers[i], game_solver, sizeof(solver_t));
-		alt_solvers[i].default_order = mem_malloc(solver->possible_moves);
-		for(int m=0; m<solver->possible_moves; m++)
+		alt_solvers[i].default_order = mem_malloc(_solver_possible_moves);
+		for(int m=0; m<_solver_possible_moves; m++)
 			alt_solvers[i].default_order[m] = rand() / 2000;
 	}
 
@@ -271,7 +276,7 @@ float solve(solver_t *game_solver, void *pos,
 
 			//
 			#ifdef USE_HISTORY_HEURISTIC
-			for(int i=0; i<2*solver->possible_moves; i++)
+			for(int i=0; i<2*_solver_possible_moves; i++)
 				HISTORY_VALS[i] /= 2;
 			#endif
 
@@ -315,11 +320,20 @@ float solve(solver_t *game_solver, void *pos,
 		if(result.full)
 			break;
 
+		//rerun the last search without late move reduction
+		#ifdef USE_LATE_MOVE_REDUCTIONS
+		/*if(lmr_enabled && iddfs==full_solve_depth)
+		{
+			lmr_enabled = false;
+			iddfs--;
+			if(verbose)
+				printf("\n--- rerun w/o lmr ---");
+		}*/
+		#endif
+
 		if(FORCE_SEARCH_DEPTH)
 			if(iddfs >= FORCE_SEARCH_DEPTH)
 				break;
-
-
 	}
 
 	//count time
@@ -388,7 +402,7 @@ float solve(solver_t *game_solver, void *pos,
 	for(int r=0; r<7; r++)
 	{
 		int space = printf("%d:%d   ",
-			r, HISTORY_VALS[r + solver->possible_moves]/1000);
+			r, HISTORY_VALS[r + _solver_possible_moves]/1000);
 		for(int i=0; i<10-space; i++)
 			putchar(' ');
 	}
@@ -478,18 +492,16 @@ result_t eval(gdata_t *gd, int depth,
 	{
 		gd->score = ttval.score;
 		//if(ttval->full)
-		if(ttval.full && ttval.bound==BOUND_EXACT)
+		if(ttval.full && ttval.bound==BOUND_EXACT)// && lmr_enabled)
 		{
 			assert(gd->score > MATE_LIMIT
 				|| gd->score < -MATE_LIMIT
 				|| gd->score == 0);
 			return (result_t){.score=gd->score, .full=true, .has_tt=true, .best_move=ttval.best_move};
 		}
-		//if(ttval->iddfs >= iddfs_depth && !asp_window_rerun)
-		//if(ttval->iddfs >= iddfs_depth && ttval->bound==BOUND_EXACT)
-		//assert(!ttval.full);
+
 		if(ttval.search_depth >= (iddfs_depth - depth)
-			&& ttval.bound==BOUND_EXACT)
+			&& ttval.bound==BOUND_EXACT)// && lmr_enabled)
 			return (result_t){.score=gd->score, .full=ttval.full, .has_tt=true, .best_move=ttval.best_move};
 	}
 	#endif
@@ -518,7 +530,7 @@ result_t eval(gdata_t *gd, int depth,
 		/*bool quiescence_extend = false;
 		if(iddfs_depth < full_solve_depth)
 		{
-			sorter_t ml[solver->possible_moves];
+			sorter_t ml[_solver_possible_moves];
 			int test_len = 0;
 
 			if(solver->only_moves)
@@ -541,6 +553,8 @@ result_t eval(gdata_t *gd, int depth,
 		{
 			gd->score = forcing_score;
 			result_t forcing_result = (result_t){.score=gd->score, .full=decisive, .has_tt=false, .best_move=first};
+			//if(lmr_enabled)
+			//	forcing_result.full = false;
 			tt_add(gd->pos, gdata_get_hash(gd), &forcing_result,
 				iddfs_depth-depth, BOUND_EXACT, forcing_result.best_move, is_pv);
 			return forcing_result;
@@ -569,7 +583,7 @@ result_t eval(gdata_t *gd, int depth,
 
 
 	trans_value_t *tv = got? &ttval : NULL;
-	sorter_t movelist[solver->possible_moves];
+	sorter_t movelist[_solver_possible_moves];
 	int len;
 	if(got)
 	//if(0)
@@ -590,6 +604,8 @@ result_t eval(gdata_t *gd, int depth,
 		{
 			float all_lose = (max_or_min(depth)==MAX_LAYER)? (-WIN_SCORE)+1 : WIN_SCORE-1;
 			result_t bad_result = (result_t){.score=all_lose, .full=true, .has_tt=false, .best_move=0};
+			//if(lmr_enabled)
+			//	bad_result.full = false;
 			tt_add(gd->pos, gdata_get_hash(gd), &bad_result,
 				iddfs_depth-depth, BOUND_EXACT, bad_result.best_move, is_pv);
 			return (result_t){.score=all_lose, .full=true, .has_tt=false, .best_move=-1};
@@ -633,6 +649,8 @@ result_t eval(gdata_t *gd, int depth,
 			//result.full = false;
 		}
 	}
+	//if(lmr_enabled)
+	//	result.full = false;
 	tt_add(gd->pos, gdata_get_hash(gd), &result,
 		iddfs_depth-depth, bound, result.best_move, is_pv);
 	#endif
@@ -664,10 +682,10 @@ void update_history(void *pos, int move, int depth, bool bonus)
 
 	//apply bonuses/maluses
 	bool whosemove = solver->whosemove(pos);
-	int off = whosemove? 0 : solver->possible_moves;
+	int off = whosemove? 0 : _solver_possible_moves;
 	int placement = move + off;
 	//int player = whosemove? 0 : 1;
-	assert(placement < 2 * solver->possible_moves);
+	assert(placement < 2 * _solver_possible_moves);
 
 	if(bonus)
 	{
@@ -693,7 +711,7 @@ void update_history(void *pos, int move, int depth, bool bonus)
 	/*for(int i=0; i<len; i++)
 	{
 		int placement = order[i].move + off;
-		assert(placement < 2 * solver->possible_moves);
+		assert(placement < 2 * _solver_possible_moves);
 
 		if(i == index)
 			HISTORY_VALS[placement] += sdq;
@@ -714,6 +732,7 @@ int get_lmr_reduction(int i, int depth, bool is_pv)
 	int late = i - candidates + 1;
 	if(!is_pv && late > 0
 		&& lmr_min_depth <= depth
+		//&& lmr_enabled
 		&& ((iddfs_depth < full_solve_depth) || !full_solve_depth)
 	)
 	{
@@ -739,8 +758,8 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 			alpha = max(alpha, ttval->score);
 		else if(ttval->bound == BOUND_UPPER)
 			beta = min(beta, ttval->score);
-		else
-			assert(0);
+		//else
+		//	assert(0);
 	}
 	if(alpha >= beta)	//bail immediately
 	{
@@ -758,8 +777,9 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 
 	bool is_max = (max_or_min(depth)==MAX_LAYER);
 
+	#ifdef USE_HISTORY_HEURISTIC
 	bool history_valid = (!result.has_tt && gd->quiet);
-	(void)history_valid;
+	#endif
 
 	bool multi_pv = (depth==0 && DISPLAY_VAR_CT>1);
 	bool multi_full = true;
@@ -786,7 +806,7 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 	{
 		//get move to try
 		int move = order[i].move;
-		assert(0 <= move && move < solver->possible_moves);
+		assert(0 <= move && move < _solver_possible_moves);
 
 		if(solver->move_loses && solver->move_loses(gd->pos, move))
 			continue;
@@ -846,6 +866,7 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 						alpha, beta, child_pv);
 				}
 			}
+
 			#else
 			result = eval((gdata_t *)&child, depth+1,
 				alpha, beta, child_pv);
@@ -994,7 +1015,7 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 	goto analyze_end;
 	analyze_end:
 	if(!(0 <= best_result.best_move
-		&& best_result.best_move < solver->possible_moves))
+		&& best_result.best_move < _solver_possible_moves))
 	{
 		printf("\nlen=%d, move=%d\n", len, best_result.best_move);
 		printf("score went from %.1f to %.1f\n", worst_score(depth), best_result.score);
@@ -1024,6 +1045,11 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 	}
 	assert(best_in_list);
 
+	#ifdef USE_LATE_MOVE_REDUCTIONS
+	//if(lmr_enabled)
+	//	best_result.full = false;
+	#endif
+
 	//return (result_t){.score=best, .full=best_full, .best_move=best_move};
 	best_result.has_tt = false;
 	return best_result;
@@ -1043,7 +1069,7 @@ int order_compare(const void *aa, const void *bb)
 int build_movelist(sorter_t *movelist, gdata_t *gd,
 	int depth, trans_value_t *ttval)
 {
-	int len = solver->possible_moves;
+	int len = _solver_possible_moves;
 	void *pos = gd->pos;
 
 	if(solver->only_moves)
@@ -1053,7 +1079,7 @@ int build_movelist(sorter_t *movelist, gdata_t *gd,
 			return 0;
 	}
 
-	bool forced = (len!=solver->possible_moves);
+	bool forced = (len!=_solver_possible_moves);
 	gd->quiet = !forced;
 
 	if(!forced)
@@ -1074,7 +1100,7 @@ int default_movelist(sorter_t *order, void *pos)
 {
 	int ct = 0;
 
-	for(int i=0; i<solver->possible_moves; i++)
+	for(int i=0; i<_solver_possible_moves; i++)
 	{
 		//get move, going in default order
 		//int move = solver->default_order?
@@ -1122,9 +1148,9 @@ int sort_movelist(sorter_t *order, int len, void *pos, int depth,
 	//bool history_set = false;
 	if(history_best == -1)
 	{
-		int off = whosemove? 0 : solver->possible_moves;
+		int off = whosemove? 0 : _solver_possible_moves;
 		int history_thresh=-100000000;
-		for(int i=0; i<solver->possible_moves; i++)
+		for(int i=0; i<_solver_possible_moves; i++)
 		{
 			if(i == best)
 				continue;
@@ -1135,7 +1161,7 @@ int sort_movelist(sorter_t *order, int len, void *pos, int depth,
 			}
 		}
 		history_thresh=-100000000;
-		for(int i=0; i<solver->possible_moves; i++)
+		for(int i=0; i<_solver_possible_moves; i++)
 		{
 			if(i == best || i == history_best)
 				continue;
@@ -1161,7 +1187,7 @@ int sort_movelist(sorter_t *order, int len, void *pos, int depth,
 	{
 		//get move
 		int move = order[i].move;
-		assert(move < solver->possible_moves);
+		assert(move < _solver_possible_moves);
 		assert(order[i].score == 0);
 		//assert(solver->is_legal(pos, move));
 
@@ -1273,7 +1299,7 @@ bool check_forcing_line(float *score, int *first, void *pos, int depth)
 	uint8_t next_pos[solver->pos_size];
 	memcpy(next_pos, pos, solver->pos_size);
 
-	sorter_t movelist[solver->possible_moves];
+	sorter_t movelist[_solver_possible_moves];
 
 	for(int i=0; i<max_forcing_line_len; i++)
 	{
@@ -1324,14 +1350,12 @@ bool move_is_forcing(void *pos, int move)
 	if((!solver->make_move_temp) || (!solver->only_moves))
 		return false;
 
-	//int only = solver->only_move(solver->make_move_temp(pos, move));
-
 	uint8_t after[solver->pos_size];
 	//memcpy(after, pos, solver->pos_size);
 	//solver->make_move(after, move, NULL);
 	solver->make_move_temp(&after, pos, move, NULL);
 	int len = solver->only_moves(NULL, after);
-	return (len < solver->possible_moves);
+	return (len < _solver_possible_moves);
 }
 
 void catch_pos(void *pos)
