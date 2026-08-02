@@ -466,25 +466,28 @@ result_t eval(gdata_t *gd, int depth,
 	float alpha, float beta, bool is_pv)
 {
 	assert(gd);
+	assert(depth < 1000);
 
 	if(!(position_ct & 0xFF))	//only run occasionally
 	{
 		if(time_up())
 			return (result_t){.score=0, .full=false, .has_tt=false, .best_move=-1};
-
-
-		//if(is_pv)
-		//	printf("\tpv node at d=%d w [%.1f,%.1f]\n",
-		//	depth, alpha, beta);
-
-		if(depth > 1000)
-		{
-			printf("error! depth is crazy big lol\n");
-			exit(0);
-		}
 	}
-	
+
 	void *pos = &(gd->pos);
+
+	int endstate = solver->gameover(pos);
+	if(endstate != END_NOT_OVER)
+	{
+		switch(endstate)
+		{
+			case END_P1_WON:	gd->score = WIN_SCORE;	break;
+			case END_P2_WON:	gd->score = -WIN_SCORE;	break;
+			case END_DRAW:		gd->score = 0;			break;
+			default:	printf("invalid endstate!\n"); exit(0);
+		}
+		return (result_t){.score=gd->score, .full=true, .has_tt=false, .best_move=-1};
+	}
 
 	//trans_value_t *ttval = NULL;
 	trans_value_t ttval;
@@ -517,19 +520,8 @@ result_t eval(gdata_t *gd, int depth,
 	position_ct++;
 
 	//evaluate end states/leaf nodes
-	int endstate = solver->gameover(pos);
-	if(endstate != END_NOT_OVER)
-	{
-		switch(endstate)
-		{
-			case END_P1_WON:	gd->score = WIN_SCORE;	break;
-			case END_P2_WON:	gd->score = -WIN_SCORE;	break;
-			case END_DRAW:		gd->score = 0;			break;
-			default:	printf("invalid endstate!\n"); exit(0);
-		}
-		return (result_t){.score=gd->score, .full=true, .has_tt=false, .best_move=-1};
-	}
-	else if(depth >= iddfs_depth)
+
+	if(depth >= iddfs_depth)
 	{
 		//quiescence search?
 		/*bool quiescence_extend = false;
@@ -553,7 +545,9 @@ result_t eval(gdata_t *gd, int depth,
 
 		float forcing_score;
 		int first;
-		bool decisive = check_forcing_line(&forcing_score, &first, pos, depth);
+		bool decisive = false;
+		if(solver->only_moves && solver->only_moves(NULL, pos) > 1)
+			decisive = check_forcing_line(&forcing_score, &first, pos, depth);
 		if(decisive)
 		{
 			gd->score = forcing_score;
@@ -1299,6 +1293,7 @@ bool check_forcing_line(float *score, int *first, void *pos, int depth)
 	if(!solver->only_moves)
 		return false;
 
+
 	const int max_forcing_line_len = 10;
 
 	uint8_t next_pos[solver->pos_size];
@@ -1336,6 +1331,7 @@ bool check_forcing_line(float *score, int *first, void *pos, int depth)
 			break;
 		}
 
+		//get the best move for tt
 		if(i == 0)
 			*first = movelist[0].move;
 
