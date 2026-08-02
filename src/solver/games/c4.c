@@ -25,6 +25,7 @@ int c4_moves_remaining(void *pos);
 
 #define C4_BOARD_MASK	(0b0111111011111101111110111111011111101111110111111)
 #define WHOSEMOVE_BIT	(((uint64_t)1)<<63)
+#define WIN_BIT			(WHOSEMOVE_BIT)
 #define NO_WIN_MAP		(0xFFFFFFFFFFFFFFFF)
 
 //tried srand seeds from 0 through 50
@@ -38,7 +39,7 @@ c4_pos_t C4_INIT_POS =
 	.filled = WHOSEMOVE_BIT,
 
 	.x_wmap = 0, .opp_wmap = 0,
-	.won = false,
+	//.won = false,
 };
 
 
@@ -351,7 +352,8 @@ endstate_t c4_gameover(void *pos)
 
 	int win = !c4_whosemove(p)? END_P1_WON : END_P2_WON;
 
-	if(p->won)
+	//if(p->won)
+	if(p->x_wmap & WIN_BIT)
 		return win;
 
 	//if(is_win(p->x))
@@ -1028,10 +1030,12 @@ void c4_make_move_temp(void *made, void *pos, int index, uint64_t *hash)
 	//uint64_t b = col<<(7*index);
 	uint64_t b = move_bit(p, index);
 
-	m->won = false;
+	//m->won = false;
+	m->x_wmap &= ~WIN_BIT;
 	if(p->x_wmap != NO_WIN_MAP)
 		if(p->x_wmap & b)
-			m->won = true;
+			//m->won = true;
+			m->x_wmap += WIN_BIT;
 	//break;
 
 	m->x = p->x ^ p->filled;
@@ -1105,12 +1109,14 @@ void c4_make_move(void *pos, int index, uint64_t *hash)
 	uint64_t b = move_bit(p, index);
 
 	//get_win_maps(p);
-	p->won = false;
+
+	//p->won = false;
+	p->x_wmap &= ~WIN_BIT;
 	if(p->x_wmap != NO_WIN_MAP)
 		if(p->x_wmap & b)
 		{
-			p->won = true;
-			//return;
+			//p->won = true;
+			p->x_wmap |= WIN_BIT;
 		}
 
 	//p->x |= b;

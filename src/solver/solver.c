@@ -465,20 +465,25 @@ bool set_aspiration_window(float *asp_window,
 result_t eval(gdata_t *gd, int depth,
 	float alpha, float beta, bool is_pv)
 {
-	//printf("eval at d=%d (%d)\n", depth, omp_get_thread_num());
-	if(time_up())
-		return (result_t){.score=0, .full=false, .has_tt=false, .best_move=-1};
-
-
-	//if(is_pv)
-	//	printf("\tpv node at d=%d w [%.1f,%.1f]\n",
-	//	depth, alpha, beta);
 	assert(gd);
-	if(depth > 1000)
+
+	if(!(position_ct & 0xFF))	//only run occasionally
 	{
-		printf("error! depth is crazy big lol\n");
-		exit(0);
+		if(time_up())
+			return (result_t){.score=0, .full=false, .has_tt=false, .best_move=-1};
+
+
+		//if(is_pv)
+		//	printf("\tpv node at d=%d w [%.1f,%.1f]\n",
+		//	depth, alpha, beta);
+
+		if(depth > 1000)
+		{
+			printf("error! depth is crazy big lol\n");
+			exit(0);
+		}
 	}
+	
 	void *pos = &(gd->pos);
 
 	//trans_value_t *ttval = NULL;
