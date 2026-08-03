@@ -546,6 +546,7 @@ result_t eval(gdata_t *gd, int depth,
 		float forcing_score;
 		int first;
 		bool decisive = false;
+		//whyyyy should be <= 1 but that makes it slower??
 		if(solver->only_moves && solver->only_moves(NULL, pos) > 1)
 			decisive = check_forcing_line(&forcing_score, &first, pos, depth);
 		if(decisive)

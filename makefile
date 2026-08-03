@@ -1,7 +1,7 @@
 
 #variables
 CC = gcc
-CFLAGS = -Wall -O3 -ggdb -fopenmp
+CFLAGS = -Wall -Ofast -flto -march=native -ggdb -fopenmp
 TARGET = solver.exe
 
 
@@ -43,7 +43,10 @@ clean:
 prof: CFLAGS = -pg -O0 -fno-inline -fopenmp
 prof: $(TARGET)
 
-release: CFLAGS += -DNDEBUG
+instr: CFLAGS += -fprofile-generate
+instr: $(TARGET)
+
+release: CFLAGS += -DNDEBUG -fprofile-use
 release: $(TARGET)
 
 .PHONY: all clean prof release
