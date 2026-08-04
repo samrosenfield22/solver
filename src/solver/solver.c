@@ -65,7 +65,7 @@ uint32_t position_ct = 0;
 int iddfs_depth;
 int time_lim;
 int full_solve_depth = 0;
-//bool lmr_enabled = true;
+bool lmr_enabled = true;
 bool main_thread_done = false;
 
 int *HISTORY_VALS;
@@ -124,7 +124,7 @@ void solver_init(solver_t *game_solver)
 	//	solver->hash_size = solver->pos_size;
 	gdata_size = sizeof(gdata_t) + solver->pos_size;
 	position_ct = 0;
-	//lmr_enabled = true;
+	lmr_enabled = true;
 
 	#ifdef USE_TRANSPOSITION_TABLE
 	//tt_create(solver->transtbl_buckets_ct);
@@ -316,9 +316,12 @@ float solve(solver_t *game_solver, void *pos,
 
 
 
+
 		//conditions for ending the search
 		if(result.full)
+		{
 			break;
+		}
 
 		//rerun the last search without late move reduction
 		#ifdef USE_LATE_MOVE_REDUCTIONS
@@ -555,8 +558,8 @@ result_t eval(gdata_t *gd, int depth,
 			result_t forcing_result = (result_t){.score=gd->score, .full=decisive, .has_tt=false, .best_move=first};
 			//if(lmr_enabled)
 			//	forcing_result.full = false;
-			tt_add(gd->pos, gdata_get_hash(gd), &forcing_result,
-				iddfs_depth-depth, BOUND_EXACT, forcing_result.best_move, is_pv);
+			tt_add(gdata_get_hash(gd), &forcing_result,
+				iddfs_depth-depth, BOUND_EXACT, is_pv);
 			return forcing_result;
 		}
 
@@ -606,8 +609,8 @@ result_t eval(gdata_t *gd, int depth,
 			result_t bad_result = (result_t){.score=all_lose, .full=true, .has_tt=false, .best_move=0};
 			//if(lmr_enabled)
 			//	bad_result.full = false;
-			tt_add(gd->pos, gdata_get_hash(gd), &bad_result,
-				iddfs_depth-depth, BOUND_EXACT, bad_result.best_move, is_pv);
+			tt_add(gdata_get_hash(gd), &bad_result,
+				iddfs_depth-depth, BOUND_EXACT, is_pv);
 			return (result_t){.score=all_lose, .full=true, .has_tt=false, .best_move=-1};
 		}
 	}
@@ -649,10 +652,9 @@ result_t eval(gdata_t *gd, int depth,
 			//result.full = false;
 		}
 	}
-	//if(lmr_enabled)
-	//	result.full = false;
-	tt_add(gd->pos, gdata_get_hash(gd), &result,
-		iddfs_depth-depth, bound, result.best_move, is_pv);
+
+	tt_add(gdata_get_hash(gd), &result,
+		iddfs_depth-depth, bound, is_pv);
 	#endif
 
 
@@ -858,7 +860,9 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 			if(reduction)
 			{
 				if((is_max && result.score > alpha)
-					|| (!is_max && result.score < beta))
+					|| (!is_max && result.score < beta)
+					//|| is_better(result.score, best_result.score, depth)
+					)
 				{
 					//redo without reduction
 					reduction = 0;

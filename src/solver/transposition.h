@@ -88,8 +88,8 @@ void tt_create(void);
 void tt_destroy(void);
 void tt_clear(void);
 //void tt_set_ancient(void);
-void tt_add(void *pos, uint64_t *hp, result_t *result,
-	int search_depth, int bound, int best_move, bool is_pv);
+void tt_add(uint64_t *hp, result_t *result,
+	int search_depth, int bound, bool is_pv);
 void tt_prefetch(uint64_t hash);
 bool tt_get(trans_value_t *value, gdata_t *gd, int depth);
 
