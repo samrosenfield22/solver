@@ -92,7 +92,6 @@ bool c4_whosemove(void *pos)
 	return p->filled & WHOSEMOVE_BIT;
 }
 
-
 //returns the bit required to make the given move (or with
 //both x and filled)
 uint64_t move_bit(c4_pos_t *p, int index)
@@ -100,6 +99,7 @@ uint64_t move_bit(c4_pos_t *p, int index)
 	/*uint64_t mm = move_map(p);
 	uint64_t col_mask = ((uint64_t)0b111111) << (7*index);
 	return mm & col_mask;*/
+
 
 	uint64_t mod = p->filled + (((uint64_t)1) << (7*index));
 	return mod & ~p->filled;
@@ -1284,12 +1284,33 @@ void swap(uint8_t *a, uint8_t *b)
 
 uint64_t flip_64(uint64_t c)
 {
+	return ((c & ((uint64_t)0b111111)) << 6*7)
+		| ((c & ((uint64_t)0b111111) << 1*7) << 4*7)
+		| ((c & ((uint64_t)0b111111) << 2*7) << 2*7)
+		| ((c & ((uint64_t)0b111111) << 3*7))
+		| ((c & ((uint64_t)0b111111) << 4*7) >> 2*7)
+		| ((c & ((uint64_t)0b111111) << 5*7) >> 4*7)
+		| ((c & ((uint64_t)0b111111) << 6*7) >> 6*7)
+		| (c & WHOSEMOVE_BIT);
+
 	uint64_t flipped = c & WHOSEMOVE_BIT;
+
+	//uint64_t mask = 0b111111;
+	//int sh = 42;
 	for(int i=0; i<7; i++)
 	{
 		uint64_t col = get_col(c, i);
 		flipped |= col << (7*(6-i));
+
+		/*assert(sh == 7*(6-i));
+		assert((c & mask) == get_col(c, i));
+		flipped |= (c & mask) << sh;
+		mask <<= 7;
+		sh -= 7;*/
 	}
+	//printf("\nbefore:\t%s\n", sprintbig(c, "%b"));
+	//printf("after:\t%s\n", sprintbig(flipped, "%b"));
+	//getchar();
 	//flipped &= 0b0111111011111101111110111111011111101111110111111;
 	//flipped |= c & (((uint64_t)1)<<63);
 	return flipped;
@@ -1327,12 +1348,16 @@ int c4_make_movelist(sorter_t *sorter, void *pos)
 
 	//get_win_maps(p);
 
-	uint64_t mm = move_map(p->filled);
+	//uint64_t mm = move_map(p->filled);
+	uint64_t opens = ~p->filled & 0b0100000010000001000000100000010000001000000100000;
 	uint64_t mask = 0b111111;
 	for(int i=0; i<7; i++)
 	{
-		uint64_t movebit = mm & mask;
-		assert(!(movebit & p->x_wmap));	//should be caught by only_moves
+		//uint64_t movebit = mm & mask;
+		uint64_t movebit = opens & mask;
+
+		//if we have a win, it should be caught by only_moves
+		//assert(!(movebit & p->x_wmap));
 		//if(movebit && !(movebit<<1 & p->opp_wmap))
 		if(movebit)
 		{
@@ -1381,12 +1406,12 @@ int c4_only_moves(sorter_t *sorter, void *pos)
 	}
 
 	//check if only 1 move is available (all other columns filled)
-	/*if(__builtin_popcountll(mm) == 1)
+	if(__builtin_popcountll(mm) == 1)
 	{
 		if(sorter)
 			sorter[0].move = __builtin_ctzll(mm)/7;
 		return 1;
-	}*/
+	}
 
 	return 7;
 }

@@ -71,7 +71,8 @@ bool bb64_is_empty(uint64_t bb)
 }
 
 //has to be called BEFORE flipping the whosemove bit/flag
-uint64_t bb64_place(uint64_t bb, uint64_t nbit, uint64_t *hash, bool whosemove)
+uint64_t bb64_place(uint64_t bb, uint64_t nbit, uint64_t *hash,
+	bool whosemove)
 {
 	assert(nbit);
 	assert(!(bb & nbit));
@@ -92,6 +93,34 @@ uint64_t bb64_place(uint64_t bb, uint64_t nbit, uint64_t *hash, bool whosemove)
 
 	return bb | nbit;
 }
+
+bool bb64_is_jump_legal(uint64_t b, uint64_t x, uint64_t filled, int dir)
+{
+	assert(b & x);
+	if(!((b<<1) & (x ^ filled)))
+		return false;
+	if((b<<2) & filled)
+		return false;
+	return true;
+}
+
+uint64_t bb64_get_jumps(uint64_t x, uint64_t filled, int dir)
+{
+	int d = dir;
+	return x
+	& (((x^filled)&GAME_MASK)>>d)
+	& (((~filled)&GAME_MASK)>>(d<<1));
+}
+
+/*bb64_jump(uint64_t b, uint64_t )
+{
+	x &= ~b;
+	x |= (b<<2);
+	filled &= ~(b | (b<<1));
+	filled |= (b<<2);
+
+	//hash
+}*/
 
 //builds movelist for all open spaces
 int bb64_make_place_movelist(sorter_t *sorter, uint64_t bb)

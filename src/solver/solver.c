@@ -859,6 +859,10 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 				alpha, beta, child_pv);
 			if(reduction)
 			{
+				//assertions here to investigate if reduced node
+				//can be stored as full, other properties
+				//assert(!(result.full && result.bound==BOUND_EXACT));
+
 				if((is_max && result.score > alpha)
 					|| (!is_max && result.score < beta)
 					//|| is_better(result.score, best_result.score, depth)
@@ -1299,7 +1303,7 @@ bool check_forcing_line(float *score, int *first, void *pos, int depth)
 		return false;
 
 
-	const int max_forcing_line_len = 10;
+	const int max_forcing_line_len = 12;
 
 	uint8_t next_pos[solver->pos_size];
 	memcpy(next_pos, pos, solver->pos_size);
