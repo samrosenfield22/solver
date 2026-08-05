@@ -978,9 +978,8 @@ float estimate_color(uint64_t x, uint64_t opp, uint64_t filled,
 
 	//next move threats
 	//uint64_t useful = wmap & ~(opp_wmap<<1) & C4_BOARD_MASK;
-	//est += 3*__builtin_popcountll(useful);
+	//est += __builtin_popcountll(useful);
 	//est += __builtin_popcountll(wmap & (move_map(filled)<<1));
-	//est += 3*(__builtin_popcountll(useful));
 
 	//uint64_t next_turn_moves = move_map(filled) << 1;
 	//est += __builtin_popcountll(useful & next_turn_moves);
@@ -1663,7 +1662,7 @@ solver_t C4_SOLVER =
 	.pos_size = sizeof(c4_pos_t),
 	.possible_moves = 7,
 	.iddfs_increment = 8,
-	.aspiration_default_width = 0.5,
+	.aspiration_default_width = 1,
 	.default_order = (uint8_t[]){2, 4, 6, 7, 5, 3, 1},
 	.flip_depth = 20,
 

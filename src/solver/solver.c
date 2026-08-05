@@ -431,8 +431,8 @@ bool set_aspiration_window(float *asp_window,
 	{
 		//set window params for next iddfs
 		*last_score = score;
-		asp_window_size[0] = solver->aspiration_default_width;
-		asp_window_size[1] = solver->aspiration_default_width;
+		asp_window_size[0] = solver->aspiration_default_width/2;
+		asp_window_size[1] = solver->aspiration_default_width - asp_window_size[0];
 	}
 	else
 	{
@@ -1303,7 +1303,7 @@ bool check_forcing_line(float *score, int *first, void *pos, int depth)
 		return false;
 
 
-	const int max_forcing_line_len = 12;
+	const int max_forcing_line_len = 14;
 
 	uint8_t next_pos[solver->pos_size];
 	memcpy(next_pos, pos, solver->pos_size);
