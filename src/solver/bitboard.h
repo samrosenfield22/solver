@@ -16,6 +16,18 @@ enum
 	DRAW_RIGHT_DIR,
 };
 
+enum
+{
+	JUMP_U,
+	JUMP_D,
+	JUMP_L,
+	JUMP_R,
+	JUMP_UL,
+	JUMP_UR,
+	JUMP_DL,
+	JUMP_DR,
+};
+
 //
 void bb64_init(int w, int h, uint64_t mask);
 void bb64_init_draw(int dir_1, int dir_2, int x_space, int y_space);

@@ -94,33 +94,121 @@ uint64_t bb64_place(uint64_t bb, uint64_t nbit, uint64_t *hash,
 	return bb | nbit;
 }
 
+bool jump_get_params(int dir, int *d)
+{
+	switch(dir)
+	{
+		case JUMP_U:	*d = GAME_W + 1; return false; break;
+		case JUMP_D:	*d = GAME_W + 1; return true; break;
+		case JUMP_R:	*d = 1;			return false; break;
+		case JUMP_L:	*d = 1;			return true; break;
+		case JUMP_UL:	*d = GAME_W;		return false; break;
+		case JUMP_UR:	*d = GAME_W + 2; return false; break;
+		case JUMP_DL:	*d = GAME_W + 2;	return true; break;
+		case JUMP_DR:	*d = GAME_W;		return true; break;
+		default: assert(0); return true;
+	}
+}
+
+//assumes 1 gap bit
+uint64_t bb64_get_jumps(uint64_t x, uint64_t filled, int dir)
+{
+	int d;
+	bool shl = jump_get_params(dir, &d);
+
+	if(shl)
+		return x
+		& (((x^filled)&GAME_MASK)<<d)
+		& (((~filled)&GAME_MASK)<<(d<<1));
+	else
+		return x
+		& (((x^filled)&GAME_MASK)>>d)
+		& (((~filled)&GAME_MASK)>>(d<<1));
+}
+
 bool bb64_is_jump_legal(uint64_t b, uint64_t x, uint64_t filled, int dir)
 {
 	assert(b & x);
-	if(!((b<<1) & (x ^ filled)))
+	/*if(!((b<<1) & (x ^ filled)))
 		return false;
 	if((b<<2) & filled)
 		return false;
-	return true;
+	return true;*/
+
+	//or...
+	return bb64_get_jumps(x, filled, dir) & b;
 }
 
-uint64_t bb64_get_jumps(uint64_t x, uint64_t filled, int dir)
+uint64_t bb64_get_jumps_ortho(uint64_t x, uint64_t filled)
 {
-	int d = dir;
-	return x
-	& (((x^filled)&GAME_MASK)>>d)
-	& (((~filled)&GAME_MASK)>>(d<<1));
+	return bb64_get_jumps(x, filled, JUMP_U)
+		| bb64_get_jumps(x, filled, JUMP_D)
+		| bb64_get_jumps(x, filled, JUMP_L)
+		| bb64_get_jumps(x, filled, JUMP_R);
 }
 
-/*bb64_jump(uint64_t b, uint64_t )
+uint64_t bb64_get_jumps_diag(uint64_t x, uint64_t filled)
 {
-	x &= ~b;
-	x |= (b<<2);
-	filled &= ~(b | (b<<1));
-	filled |= (b<<2);
+	return bb64_get_jumps(x, filled, JUMP_UL)
+		| bb64_get_jumps(x, filled, JUMP_UR)
+		| bb64_get_jumps(x, filled, JUMP_DL)
+		| bb64_get_jumps(x, filled, JUMP_DR);
+}
+
+uint64_t bb64_get_jumps_all(uint64_t x, uint64_t filled)
+{
+	return bb64_get_jumps_ortho(x, filled)
+		| bb64_get_jumps_diag(x, filled);
+}
+
+void bb64_jump(uint64_t b, uint64_t *x, uint64_t *filled,
+	uint64_t dir, uint64_t *hash, bool whosemove)
+{
+	int d;
+	bool shl = jump_get_params(dir, &d);
+	uint64_t remove;
+
+	if(shl)
+	{
+		*x &= ~b;
+		remove = (b<<(d<<1));
+		*x |= remove;
+		//*x |= (b<<(d<<1));
+		*filled &= ~(b | (b<<d));
+		*filled |= (b<<(d<<1));
+	}
+	else
+	{
+		*x &= ~b;
+		remove = (b>>(d<<1));
+		*x |= remove;
+		//*x |= (b>>(d<<1));
+		*filled &= ~(b | (b>>d));
+		*filled |= (b>>(d<<1));
+	}
 
 	//hash
-}*/
+	if(hash)
+	{
+		int index = __builtin_popcountll((b-1) & GAME_MASK);
+		if(!whosemove)
+			index += GAME_TILES_CT;
+
+		int dif;
+		if(shl)
+			dif = __builtin_popcountll(remove - b);
+		else
+			dif = __builtin_popcountll(b - remove) * -1;
+
+		zobrist_place(hash, index);
+		zobrist_place(hash, index + dif);
+		zobrist_place(hash, index + (dif<<1));
+
+		//optional check, compare to hash()
+		//uint64_t check_hash = bb64_hash(bb, whosemove);
+		//assert(*hash == check_hash);
+	}
+}
 
 //builds movelist for all open spaces
 int bb64_make_place_movelist(sorter_t *sorter, uint64_t bb)
