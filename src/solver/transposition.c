@@ -11,7 +11,7 @@
 #include <assert.h>
 #include <immintrin.h>
 
-#define TRANSTBL_BUCKETS_CT (1<<26)
+#define TRANSTBL_BUCKETS_CT (1<<25)
 
 
 //statics

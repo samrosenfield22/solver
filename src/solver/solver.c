@@ -546,11 +546,12 @@ result_t eval(gdata_t *gd, int depth,
 		if(!quiescence_extend)
 		{*/
 
+		#ifdef EXTEND_FORCING_LINES
 		float forcing_score;
 		int first;
 		bool decisive = false;
 		//whyyyy should be <= 1 but that makes it slower??
-		if(solver->only_moves && solver->only_moves(NULL, pos) > 1)
+		if(solver->only_moves && solver->only_moves(NULL, pos) <= 1)
 			decisive = check_forcing_line(&forcing_score, &first, pos, depth);
 		if(decisive)
 		{
@@ -562,6 +563,7 @@ result_t eval(gdata_t *gd, int depth,
 				iddfs_depth-depth, BOUND_EXACT, is_pv);
 			return forcing_result;
 		}
+		#endif	//EXTEND_FORCING_LINES
 
 		if(solver->estimate)
 			gd->score = solver->estimate(pos);
@@ -1133,7 +1135,7 @@ void movelist_dump(void *pos, int best, int len, sorter_t *movelist)
 	printf("\tbest=%d\n", best);
 	for(int i=0; i<len; i++)
 		printf("[%d: %.1f], ", movelist[i].move, movelist[i].score);
-	catch_pos(pos);
+	catch_pos(pos, NULL);
 }
 
 int sort_movelist(sorter_t *order, int len, void *pos, int depth,
@@ -1303,7 +1305,7 @@ bool check_forcing_line(float *score, int *first, void *pos, int depth)
 		return false;
 
 
-	const int max_forcing_line_len = 14;
+	const int max_forcing_line_len = 4;
 
 	uint8_t next_pos[solver->pos_size];
 	memcpy(next_pos, pos, solver->pos_size);
@@ -1312,20 +1314,6 @@ bool check_forcing_line(float *score, int *first, void *pos, int depth)
 
 	for(int i=0; i<max_forcing_line_len; i++)
 	{
-		int endstate = solver->gameover(next_pos);
-		if(endstate != END_NOT_OVER)
-		{
-			switch(endstate)
-			{
-				case END_P1_WON:	*score = WIN_SCORE - i/2;	break;
-				case END_P2_WON:	*score = -WIN_SCORE + i/2;	break;
-				case END_DRAW:		*score = 0;					break;
-				default:			printf("endstate=%d\n", endstate); assert(0);
-			}
-			*first = 0;
-			return true;
-		}
-
 		int len = solver->only_moves(movelist, next_pos);
 		if(len == 0)
 		{
@@ -1346,6 +1334,20 @@ bool check_forcing_line(float *score, int *first, void *pos, int depth)
 
 
 		solver->make_move(next_pos, movelist[0].move, NULL);
+
+		int endstate = solver->gameover(next_pos);
+		if(endstate != END_NOT_OVER)
+		{
+			switch(endstate)
+			{
+				case END_P1_WON:	*score = WIN_SCORE - i/2;	break;
+				case END_P2_WON:	*score = -WIN_SCORE + i/2;	break;
+				case END_DRAW:		*score = 0;					break;
+				default:			printf("endstate=%d\n", endstate); assert(0);
+			}
+			*first = 0;
+			return true;
+		}
 	}
 
 	/*if(solver->estimate)
@@ -1368,11 +1370,17 @@ bool move_is_forcing(void *pos, int move)
 	return (len < _solver_possible_moves);
 }
 
-void catch_pos(void *pos)
+void catch_pos(void *pos, char *msg)
 {
 	window_unfocus();
 	term_move_cursor(0, 12);
 	solver->draw_full(pos, -1);
+	term_move_cursor(0, 20);
+	for(int i=0; i<16; i++)
+		printf("                                         \n");
+	term_move_cursor(0, 20);
+	if(msg)
+		printf("\n%s", msg);
 	printf("\n(caught pos, press any key)");
 	getchar();
 	window_focus(analysis_hdl);

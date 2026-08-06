@@ -12,6 +12,7 @@
 #define USE_SYMMETRY
 #define PRINCIPAL_VAR_SEARCH
 #define USE_LATE_MOVE_REDUCTIONS
+//#define EXTEND_FORCING_LINES
 
 //not working yet
 #define MULTICORE_CT	(1)
@@ -193,6 +194,6 @@ void solver_clear(void);
 float solve(solver_t *solver, void *pos, int time_lim_ms,
 	bool verbose);
 void solver_check(solver_t *s);
-void catch_pos(void *pos);
+void catch_pos(void *pos, char *msg);
 
 #endif	//SOLVER_H_

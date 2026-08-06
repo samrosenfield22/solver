@@ -13,7 +13,7 @@
 #include "../zobrist.h"
 #include "../../utils/utils.h"
 
-//#define SHOW_WIN_TILES
+#define SHOW_WIN_TILES
 
 float estimate_color(uint64_t x, uint64_t opp, uint64_t filled,
 	uint64_t wmap, uint64_t opp_wmap, bool verbose);
@@ -22,6 +22,7 @@ void get_win_maps(c4_pos_t *p);
 void c4_draw_full(void *pos, int last_move);
 uint64_t c4_hash(void *key, size_t size);
 int c4_moves_remaining(void *pos);
+int endgame_forced_win_simple(c4_pos_t *p);
 
 #define C4_BOARD_MASK	(0b0111111011111101111110111111011111101111110111111)
 #define WHOSEMOVE_BIT	(((uint64_t)1)<<63)
@@ -372,35 +373,36 @@ endstate_t c4_gameover(void *pos)
 	//	return END_DRAW;
 
 	int move_ct = __builtin_popcountll(p->filled & ~WHOSEMOVE_BIT);
-	if(move_ct >= 40)
+	/*if(move_ct >= 40)
 	{
 		get_win_maps(p);
-		if((!p->x_wmap) && (!p->opp_wmap))
+		if(!(p->x_wmap | p->opp_wmap))
 			return END_DRAW;
-	}
+	}*/
 	if(move_ct >= 36)
 	{
-		uint64_t remaining = C4_BOARD_MASK & ~p->filled;
+		int endgame_status = endgame_forced_win_simple(p);
+		if(endgame_status != END_NOT_OVER)
+		{
+			/*char buf[80];
+			switch(endgame_status)
+			{
+				case END_DRAW: snprintf(buf, 79, "endgame is draw\n"); break;
+				case END_P1_WON: snprintf(buf, 79, "endgame is red win\n"); break;
+				case END_P2_WON: snprintf(buf, 79, "endgame is yellow win\n"); break;
+			}
+			//if(endgame_status != END_DRAW)
+			catch_pos(p, buf);*/
+			return endgame_status;
+		}
+
+		/*uint64_t remaining = C4_BOARD_MASK & ~p->filled;
 		uint64_t fill_all_x = p->x | remaining;
 		uint64_t fill_all_opp = (p->x ^ p->filled) | remaining;
 		if(!is_win(fill_all_x) && !is_win(fill_all_opp))
-			return END_DRAW;
+			return END_DRAW;*/
 	}
-	/*
-	{
-		int endgame_status = endgame_forced_win_simple(p);
-		//est += 50 * endgame_status;
-		if(endgame_status)
-		{
-			if(endgame_status == 1)
-				return win;
-			else if(endgame_status == -1)
-			{
-				int loss = c4_whosemove(p)? END_P1_WON : END_P2_WON;
-				return loss;
-			}
-		}
-	}*/
+
 
 
 	//
@@ -511,15 +513,99 @@ int endgame_forced_win(c4_pos_t *pp)
 	printf("opp wmap: %s  \n", sprintbig(p->opp_wmap, "%b"));
 	printf("%d empties in non-win columns\n", empty_ct);
 	//printf("win col %d\n", win_col);
-	catch_pos(p);*/
+	catch_pos(p, NULL);*/
 
 	return whowins;
 }
 
+uint32_t endgame_1col = 0;
+uint32_t endgame_morecol = 0;
+
 int endgame_forced_win_simple(c4_pos_t *p)
 {
+	//only valid if there's 1 column left
+	uint64_t opens = ~p->filled & 0b0100000010000001000000100000010000001000000100000;
+	if(__builtin_popcountll(opens) > 1)
+	{
+		//endgame_morecol++;
+		return END_NOT_OVER;
+	}
+	//else
+	//	endgame_1col++;
+
+	/*if(!rand() && rand() < 2000)
+	{
+		window_unfocus();
+		term_move_cursor(0, 22);
+		printf("endgames w 1 col:\t\t%d\n", endgame_1col);
+		printf("endgames w more than 1 col:\t%d\n", endgame_morecol);
+		printf("1 col ratio: %.1f%%\n", 100.0*(float)endgame_1col/(float)endgame_morecol);
+		//getchar();
+	}*/
+
+	//if no one has a win tile, it's a draw
+	get_win_maps(p);
 	if(!p->x_wmap && !p->opp_wmap)
-		return 0;
+		return END_DRAW;
+
+	//catch_pos(p, NULL);
+
+	//uint64_t col_low = (opens>>5)+p->filled;
+	//uint64_t col_filled = (opens<<1) - (col_low>>1);
+	//uint64_t col_filled = opens | (opens>>1) | (opens>>2)
+	//	| (opens>>3) | (opens>>4) | (opens>>5);
+	//col_filled &= ~p->filled;
+	uint64_t x_filled = 0b0010101001010100101010010101001010100101010010101;
+	//if(__builtin_popcountll(p->filled & ~WHOSEMOVE_BIT) & 0b1)
+	bool whosemove = (p->filled & WHOSEMOVE_BIT)? true : false;
+	if(!whosemove)
+		x_filled = ~x_filled;
+	//x_filled &= col_filled;
+	//p->x |= x_filled;
+	//p->filled |= col_filled;
+
+	//catch_pos(p, sprintbig(col_filled, "%b"));
+	//exit(0);
+	//return END_NOT_OVER;
+
+	uint64_t x_wins = x_filled & p->x_wmap;
+	uint64_t opp_wins = ~x_filled & p->opp_wmap;
+
+	bool current_wins;
+	if(!(x_wins | opp_wins))
+	{
+		//catch_pos(p, "polarity draw");
+		return END_DRAW;
+	}
+	else if(!opp_wins)
+		//return whosemove? END_P1_WON : END_P2_WON;
+		current_wins = true;
+	else if(!x_wins)
+		//return whosemove? END_P2_WON : END_P1_WON;
+		current_wins = false;
+	else	//both have a win
+	{
+		//int x_bitval = __builtin_ctzll(x_wins);
+		//int opp_bitval = __builtin_ctzll(opp_wins);
+		//current_wins = (x_bitval < opp_bitval)? true : false;
+
+		uint64_t lowest_bit_n = 1 << __builtin_ctzll(x_wins | opp_wins);
+		current_wins = (x_wins & lowest_bit_n)? true : false;
+
+		//uint64_t both = (x_wins | opp_wins);
+		//uint64_t lowest_bits = (both-1) ^ both;
+		//current_wins = (x_wins & lowest_bits)? true : false;
+
+		/*window_unfocus();
+		printf("\n\n\nx win val %d, opp win val %d\n", x_bitval, opp_bitval);
+		c4_draw_full(p, -1);
+		exit(0);*/
+	}
+	if(current_wins)
+		return whosemove? END_P1_WON : END_P2_WON;
+	else
+		return whosemove? END_P2_WON : END_P1_WON;
+	assert(0);
 
 
 
@@ -585,7 +671,7 @@ int endgame_forced_win_simple(c4_pos_t *p)
 	//printf("opp wmap: %s  \n", sprintbig(p->opp_wmap, "%b"));
 	//printf("%d empties in non-win columns\n", empty_ct);
 	//printf("win col %d\n", win_col);
-	catch_pos(p);*/
+	catch_pos(p, NULL);*/
 
 	return whowins;
 }
@@ -614,12 +700,6 @@ float c4_estimate(void *pos)
 
 	//endgame analysis
 	/*int move_ct = __builtin_popcountll(p->filled & ~WHOSEMOVE_BIT);
-	if(move_ct >= 36)
-	{
-		int endgame_status = endgame_forced_win_simple(p);
-		est += 50 * endgame_status;
-	}*/
-	/*
 	//const int C4_ENDGAME_CT = 26;
 	if(move_ct >= C4_ENDGAME_CT)
 	{
@@ -1534,7 +1614,14 @@ void c4_draw_full(void *pos, int last_move)
 	//redraw win alignment
 	snprintf(buf, 14, "%s%sO", justplayed, TERM_WHITE_BG);
 	bb64_draw(wb, buf);
+	#ifdef SHOW_WIN_TILES
 	//draw win squares
+	//snprintf(buf, 14, TERM_RED);
+	snprintf(buf, 14, "%s!", TERM_RED);
+	bb64_draw(rwm, buf);
+	snprintf(buf, 14, "%s!", TERM_YELLOW);
+	bb64_draw(ywm, buf);
+	#endif
 	return;
 
 	/*
