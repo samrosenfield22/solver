@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <inttypes.h>
@@ -18,11 +19,15 @@
 float estimate_color(uint64_t x, uint64_t opp, uint64_t filled,
 	uint64_t wmap, uint64_t opp_wmap, bool verbose);
 void get_win_maps(c4_pos_t *p);
+void c4_make_move(void *pos, int index, uint64_t *hash);
+int c4_only_moves(sorter_t *sorter, void *pos);
+int c4_make_movelist(sorter_t *sorter, void *pos);
 //void get_win_map(uint64_t *wmap, uint64_t x, uint64_t filled);
 void c4_draw_full(void *pos, int last_move);
 uint64_t c4_hash(void *key, size_t size);
 int c4_moves_remaining(void *pos);
 int endgame_forced_win_simple(c4_pos_t *p);
+int endgame_forced_win_2col(c4_pos_t *p);
 
 #define C4_BOARD_MASK	(0b0111111011111101111110111111011111101111110111111)
 #define WHOSEMOVE_BIT	(((uint64_t)1)<<63)
@@ -378,13 +383,19 @@ endstate_t c4_gameover(void *pos)
 		if(!(p->x_wmap | p->opp_wmap))
 			return END_DRAW;
 	}*/
-	if(move_ct >= 36)
+	if(move_ct >= 32)
 	{
 		uint64_t opens = ~p->filled & 0b0100000010000001000000100000010000001000000100000;
 		int open_ct = __builtin_popcountll(opens);
-		if(open_ct == 1)
+		int endgame_status;
+		if(open_ct <= 2)
+		//if(open_ct == 1)
 		{
-			int endgame_status = endgame_forced_win_simple(p);
+			if(open_ct == 1)
+				endgame_status = endgame_forced_win_simple(p);
+			else if(open_ct == 2)
+				//endgame_status = END_NOT_OVER;
+				endgame_status = endgame_forced_win_2col(p);
 			if(endgame_status != END_NOT_OVER)
 			{
 				/*char buf[80];
@@ -399,6 +410,7 @@ endstate_t c4_gameover(void *pos)
 				return endgame_status;
 			}
 		}
+
 
 		/*uint64_t remaining = C4_BOARD_MASK & ~p->filled;
 		uint64_t fill_all_x = p->x | remaining;
@@ -565,13 +577,6 @@ int endgame_forced_win_simple(c4_pos_t *p)
 	bool whosemove = (p->filled & WHOSEMOVE_BIT)? true : false;
 	if(!whosemove)
 		x_filled = ~x_filled;
-	//x_filled &= col_filled;
-	//p->x |= x_filled;
-	//p->filled |= col_filled;
-
-	//catch_pos(p, sprintbig(col_filled, "%b"));
-	//exit(0);
-	//return END_NOT_OVER;
 
 	uint64_t x_wins = x_filled & p->x_wmap;
 	uint64_t opp_wins = ~x_filled & p->opp_wmap;
@@ -579,7 +584,6 @@ int endgame_forced_win_simple(c4_pos_t *p)
 	bool current_wins;
 	if(!(x_wins | opp_wins))
 	{
-		//catch_pos(p, "polarity draw");
 		return END_DRAW;
 	}
 	else if(!opp_wins)
@@ -590,10 +594,6 @@ int endgame_forced_win_simple(c4_pos_t *p)
 		current_wins = false;
 	else	//both have a win
 	{
-		//int x_bitval = __builtin_ctzll(x_wins);
-		//int opp_bitval = __builtin_ctzll(opp_wins);
-		//current_wins = (x_bitval < opp_bitval)? true : false;
-
 		uint64_t lowest_bit_n = 1 << __builtin_ctzll(x_wins | opp_wins);
 		current_wins = (x_wins & lowest_bit_n)? true : false;
 
@@ -610,75 +610,80 @@ int endgame_forced_win_simple(c4_pos_t *p)
 		return whosemove? END_P1_WON : END_P2_WON;
 	else
 		return whosemove? END_P2_WON : END_P1_WON;
-	assert(0);
+}
 
 
 
-	uint64_t both_wins = p->x_wmap | p->opp_wmap;
+int endgame_forced_win_2col_rec(c4_pos_t *p, sorter_t *both_moves)
+{
+	/*
 
-	//find the empty column (bail if there's >1)
-	int empty_col = -1;
-	uint64_t b = 0b111111;
-	for(int i=0; i<7; i++)
+	* if there's only 1 column left, return simple()
+	* if only_moves(), play that, then recurse
+
+
+	*/
+
+	if(is_win(p->x))
+		return (p->filled & WHOSEMOVE_BIT)? END_P1_WON : END_P2_WON;
+	if(__builtin_popcountll(p->filled & ~WHOSEMOVE_BIT) == 42)
+		return END_DRAW;
+
+	//if there's only 1 column remaining, just use the single
+	//column evaluator
+	uint64_t opens = ~p->filled & 0b0100000010000001000000100000010000001000000100000;
+	if(__builtin_popcountll(opens) == 1)
+		return endgame_forced_win_simple(p);
+
+	//int c4_only_moves(sorter_t *sorter, void *pos)
+	sorter_t moves;
+	int len = c4_only_moves(&moves, p);
+	if(len == 1)
 	{
-		if((b & p->filled) != b)
-		{
-			//if we already found an empty, bail
-			if(empty_col != -1)
-				return 0;
-
-			//if the empty has no wins, draw
-			if(!(b & both_wins))
-				return 0;
-
-			empty_col = i;
-		}
-		b <<= 7;
+		c4_make_move(p, moves.move, NULL);
+		get_win_maps(p);
+		return endgame_forced_win_2col_rec(p, both_moves);
 	}
 
-	//count spaces in columns without wins
-	//b = 0b111111;
-	int filled_ct = __builtin_popcountll(p->filled & ~WHOSEMOVE_BIT);
-	//int empty_ct = 42 - filled_ct;
+	//try the moves??
+	//int results[2];
+	int win_result = (p->filled & WHOSEMOVE_BIT)? END_P1_WON : END_P2_WON;
+	int best = (p->filled & WHOSEMOVE_BIT)? END_P2_WON : END_P1_WON;
+	for(int i=0; i<2; i++)
+	{
+		c4_pos_t next;
+		memcpy(&next, p, sizeof(next));
+		c4_make_move(&next, both_moves[i].move, NULL);
+		int result = endgame_forced_win_2col_rec(&next, both_moves);
+		if(result == win_result)
+			return win_result;
+		if(result == END_DRAW)
+			best = result;
+	}
+	return best;
 
+	assert(0);
 
-	//fill up the win column until we have a win
-	uint64_t alternate = 0b001010100101010010101001010100101010010101;
-	//bool me_first_in_death_col = !(0b1 & empty_ct);
-	bool me_first = (p->filled & WHOSEMOVE_BIT)? true : false;
-	bool even_shift = !(0b1 & filled_ct);
-	if(me_first ^ even_shift)
-		alternate = ~alternate;
-	uint64_t me_forced_win = alternate & p->x_wmap;
-	uint64_t opp_forced_win = ~alternate & p->opp_wmap;
+	//parity
 
-	int whowins = 0;
-	if(!me_forced_win && !opp_forced_win)
-		whowins = 0;
-	else if(me_forced_win && !opp_forced_win)
-		whowins = 1;
-	else if(!me_forced_win && opp_forced_win)
-		whowins = -1;
-	else if(me_forced_win < opp_forced_win)
-		whowins = 1;
-	else if(me_forced_win > opp_forced_win)
-		whowins = -1;
-	else
-		assert(0);
+	return END_NOT_OVER;
+}
 
-	/*window_unfocus();
-	term_move_cursor(0, 8);
-	printf("forced win value %d  \n", whowins);
-	printf("%s to move\n", (p->filled & WHOSEMOVE_BIT)? "red":"yellow");
-	//printf("my forced wins: %s  \n", sprintbig(me_forced_win, "%b"));
-	//printf("my wmap: %s  \n", sprintbig(p->x_wmap, "%b"));
-	//printf("opp forced wins: %s  \n", sprintbig(opp_forced_win, "%b"));
-	//printf("opp wmap: %s  \n", sprintbig(p->opp_wmap, "%b"));
-	//printf("%d empties in non-win columns\n", empty_ct);
-	//printf("win col %d\n", win_col);
-	catch_pos(p, NULL);*/
+int endgame_forced_win_2col(c4_pos_t *p)
+{
+	/*
+	* copy board
+	* return endgame_forced_win_2col_rec();
+	*/
 
-	return whowins;
+	//copy board
+	c4_pos_t copy;
+	memcpy(&copy, p, sizeof(copy));
+
+	sorter_t moves[2];
+	c4_make_movelist(moves, &copy);
+
+	return endgame_forced_win_2col_rec(&copy, moves);
 }
 
 float c4_estimate(void *pos)
@@ -686,8 +691,8 @@ float c4_estimate(void *pos)
 	assert(c4_ok(pos));
 	c4_pos_t *p = pos;
 
-	uint64_t x = p->x | WHOSEMOVE_BIT;
-	uint64_t opp = (p->x ^ p->filled) & ~WHOSEMOVE_BIT;
+	uint64_t x = p->x;// | WHOSEMOVE_BIT;
+	uint64_t opp = (p->x ^ p->filled);// & ~WHOSEMOVE_BIT;
 
 
 	//get_win_maps(p);
@@ -702,6 +707,13 @@ float c4_estimate(void *pos)
 	//calculate est for each player
 	float est = estimate_color(x, opp, p->filled, x_wmap, opp_wmap, false);
 	est -= estimate_color(opp, x, p->filled, opp_wmap, x_wmap, false);
+
+	/*uint64_t parity = 0b0010101001010100101010010101001010100101010010101;
+	if((p->filled & WHOSEMOVE_BIT))
+		parity = ~parity;
+	est += __builtin_popcountll(x_wmap & parity);
+	parity = ~parity;
+	est -= __builtin_popcountll(opp_wmap & parity);*/
 
 	//endgame analysis
 	/*int move_ct = __builtin_popcountll(p->filled & ~WHOSEMOVE_BIT);
@@ -1060,6 +1072,8 @@ float estimate_color(uint64_t x, uint64_t opp, uint64_t filled,
 	//	est /= 2;
 
 	est += 3*estimate_color_count_wins(x, filled, wmap, verbose);
+
+
 
 	//next move threats
 	//uint64_t useful = wmap & ~(opp_wmap<<1) & C4_BOARD_MASK;
@@ -1476,27 +1490,41 @@ int c4_only_moves(sorter_t *sorter, void *pos)
 	if(p->opp_wmap == NO_WIN_MAP)
 		p->opp_wmap = win_map(p->x ^ p->filled, p->filled);
 	//win_move = p->opp_wmap & filled_1_higher;
-	win_move = mm & p->opp_wmap;
+	uint64_t opp_win_move = mm & p->opp_wmap;
 	//if(move_map & p->opp_wmap)
-	if(win_move)
+	if(opp_win_move)
 	{
 		//if opp has 2 threats, we can't block both
-		if(__builtin_popcountll(win_move)>1)
+		if(__builtin_popcountll(opp_win_move)>1)
 		//if(win_move & (win_move-1))
 			return 0;
 		if(sorter)
-			sorter[0].move = __builtin_ctzll(win_move)/7;
+			sorter[0].move = __builtin_ctzll(opp_win_move)/7;
 		return 1;
 	}
 
 	//check if only 1 move is available (all other columns filled)
-	if(__builtin_popcountll(mm) == 1)
+	int cols_open = __builtin_popcountll(mm);
+	if(cols_open == 1)
 	//if(!(mm & (mm-1)))
 	{
 		if(sorter)
 			sorter[0].move = __builtin_ctzll(mm)/7;
 		return 1;
 	}
+	/*else if(cols_open==2 && (mm & (opp_win_move>>1)))
+	{
+		mm &= ~(opp_win_move>>1);
+		if(mm)
+		{
+			//assert(__builtin_popcountll(mm) == 1);
+			if(sorter)
+				sorter[0].move = __builtin_ctzll(mm)/7;
+			return 1;
+		}
+		else
+			return 0;
+	}*/
 
 	return 7;
 }
