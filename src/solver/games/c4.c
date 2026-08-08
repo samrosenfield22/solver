@@ -43,7 +43,6 @@ c4_pos_t C4_INIT_POS =
 	//.won = false,
 };
 
-
 uint8_t get_col(uint64_t col, int index)
 {
 	/*uint8_t c = 0b111111;
@@ -381,19 +380,24 @@ endstate_t c4_gameover(void *pos)
 	}*/
 	if(move_ct >= 36)
 	{
-		int endgame_status = endgame_forced_win_simple(p);
-		if(endgame_status != END_NOT_OVER)
+		uint64_t opens = ~p->filled & 0b0100000010000001000000100000010000001000000100000;
+		int open_ct = __builtin_popcountll(opens);
+		if(open_ct == 1)
 		{
-			/*char buf[80];
-			switch(endgame_status)
+			int endgame_status = endgame_forced_win_simple(p);
+			if(endgame_status != END_NOT_OVER)
 			{
-				case END_DRAW: snprintf(buf, 79, "endgame is draw\n"); break;
-				case END_P1_WON: snprintf(buf, 79, "endgame is red win\n"); break;
-				case END_P2_WON: snprintf(buf, 79, "endgame is yellow win\n"); break;
+				/*char buf[80];
+				switch(endgame_status)
+				{
+					case END_DRAW: snprintf(buf, 79, "endgame is draw\n"); break;
+					case END_P1_WON: snprintf(buf, 79, "endgame is red win\n"); break;
+					case END_P2_WON: snprintf(buf, 79, "endgame is yellow win\n"); break;
+				}
+				//if(endgame_status != END_DRAW)
+				catch_pos(p, buf);*/
+				return endgame_status;
 			}
-			//if(endgame_status != END_DRAW)
-			catch_pos(p, buf);*/
-			return endgame_status;
 		}
 
 		/*uint64_t remaining = C4_BOARD_MASK & ~p->filled;
@@ -524,12 +528,13 @@ uint32_t endgame_morecol = 0;
 int endgame_forced_win_simple(c4_pos_t *p)
 {
 	//only valid if there's 1 column left
-	uint64_t opens = ~p->filled & 0b0100000010000001000000100000010000001000000100000;
+	/*uint64_t opens = ~p->filled & 0b0100000010000001000000100000010000001000000100000;
 	if(__builtin_popcountll(opens) > 1)
+	//if(opens & (opens-1))
 	{
 		//endgame_morecol++;
 		return END_NOT_OVER;
-	}
+	}*/
 	//else
 	//	endgame_1col++;
 
@@ -1432,7 +1437,6 @@ int c4_make_movelist(sorter_t *sorter, void *pos)
 	uint64_t mask = 0b111111;
 	for(int i=0; i<7; i++)
 	{
-		//uint64_t movebit = mm & mask;
 		uint64_t movebit = opens & mask;
 
 		//if we have a win, it should be caught by only_moves
@@ -1478,6 +1482,7 @@ int c4_only_moves(sorter_t *sorter, void *pos)
 	{
 		//if opp has 2 threats, we can't block both
 		if(__builtin_popcountll(win_move)>1)
+		//if(win_move & (win_move-1))
 			return 0;
 		if(sorter)
 			sorter[0].move = __builtin_ctzll(win_move)/7;
@@ -1486,6 +1491,7 @@ int c4_only_moves(sorter_t *sorter, void *pos)
 
 	//check if only 1 move is available (all other columns filled)
 	if(__builtin_popcountll(mm) == 1)
+	//if(!(mm & (mm-1)))
 	{
 		if(sorter)
 			sorter[0].move = __builtin_ctzll(mm)/7;

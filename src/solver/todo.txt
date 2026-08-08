@@ -30,7 +30,6 @@ move indexes??)											-
 * multithread (lazy SMP approach - search root node
 w different	move orderings??)							-
 * widgets lib (bar, graph)								-
-* late move reductions									-
 * move extensions
 
 c4:
@@ -44,8 +43,7 @@ quoridor:
 -----------------------------
 completed:
 * replace explicit tree with recursion (sigh)			DONE!!
-* tag tt entries (exact, upper/lower bound) so we can
-use aspiration											DONE
+* tag tt entries (exact, upper/lower bound) 			DONE
 * window needs to handle \t so we don't go outside		DONE
 * hard stop at time limit								DONE
 * make_move_list() instead of checking every pos		DONE (meh)
@@ -53,3 +51,4 @@ use aspiration											DONE
 * time controls/time mgmt								DONE
 * highlight 4 in row for drawing						DONE
 * keyboard control for game playing						DONE
+* late move reductions									DONE
