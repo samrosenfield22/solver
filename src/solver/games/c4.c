@@ -383,7 +383,7 @@ endstate_t c4_gameover(void *pos)
 		if(!(p->x_wmap | p->opp_wmap))
 			return END_DRAW;
 	}*/
-	if(move_ct >= 32)
+	if(move_ct >= 30)
 	{
 		uint64_t opens = ~p->filled & 0b0100000010000001000000100000010000001000000100000;
 		int open_ct = __builtin_popcountll(opens);
@@ -393,9 +393,10 @@ endstate_t c4_gameover(void *pos)
 		{
 			if(open_ct == 1)
 				endgame_status = endgame_forced_win_simple(p);
-			else if(open_ct == 2)
+			else// if(open_ct == 2)
 				//endgame_status = END_NOT_OVER;
 				endgame_status = endgame_forced_win_2col(p);
+			assert(endgame_status != END_NOT_OVER);
 			if(endgame_status != END_NOT_OVER)
 			{
 				/*char buf[80];
@@ -624,10 +625,15 @@ int endgame_forced_win_2col_rec(c4_pos_t *p, sorter_t *both_moves)
 
 	*/
 
-	if(is_win(p->x))
-		return (p->filled & WHOSEMOVE_BIT)? END_P1_WON : END_P2_WON;
 	if(__builtin_popcountll(p->filled & ~WHOSEMOVE_BIT) == 42)
 		return END_DRAW;
+	if(is_win(p->x ^ p->filled))
+	//p->x_wmap = NO_WIN_MAP;
+	//p->opp_wmap = NO_WIN_MAP;
+	//get_win_maps(p);
+	//if((p->x ^ p->filled) & p->opp_wmap)
+		return (p->filled & WHOSEMOVE_BIT)? END_P2_WON : END_P1_WON;
+
 
 	//if there's only 1 column remaining, just use the single
 	//column evaluator
@@ -644,6 +650,8 @@ int endgame_forced_win_2col_rec(c4_pos_t *p, sorter_t *both_moves)
 		get_win_maps(p);
 		return endgame_forced_win_2col_rec(p, both_moves);
 	}
+	else if(!len)
+		return (p->filled & WHOSEMOVE_BIT)? END_P2_WON : END_P1_WON;
 
 	//try the moves??
 	//int results[2];
@@ -1512,7 +1520,7 @@ int c4_only_moves(sorter_t *sorter, void *pos)
 			sorter[0].move = __builtin_ctzll(mm)/7;
 		return 1;
 	}
-	/*else if(cols_open==2 && (mm & (opp_win_move>>1)))
+	else if(cols_open==2 && (mm & (opp_win_move>>1)))
 	{
 		mm &= ~(opp_win_move>>1);
 		if(mm)
@@ -1524,7 +1532,7 @@ int c4_only_moves(sorter_t *sorter, void *pos)
 		}
 		else
 			return 0;
-	}*/
+	}
 
 	return 7;
 }
