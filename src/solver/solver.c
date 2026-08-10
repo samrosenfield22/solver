@@ -10,6 +10,7 @@
 #include "zobrist.h"
 #include "ui/solver_ui.h"
 #include "shared.h"
+#include "../utils/misc/widgets.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -62,6 +63,7 @@ int FORCE_SEARCH_DEPTH = 0;	//declared extern in solver.h
 //solver_t *solver;
 bool who_goes_first = true;
 uint32_t position_ct = 0;
+int d_ct[42] = {0};
 int iddfs_depth;
 int time_lim;
 int full_solve_depth = 0;
@@ -411,6 +413,14 @@ float solve(solver_t *game_solver, void *pos,
 	}
 	#endif	//USE_HISTORY_HEURISTIC
 
+	int g_len = sizeof(d_ct)/sizeof(d_ct[0]);
+	void *g = graph_create(d_ct, g_len);
+	graph_set_dims(g, 2*g_len, 30);
+	window_unfocus();
+	term_clear();
+	graph_draw(g);
+	getchar();
+
 	return best_move;
 	//return result;
 }
@@ -521,6 +531,8 @@ result_t eval(gdata_t *gd, int depth,
 	//if(!(position_ct & 0xFFFFF))	//every few 100k
 	//	draw_tt_load();
 	position_ct++;
+	if(0 <= depth && depth < 42)
+		d_ct[depth]++;
 
 	//evaluate end states/leaf nodes
 
@@ -1004,11 +1016,11 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 			int prev_hash_move = order[0].move;
 			len = build_movelist(order, gd, depth,
 				ttval);
-			if(order[0].move != prev_hash_move)
+			/*if(order[0].move != prev_hash_move)
 			{
 				printf("\n\nmove 0 before sorting:\t%d\n", prev_hash_move);
 				movelist_dump(gd->pos, ttval->best_move, len, order);
-			}
+			}*/
 			assert(order[0].move == prev_hash_move);
 		}
 
@@ -1375,6 +1387,7 @@ void catch_pos(void *pos, char *msg)
 	window_unfocus();
 	term_move_cursor(0, 12);
 	solver->draw_full(pos, -1);
+	printf("%s%s", TERM_WHITE, TERM_BLACK_BG);
 	term_move_cursor(0, 20);
 	for(int i=0; i<16; i++)
 		printf("                                         \n");

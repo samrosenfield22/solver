@@ -22,6 +22,7 @@ void get_win_maps(c4_pos_t *p);
 void c4_make_move(void *pos, int index, uint64_t *hash);
 int c4_only_moves(sorter_t *sorter, void *pos);
 int c4_make_movelist(sorter_t *sorter, void *pos);
+uint64_t win_map(uint64_t x, uint64_t filled);
 //void get_win_map(uint64_t *wmap, uint64_t x, uint64_t filled);
 void c4_draw_full(void *pos, int last_move);
 uint64_t c4_hash(void *key, size_t size);
@@ -47,6 +48,19 @@ c4_pos_t C4_INIT_POS =
 	.x_wmap = 0, .opp_wmap = 0,
 	//.won = false,
 };
+
+int var_n=0;
+void track_var(void)
+{
+	var_n++;
+	if(rand()==0 && rand()<200)
+	{
+		window_unfocus();
+		term_move_cursor(0, 28);
+		//printf("%d     ", var_n);
+		printbig(var_n, "%d");
+	}
+}
 
 uint8_t get_col(uint64_t col, int index)
 {
@@ -348,6 +362,8 @@ bool c4_win_impossible_for_current(void *pos)
 	return true;
 }
 
+bool end_2c_normal;
+
 endstate_t c4_gameover(void *pos)
 {
 	assert(c4_ok(pos));
@@ -383,7 +399,9 @@ endstate_t c4_gameover(void *pos)
 		if(!(p->x_wmap | p->opp_wmap))
 			return END_DRAW;
 	}*/
+
 	if(move_ct >= 30)
+	//if(0)
 	{
 		uint64_t opens = ~p->filled & 0b0100000010000001000000100000010000001000000100000;
 		int open_ct = __builtin_popcountll(opens);
@@ -394,22 +412,17 @@ endstate_t c4_gameover(void *pos)
 			if(open_ct == 1)
 				endgame_status = endgame_forced_win_simple(p);
 			else// if(open_ct == 2)
-				//endgame_status = END_NOT_OVER;
-				endgame_status = endgame_forced_win_2col(p);
-			assert(endgame_status != END_NOT_OVER);
-			if(endgame_status != END_NOT_OVER)
 			{
-				/*char buf[80];
-				switch(endgame_status)
-				{
-					case END_DRAW: snprintf(buf, 79, "endgame is draw\n"); break;
-					case END_P1_WON: snprintf(buf, 79, "endgame is red win\n"); break;
-					case END_P2_WON: snprintf(buf, 79, "endgame is yellow win\n"); break;
-				}
-				//if(endgame_status != END_DRAW)
-				catch_pos(p, buf);*/
-				return endgame_status;
+				//endgame_status = END_NOT_OVER;
+				//end_2c_normal = true;
+				endgame_status = endgame_forced_win_2col(p);
+				/*end_2c_normal = false;
+				int alt_endgame_status = endgame_forced_win_2col(p);
+				if(endgame_status != alt_endgame_status)
+					catch_pos(p, NULL);*/
 			}
+			assert(endgame_status != END_NOT_OVER);
+			return endgame_status;
 		}
 
 
@@ -418,6 +431,12 @@ endstate_t c4_gameover(void *pos)
 		uint64_t fill_all_opp = (p->x ^ p->filled) | remaining;
 		if(!is_win(fill_all_x) && !is_win(fill_all_opp))
 			return END_DRAW;*/
+
+		//if we get here, we have a endgame (moves>=30)
+		//with 3 or more open columns
+		//catch_pos(p, NULL);
+		if(open_ct == 4)
+			track_var();
 	}
 
 
@@ -625,14 +644,13 @@ int endgame_forced_win_2col_rec(c4_pos_t *p, sorter_t *both_moves)
 
 	*/
 
+	const int win = (p->filled & WHOSEMOVE_BIT)? END_P1_WON : END_P2_WON;
+	const int loss = (p->filled & WHOSEMOVE_BIT)? END_P2_WON : END_P1_WON;
+
 	if(__builtin_popcountll(p->filled & ~WHOSEMOVE_BIT) == 42)
 		return END_DRAW;
 	if(is_win(p->x ^ p->filled))
-	//p->x_wmap = NO_WIN_MAP;
-	//p->opp_wmap = NO_WIN_MAP;
-	//get_win_maps(p);
-	//if((p->x ^ p->filled) & p->opp_wmap)
-		return (p->filled & WHOSEMOVE_BIT)? END_P2_WON : END_P1_WON;
+		return loss;
 
 
 	//if there's only 1 column remaining, just use the single
@@ -651,30 +669,49 @@ int endgame_forced_win_2col_rec(c4_pos_t *p, sorter_t *both_moves)
 		return endgame_forced_win_2col_rec(p, both_moves);
 	}
 	else if(!len)
-		return (p->filled & WHOSEMOVE_BIT)? END_P2_WON : END_P1_WON;
+		//return (p->filled & WHOSEMOVE_BIT)? END_P2_WON : END_P1_WON;
+		return loss;
+
+	//if(!end_2c_normal)
+	//{
+	/*
+		//if i have a double threat 1 above, ggs
+		uint64_t mm = move_map(p->filled);
+		//p->x_wmap = NO_WIN_MAP;
+		//p->opp_wmap = NO_WIN_MAP;
+		get_win_maps(p);
+		uint64_t stack = (p->x_wmap & (p->x_wmap>>1));
+		if((mm & (stack>>1)) && !(stack & p->opp_wmap))
+		{
+			//catch_pos(p, NULL);
+			return win;
+		}
+		*/
+	//}
+
+	//if one of my moves plays under my threat (allowing opp to
+	//block), play in the other column
+	//this works because the play won't block an opp threat,
+	//or it would've been caught by only_moves()
 
 	//try the moves??
 	//int results[2];
-	int win_result = (p->filled & WHOSEMOVE_BIT)? END_P1_WON : END_P2_WON;
-	int best = (p->filled & WHOSEMOVE_BIT)? END_P2_WON : END_P1_WON;
+	//int best = (p->filled & WHOSEMOVE_BIT)? END_P2_WON : END_P1_WON;
+	int best = loss;
 	for(int i=0; i<2; i++)
 	{
+		//if(move_bit(p, both_moves[i].move) & p->x_wmap)
+		//	return win;
 		c4_pos_t next;
 		memcpy(&next, p, sizeof(next));
 		c4_make_move(&next, both_moves[i].move, NULL);
 		int result = endgame_forced_win_2col_rec(&next, both_moves);
-		if(result == win_result)
-			return win_result;
+		if(result == win)
+			return win;
 		if(result == END_DRAW)
 			best = result;
 	}
 	return best;
-
-	assert(0);
-
-	//parity
-
-	return END_NOT_OVER;
 }
 
 int endgame_forced_win_2col(c4_pos_t *p)
@@ -1141,7 +1178,7 @@ void c4_make_move_temp(void *made, void *pos, int index, uint64_t *hash)
 	if(p->x_wmap != NO_WIN_MAP)
 		if(p->x_wmap & b)
 			//m->won = true;
-			m->x_wmap += WIN_BIT;
+			m->x_wmap |= WIN_BIT;
 	//break;
 
 	m->x = p->x ^ p->filled;
