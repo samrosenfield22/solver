@@ -44,6 +44,7 @@ bool check_forcing_line(float *score, int *first, void *pos, int depth);
 result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 	sorter_t *order, int len, int depth, float alpha, float beta,
 	bool is_pv, result_t *hash_result);
+int static_endgame_eval(void *pos);
 //bool alphabeta_cutoff(float cscore, float prune,
 //	float *best_so_far, int depth);
 float max(float x, float y);
@@ -497,6 +498,19 @@ result_t eval(gdata_t *gd, int depth,
 
 	void *pos = &(gd->pos);
 
+	/*int endstate;
+	if(solver->is_endgame && solver->is_endgame(pos))
+	{
+		endstate = static_endgame_eval(pos);
+		switch(endstate)
+		{
+			case END_P1_WON:	gd->score = WIN_SCORE;	break;
+			case END_P2_WON:	gd->score = -WIN_SCORE;	break;
+			case END_DRAW:		gd->score = 0;			break;
+			default:	printf("invalid endstate!\n"); exit(0);
+		}
+		return (result_t){.score=gd->score, .full=true, .has_tt=false, .best_move=-1};
+	}*/
 	int endstate = solver->gameover(pos);
 	if(endstate != END_NOT_OVER)
 	{
@@ -1089,14 +1103,64 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 
 int static_endgame_eval_rec(void *pos)
 {
+	int win, loss;
+	if(solver->whosemove(pos))
+	{
+		win = END_P1_WON;
+		loss = END_P2_WON;
+	}
+	else
+	{
+		win = END_P2_WON;
+		loss = END_P1_WON;
+	}
 
+	int end_status = solver->gameover(pos);
+	if(end_status != END_NOT_OVER)
+		return end_status;
+
+	//
+	sorter_t moves[solver->possible_moves];
+	int len = solver->only_moves(moves, pos);
+	if(len == 1)
+	{
+		solver->make_move(pos, moves[0].move, NULL);
+		return static_endgame_eval_rec(pos);
+	}
+	else if(!len)
+		return loss;
+	else if(len == solver->possible_moves)
+		len = solver->make_movelist(moves, pos);
+
+	//try each move
+	uint8_t next[solver->pos_size];
+	int best = loss;
+	for(int i=0; i<len; i++)
+	{
+		assert(0 <= moves[i].move && moves[i].move < solver->possible_moves);
+		assert(solver->is_legal(pos, moves[i].move));
+
+		if(solver->move_loses(pos, moves[i].move))
+			continue;
+
+		memcpy(next, pos, solver->pos_size);
+		solver->make_move(next, moves[i].move, NULL);
+		int result = static_endgame_eval_rec(next);
+		if(result == win)
+			return result;
+		else if(result == END_DRAW)
+			best = result;
+	}
+	return best;
 }
 
 int static_endgame_eval(void *pos)
 {
 	//copy pos
+	uint8_t copy[solver->pos_size];
+	memcpy(copy, pos, solver->pos_size);
 
-	//return static_endgame_eval_rec(copy);
+	return static_endgame_eval_rec(copy);
 }
 
 int order_compare(const void *aa, const void *bb)
@@ -1410,10 +1474,10 @@ void catch_pos(void *pos, char *msg)
 	term_move_cursor(0, 12);
 	solver->draw_full(pos, -1);
 	printf("%s%s", TERM_WHITE, TERM_BLACK_BG);
-	term_move_cursor(0, 20);
+	term_move_cursor(0, 28);
 	for(int i=0; i<16; i++)
 		printf("                                         \n");
-	term_move_cursor(0, 20);
+	term_move_cursor(0, 28);
 	if(msg)
 		printf("\n%s", msg);
 	printf("\n(caught pos, press any key)");

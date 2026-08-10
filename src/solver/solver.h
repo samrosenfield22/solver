@@ -141,6 +141,9 @@ typedef struct
 	int (*only_moves)(sorter_t *onlies, void *pos);
 
 	//optional
+	bool (*is_endgame)(void *pos);
+
+	//optional
 	bool (*win_impossible_for_current)(void *pos);
 
 	/*required:
