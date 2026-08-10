@@ -63,7 +63,8 @@ int FORCE_SEARCH_DEPTH = 0;	//declared extern in solver.h
 //solver_t *solver;
 bool who_goes_first = true;
 uint32_t position_ct = 0;
-int d_ct[42] = {0};
+//int ply_pos_ct[42] = {0};
+int *ply_pos_ct;
 int iddfs_depth;
 int time_lim;
 int full_solve_depth = 0;
@@ -127,6 +128,10 @@ void solver_init(solver_t *game_solver)
 	gdata_size = sizeof(gdata_t) + solver->pos_size;
 	position_ct = 0;
 	lmr_enabled = true;
+
+	#ifdef GRAPH_PLY_COUNTS
+	ply_pos_ct = calloc(42, sizeof(*ply_pos_ct));
+	#endif
 
 	#ifdef USE_TRANSPOSITION_TABLE
 	//tt_create(solver->transtbl_buckets_ct);
@@ -413,13 +418,16 @@ float solve(solver_t *game_solver, void *pos,
 	}
 	#endif	//USE_HISTORY_HEURISTIC
 
-	int g_len = sizeof(d_ct)/sizeof(d_ct[0]);
-	void *g = graph_create(d_ct, g_len);
+	#ifdef GRAPH_PLY_COUNTS
+	//graph ply vs # positions
+	int g_len = 42;
+	void *g = graph_create(ply_pos_ct, g_len);
 	graph_set_dims(g, 2*g_len, 30);
 	window_unfocus();
 	term_clear();
 	graph_draw(g);
 	getchar();
+	#endif
 
 	return best_move;
 	//return result;
@@ -531,8 +539,10 @@ result_t eval(gdata_t *gd, int depth,
 	//if(!(position_ct & 0xFFFFF))	//every few 100k
 	//	draw_tt_load();
 	position_ct++;
+	#ifdef GRAPH_PLY_COUNTS
 	if(0 <= depth && depth < 42)
-		d_ct[depth]++;
+		ply_pos_ct[depth]++;
+	#endif
 
 	//evaluate end states/leaf nodes
 
@@ -1075,6 +1085,18 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 	//return (result_t){.score=best, .full=best_full, .best_move=best_move};
 	best_result.has_tt = false;
 	return best_result;
+}
+
+int static_endgame_eval_rec(void *pos)
+{
+
+}
+
+int static_endgame_eval(void *pos)
+{
+	//copy pos
+
+	//return static_endgame_eval_rec(copy);
 }
 
 int order_compare(const void *aa, const void *bb)

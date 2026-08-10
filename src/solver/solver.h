@@ -14,6 +14,8 @@
 #define USE_LATE_MOVE_REDUCTIONS
 //#define EXTEND_FORCING_LINES
 
+//#define GRAPH_PLY_COUNTS
+
 //not working yet
 #define MULTICORE_CT	(1)
 

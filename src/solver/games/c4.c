@@ -435,8 +435,8 @@ endstate_t c4_gameover(void *pos)
 		//if we get here, we have a endgame (moves>=30)
 		//with 3 or more open columns
 		//catch_pos(p, NULL);
-		if(open_ct == 4)
-			track_var();
+		//if(open_ct == 4)
+		//	track_var();
 	}
 
 
