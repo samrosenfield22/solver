@@ -510,7 +510,7 @@ endstate_t c4_gameover(void *pos)
 		c4_pos_t *p_alt = &p_alt_actual;
 		memcpy(p_alt, p, sizeof(*p_alt));
 		if(use_endgame_analyzer)
-			dead_tiles_fill_even(p_alt);
+			dead_tiles_fill_even(p_alt);*/
 		c4_pos_t *p_alt = p;
 
 		uint64_t opens = ~p_alt->filled & C4_TOP_MASK;
