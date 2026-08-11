@@ -71,6 +71,7 @@ int time_lim;
 int full_solve_depth = 0;
 bool lmr_enabled = true;
 bool main_thread_done = false;
+bool use_endgame_analyzer = true;
 
 int *HISTORY_VALS;
 int HISTORY_BEST_MOVE[2] = {-1, -1};
@@ -521,6 +522,24 @@ result_t eval(gdata_t *gd, int depth,
 			case END_DRAW:		gd->score = 0;			break;
 			default:	printf("invalid endstate!\n"); exit(0);
 		}
+
+		/*if(use_endgame_analyzer)
+		{
+			use_endgame_analyzer = false;
+			//result_t without = eval(gd, depth,
+			//	alpha, beta, is_pv);
+			int without = solver->gameover(pos);
+			if(without != END_NOT_OVER && endstate != without)
+			{
+				char buf[200];
+				snprintf(buf, 199, "got %d w dead tiles, %d without   ",
+					endstate, without);
+				catch_pos(pos, buf);
+				//exit(0);
+			}
+			use_endgame_analyzer = true;
+		}*/
+
 		return (result_t){.score=gd->score, .full=true, .has_tt=false, .best_move=-1};
 	}
 

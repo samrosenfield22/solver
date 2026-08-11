@@ -22,6 +22,8 @@
 //#define FORCE_SEARCH_DEPTH	(32)
 extern int FORCE_SEARCH_DEPTH;
 
+extern bool use_endgame_analyzer;
+
 //how many full moves are shown in each variation
 #define VARIATION_LENGTH	(4)
 

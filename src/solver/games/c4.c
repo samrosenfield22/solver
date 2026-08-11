@@ -16,6 +16,7 @@
 
 #define SHOW_WIN_TILES
 
+endstate_t c4_gameover(void *pos);
 float estimate_color(uint64_t x, uint64_t opp, uint64_t filled,
 	uint64_t wmap, uint64_t opp_wmap, bool verbose);
 void get_win_maps(c4_pos_t *p);
@@ -29,9 +30,11 @@ uint64_t c4_hash(void *key, size_t size);
 int c4_moves_remaining(void *pos);
 int endgame_forced_win_simple(c4_pos_t *p);
 int endgame_forced_win_2col(c4_pos_t *p);
+void dead_tiles_fill_even(c4_pos_t *p);
 
 #define C4_BOARD_MASK	(0b0111111011111101111110111111011111101111110111111)
 #define C4_TOP_MASK		(0b0100000010000001000000100000010000001000000100000)
+#define C4_ODD_MASK		(0b0010101001010100101010010101001010100101010010101)
 #define WHOSEMOVE_BIT	(((uint64_t)1)<<63)
 #define WIN_BIT			(WHOSEMOVE_BIT)
 #define NO_WIN_MAP		(0xFFFFFFFFFFFFFFFF)
@@ -76,6 +79,24 @@ void c4_init(void)
 	bb64_init(7, 6, C4_BOARD_MASK);
 	bb64_init_draw(DRAW_UP_DIR, DRAW_RIGHT_DIR, 4, 2);
 	zobrist_init(85, ZOBRIST_SEED);
+
+	/*c4_pos_t testpos =
+	{
+		.x = 0b0000011010101001010100100100001101100010100000010,
+		.filled = 0b0000011011111101111110111111011111101111110000111,
+		.x_wmap = NO_WIN_MAP, .opp_wmap = NO_WIN_MAP,
+	};
+	get_win_maps(&testpos);
+
+	//catch_pos(&testpos, NULL);
+	//dead_tiles_fill_even(&testpos);
+	//catch_pos(&testpos, NULL);
+
+	int n = c4_gameover(&testpos);
+	window_unfocus();
+	term_move_cursor(0, 0);
+	printf("%d\n", n);
+	exit(0);*/
 }
 
 uint64_t move_map(uint64_t filled)
@@ -371,17 +392,20 @@ uint64_t endgame_dead_cols(c4_pos_t *p)
 	uint64_t isolated =
 		tops & ~(tops>>7) & ~(tops>>14) & ~(tops>>21)
 		& ~(tops<<7) & ~(tops<<14) & ~(tops<<21);
+	if(!isolated)
+		return 0;
 	//isolated |= (isolated>>1) | (isolated>>2);
 	//isolated |= isolated>>3;
 	get_win_maps(p);
 	uint64_t threats = p->x_wmap | p->opp_wmap;
 	threats |=
-		(threats<<1 & ~C4_BOARD_MASK)
-		| (threats<<2 & ~C4_BOARD_MASK)
-		| (threats<<3 & ~C4_BOARD_MASK)
-		| (threats<<4 & ~C4_BOARD_MASK)
-		| (threats<<5 & ~C4_BOARD_MASK);
-	//(~C4_BOARD_MASK - threats)
+		threats<<1
+		| threats<<2
+		| threats<<3
+		| threats<<4
+		| threats<<5;
+	//threats = (threats<<6) - threats;
+	threats &= C4_BOARD_MASK;
 
 	return isolated & ~threats;
 
@@ -391,10 +415,21 @@ uint64_t endgame_dead_cols(c4_pos_t *p)
 uint64_t dead_tiles(c4_pos_t *p)
 {
 	uint64_t dead = endgame_dead_cols(p);
+	if(!dead)
+		return 0;
 
 	uint64_t dead_bottoms = dead >> 5;
 	uint64_t dead_lowests = (dead_bottoms + p->filled) & ~p->filled;
-	uint64_t dead_bits = dead - (dead_lowests>>1);
+	//uint64_t dead_bits = (dead - (dead_lowests>>1))<<1;
+	uint64_t dead_bits = (dead - dead_lowests) | dead;
+
+	assert(!(dead_lowests & p->filled));
+	//assert(((dead_lowests>>1) & p->filled) == (dead_lowests>>1));
+
+	assert(!(dead_bits & p->filled));
+	assert(!(dead_bits & ~C4_BOARD_MASK));
+	assert(dead_bits & dead);
+	assert(!(dead_bits & (p->x_wmap | p->opp_wmap)));
 
 	/*if(dead)
 	{
@@ -410,6 +445,28 @@ uint64_t dead_tiles(c4_pos_t *p)
 	return dead_bits;
 }
 
+void dead_tiles_fill_even(c4_pos_t *p)
+{
+	uint64_t dead = dead_tiles(p);
+	if(!dead)
+		return;
+
+	if(__builtin_popcountll(dead) & 0b1)
+	{
+		/*uint64_t dead_tops = dead & C4_TOP_MASK;
+		dead_tops &= dead_tops-1;	//clear 1 bit
+		dead &= ~dead_tops;*/
+
+		dead &= ~(((uint64_t)1) << (63-__builtin_clzll(dead)));
+		assert(!(__builtin_popcountll(dead) & 0b1));
+	}
+	p->filled |= dead;
+	p->x |= dead & C4_ODD_MASK;
+
+	assert(!(is_win(p->x)));
+	assert(!(is_win(p->x ^ p->filled)));
+}
+
 endstate_t c4_gameover(void *pos)
 {
 	assert(c4_ok(pos));
@@ -419,7 +476,7 @@ endstate_t c4_gameover(void *pos)
 
 	int win = !c4_whosemove(p)? END_P1_WON : END_P2_WON;
 
-	//if(p->won)
+
 	if(p->x_wmap & WIN_BIT)
 		return win;
 
@@ -449,18 +506,25 @@ endstate_t c4_gameover(void *pos)
 	if(move_ct >= 30)
 	//if(0)
 	{
-		uint64_t opens = ~p->filled & C4_TOP_MASK;
+		/*c4_pos_t p_alt_actual;
+		c4_pos_t *p_alt = &p_alt_actual;
+		memcpy(p_alt, p, sizeof(*p_alt));
+		if(use_endgame_analyzer)
+			dead_tiles_fill_even(p_alt);
+		c4_pos_t *p_alt = p;
+
+		uint64_t opens = ~p_alt->filled & C4_TOP_MASK;
 		int open_ct = __builtin_popcountll(opens);
 		int endgame_status;
 		if(open_ct <= 2)
 		{
 			if(open_ct == 1)
-				endgame_status = endgame_forced_win_simple(p);
+				endgame_status = endgame_forced_win_simple(p_alt);
 			else// if(open_ct == 2)
 			{
 				//endgame_status = END_NOT_OVER;
 				//end_2c_normal = true;
-				endgame_status = endgame_forced_win_2col(p);
+				endgame_status = endgame_forced_win_2col(p_alt);
 				/*end_2c_normal = false;
 				int alt_endgame_status = endgame_forced_win_2col(p);
 				if(endgame_status != alt_endgame_status)
@@ -479,16 +543,27 @@ endstate_t c4_gameover(void *pos)
 
 		//if we get here, we have a endgame (moves>=30)
 		//with 3 or more open columns
-		if(rand()==0 && rand()<10000)
+		/*if(rand()==0 && rand()<10000)
 		{
-			/*char buf[200];
-			uint64_t dead = endgame_dead_cols(p);
-			snprintf(buf, 199, "%s", sprintbig(dead, "%b"));*/
+			char buf[200];
+			//uint64_t dead = endgame_dead_cols(p);
+			//snprintf(buf, 199, "%s", sprintbig(dead, "%b"));
+
 			//snprintf(buf, 199, "%d dead tiles",
 			//	__builtin_popcountll(dead_tiles(p)));
-			catch_pos(p, NULL);
+
+			uint64_t dead = dead_tiles(p);
+			if(dead)
+			{
+				snprintf(buf, 199, "before (%d dead tiles)",
+					__builtin_popcountll(dead));
+				catch_pos(p, buf);
+				dead_tiles_fill_even(p);
+				catch_pos(p, "after");
+			}
+
 			//dead_tiles(p);
-		}
+		}*/
 
 		//if(open_ct == 4)
 		//	track_var();
@@ -616,6 +691,7 @@ uint32_t endgame_morecol = 0;
 int endgame_forced_win_simple(c4_pos_t *p)
 {
 	//only valid if there's 1 column left
+	assert(__builtin_popcountll(~p->filled & C4_TOP_MASK)==1);
 	/*uint64_t opens = ~p->filled & C4_TOP_MASK;
 	if(__builtin_popcountll(opens) > 1)
 	//if(opens & (opens-1))
@@ -648,7 +724,7 @@ int endgame_forced_win_simple(c4_pos_t *p)
 	//uint64_t col_filled = opens | (opens>>1) | (opens>>2)
 	//	| (opens>>3) | (opens>>4) | (opens>>5);
 	//col_filled &= ~p->filled;
-	uint64_t x_filled = 0b0010101001010100101010010101001010100101010010101;
+	uint64_t x_filled = C4_ODD_MASK;
 	//if(__builtin_popcountll(p->filled & ~WHOSEMOVE_BIT) & 0b1)
 	bool whosemove = (p->filled & WHOSEMOVE_BIT)? true : false;
 	if(!whosemove)
@@ -670,7 +746,7 @@ int endgame_forced_win_simple(c4_pos_t *p)
 		current_wins = false;
 	else	//both have a win
 	{
-		uint64_t lowest_bit_n = 1 << __builtin_ctzll(x_wins | opp_wins);
+		uint64_t lowest_bit_n = ((uint64_t)1) << __builtin_ctzll(x_wins | opp_wins);
 		current_wins = (x_wins & lowest_bit_n)? true : false;
 
 		//uint64_t both = (x_wins | opp_wins);
@@ -700,13 +776,16 @@ int endgame_forced_win_2col_rec(c4_pos_t *p, sorter_t *both_moves)
 
 	*/
 
+	//catch_pos(p, NULL);
+
 	const int win = (p->filled & WHOSEMOVE_BIT)? END_P1_WON : END_P2_WON;
 	const int loss = (p->filled & WHOSEMOVE_BIT)? END_P2_WON : END_P1_WON;
 
-	if(__builtin_popcountll(p->filled & ~WHOSEMOVE_BIT) == 42)
-		return END_DRAW;
 	if(is_win(p->x ^ p->filled))
 		return loss;
+	if(__builtin_popcountll(p->filled & ~WHOSEMOVE_BIT) == 42)
+		return END_DRAW;
+
 
 
 	//if there's only 1 column remaining, just use the single
@@ -732,7 +811,7 @@ int endgame_forced_win_2col_rec(c4_pos_t *p, sorter_t *both_moves)
 	//{
 
 		//if i have a double threat 1 above, ggs
-		uint64_t mm = move_map(p->filled);
+		/*uint64_t mm = move_map(p->filled);
 		//p->x_wmap = NO_WIN_MAP;
 		//p->opp_wmap = NO_WIN_MAP;
 		get_win_maps(p);
@@ -741,7 +820,7 @@ int endgame_forced_win_2col_rec(c4_pos_t *p, sorter_t *both_moves)
 		{
 			//catch_pos(p, NULL);
 			return win;
-		}
+		}*/
 
 	//}
 
@@ -811,7 +890,7 @@ int endgame_forced_win_multi_rec(c4_pos_t *p)
 		{
 			uint64_t dead_tops = dead & C4_TOP_MASK;
 			dead_tops &= dead_tops-1;	//clear 1 bit
-			dead &= dead_tops;
+			dead &= ~dead_tops;
 		}
 		p->filled |= dead;
 
