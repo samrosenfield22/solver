@@ -515,6 +515,32 @@ result_t eval(gdata_t *gd, int depth,
 	int endstate = solver->gameover(pos);
 	if(endstate != END_NOT_OVER)
 	{
+
+
+		/*if(use_endgame_analyzer)
+		{
+			use_endgame_analyzer = false;
+			//alpha = -WIN_SCORE;
+			//beta = WIN_SCORE;
+			result_t without = eval(gd, depth,
+				alpha, beta, is_pv);
+			//int without = solver->gameover(pos);
+			if(without.full && !(
+				(without.score==0 && endstate==END_DRAW)
+				|| (without.score>MATE_LIMIT && endstate==END_P1_WON)
+				|| (without.score<-MATE_LIMIT && endstate==END_P2_WON)
+				))
+			{
+
+				char buf[200];
+				snprintf(buf, 199, "got endstate==%d w analyzer, %.1f without\n(best move %d, has_tt=%d, full=%d)\n\nab=[%.1f, %.1f]",
+					endstate, without.score, without.best_move, without.has_tt, without.full, alpha, beta);
+				catch_pos(pos, buf);
+				//exit(0);
+			}
+			use_endgame_analyzer = true;
+		}*/
+
 		switch(endstate)
 		{
 			case END_P1_WON:	gd->score = WIN_SCORE;	break;
@@ -522,24 +548,6 @@ result_t eval(gdata_t *gd, int depth,
 			case END_DRAW:		gd->score = 0;			break;
 			default:	printf("invalid endstate!\n"); exit(0);
 		}
-
-		/*if(use_endgame_analyzer)
-		{
-			use_endgame_analyzer = false;
-			//result_t without = eval(gd, depth,
-			//	alpha, beta, is_pv);
-			int without = solver->gameover(pos);
-			if(without != END_NOT_OVER && endstate != without)
-			{
-				char buf[200];
-				snprintf(buf, 199, "got %d w dead tiles, %d without   ",
-					endstate, without);
-				catch_pos(pos, buf);
-				//exit(0);
-			}
-			use_endgame_analyzer = true;
-		}*/
-
 		return (result_t){.score=gd->score, .full=true, .has_tt=false, .best_move=-1};
 	}
 
@@ -577,8 +585,7 @@ result_t eval(gdata_t *gd, int depth,
 		ply_pos_ct[depth]++;
 	#endif
 
-	//evaluate end states/leaf nodes
-
+	//evaluate leaf nodes
 	if(depth >= iddfs_depth)
 	{
 		//quiescence search?
@@ -716,6 +723,16 @@ result_t eval(gdata_t *gd, int depth,
 
 
 	//gd->score = result.score;	//might not even need
+
+	uint64_t tp[] = {0b101000001001010010101010010110000101000001011, 0b111000001101111110111111011111101111110111111};
+	if(memcmp(tp, pos, 16)==0)
+	{
+		char buf[200];
+		snprintf(buf, 199, "score=%.1f", result.score);
+		catch_pos(pos, buf);
+		printf("reeeeeeeeeeeeeeeeee\n");
+		exit(0);
+	}
 
 	assert(result.best_move != -1);
 	return result;
@@ -1495,13 +1512,43 @@ void catch_pos(void *pos, char *msg)
 	printf("%s%s", TERM_WHITE, TERM_BLACK_BG);
 	term_move_cursor(0, 28);
 	for(int i=0; i<16; i++)
-		printf("                                         \n");
+		printf("                                         ");
 	term_move_cursor(0, 28);
 	if(msg)
 		printf("\n%s", msg);
 	printf("\n(caught pos, press any key)");
+
+	//print tt info
+
+	//dump pos binary
+	uint64_t *pp = (uint64_t *)pos;
+	term_move_cursor(0, 35);
+	for(int i=0; i<solver->pos_size/8; i++)
+	{
+		printf("%s\n", sprintbig(*pp, "%b"));
+		pp++;
+	}
+
+	//trans_value_t ttval;
+	/*gdata_t *gd = malloc(gdata_size);
+	memcpy(gd->pos, pos, solver->pos_size);
+	gd->hash = solver->hash(gd->pos, 0);
+	trans_value_t ttval;
+	got = tt_get(&ttval, gd, 0);
+	if(got)
+	{
+		printf("--- tt ---\n");
+		printf("score:\t%.1f\n", ttval.)
+	}
+	else
+		printf("--- no tt ---\n");
+}
+	*/
+
 	getchar();
 	window_focus(analysis_hdl);
+
+	//launch_explorer(pos);
 }
 
 
