@@ -462,15 +462,16 @@ void dead_tiles_fill_even(c4_pos_t *p)
 		/*uint64_t dead_tops = dead & C4_TOP_MASK;
 		dead_tops &= dead_tops-1;	//clear 1 bit
 		dead &= ~dead_tops;*/
-
-		dead &= ~(((uint64_t)1) << (63-__builtin_clzll(dead)));
+		uint64_t remove = (((uint64_t)1) << (63-__builtin_clzll(dead)));
+		assert(remove & C4_TOP_MASK);
+		dead &= ~remove;
 		assert(!(__builtin_popcountll(dead) & 0b1));
 	}
 	p->filled |= dead;
 	p->x |= dead & C4_ODD_MASK;
 
-	assert(!(is_win(p->x)));
-	assert(!(is_win(p->x ^ p->filled)));
+	//assert(!(is_win(p->x)));
+	//assert(!(is_win(p->x ^ p->filled)));
 }
 
 endstate_t c4_gameover(void *pos)
@@ -492,8 +493,8 @@ endstate_t c4_gameover(void *pos)
 
 	/*if(is_win(p->x ^ p->filled))
 	{
-		//assert(0);
-		return loss;
+		assert(0);
+		//return loss;
 	}*/
 	/*if(is_win(p->x))
 	{
@@ -513,6 +514,8 @@ endstate_t c4_gameover(void *pos)
 	//if(c4_win_impossible(p))
 	//	return END_DRAW;
 
+	//dead_tiles_fill_even(p);
+
 	int move_ct = __builtin_popcountll(p->filled & ~WHOSEMOVE_BIT);
 	/*if(move_ct >= 40)
 	{
@@ -524,11 +527,20 @@ endstate_t c4_gameover(void *pos)
 	if(use_endgame_analyzer && move_ct >= 30)
 	//if(0)
 	{
-		c4_pos_t p_alt_actual;
-		c4_pos_t *p_alt = &p_alt_actual;
-		memcpy(p_alt, p, sizeof(*p_alt));
+		//c4_pos_t p_alt_actual;
+		//memcpy(&p_alt_actual, p, sizeof(p_alt_actual));
+		//c4_pos_t *p_alt = &p_alt_actual;
+		c4_pos_t *p_alt = p;
 
-		//dead_tiles_fill_even(p_alt);
+		//catch_pos(p_alt, "before");
+		dead_tiles_fill_even(p_alt);
+		//catch_pos(p_alt, "after");
+		if(bb64_is_full(p_alt->filled))
+		{
+			return END_DRAW;
+		}
+		//else
+		//	return END_NOT_OVER;	//just do dead tiles
 
 
 		uint64_t opens = ~p_alt->filled & C4_TOP_MASK;
@@ -540,6 +552,7 @@ endstate_t c4_gameover(void *pos)
 				endgame_status = endgame_forced_win_simple(p_alt);
 			else// if(open_ct == 2)
 			{
+				assert(open_ct == 2);
 				//endgame_status = END_NOT_OVER;
 				//end_2c_normal = true;
 				endgame_status = endgame_forced_win_2col(p_alt);
@@ -801,7 +814,8 @@ int endgame_forced_win_2col_rec(c4_pos_t *p, sorter_t *both_moves)
 
 	if(is_win(p->x ^ p->filled))
 		return loss;
-	if(__builtin_popcountll(p->filled & ~WHOSEMOVE_BIT) == 42)
+	//if(__builtin_popcountll(p->filled & ~WHOSEMOVE_BIT) == 42)
+	if(bb64_is_full(p->filled))
 		return END_DRAW;
 
 
@@ -889,37 +903,22 @@ int endgame_forced_win_multi_rec(c4_pos_t *p)
 {
 	/*
 	only_moves()
-	identify no neighbor cols -> dead cols
-	if all cols are dead, draw
 	fill any even dead cols
 	if only 2 cols left, 2col
 	*/
 
-	uint64_t dead = dead_tiles(p);
-	if(dead)
+	dead_tiles_fill_even(p);
+	if(bb64_is_full(p->filled))
+		return END_DRAW;
+
+	//if 1 or 2 cols left, return endgame_forced_win_2col()/1col
+	uint64_t opens = ~p->filled & C4_TOP_MASK;
+	switch(__builtin_popcountll(opens))
 	{
-		//if all dead, draw
-		if(dead == (~p->filled & C4_BOARD_MASK))
-			return END_DRAW;
-
-		//count tiles in all dead cols, see if even/odd
-		//fill even
-		if(__builtin_popcountll(dead) & 0b1)
-		{
-			uint64_t dead_tops = dead & C4_TOP_MASK;
-			dead_tops &= dead_tops-1;	//clear 1 bit
-			dead &= ~dead_tops;
-		}
-		p->filled |= dead;
-
-		//if 1 or 2 cols left, return endgame_forced_win_2col()/1col
-		uint64_t opens = ~p->filled & C4_TOP_MASK;
-		switch(__builtin_popcountll(opens))
-		{
-			case 2:	return endgame_forced_win_2col(p);
-			case 1:	return endgame_forced_win_simple(p);
-		}
+		case 2:	return endgame_forced_win_2col(p);
+		case 1:	return endgame_forced_win_simple(p);
 	}
+
 }
 
 /*int endgame_forced_win_multi(c4_pos_t *p)

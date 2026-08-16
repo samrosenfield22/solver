@@ -10,6 +10,7 @@
 #include "zobrist.h"
 #include "ui/solver_ui.h"
 #include "shared.h"
+#include "debug.h"
 #include "../utils/misc/widgets.h"
 
 #include <stdio.h>
@@ -525,7 +526,9 @@ result_t eval(gdata_t *gd, int depth,
 			result_t without = eval(gd, depth,
 				alpha, beta, is_pv);
 			//int without = solver->gameover(pos);
-			if(without.full && !(
+			if(without.full
+				&& (alpha < without.score && without.score < beta)
+				&& !(
 				(without.score==0 && endstate==END_DRAW)
 				|| (without.score>MATE_LIMIT && endstate==END_P1_WON)
 				|| (without.score<-MATE_LIMIT && endstate==END_P2_WON)
@@ -706,14 +709,12 @@ result_t eval(gdata_t *gd, int depth,
 			if(!(got && ttval.score==result.score
 				&& ttval.bound==BOUND_LOWER))
 			bound = BOUND_UPPER;
-			//result.full = false;
 		}
 		else
 		{
 			if(!(got && ttval.score==result.score
 				&& ttval.bound==BOUND_UPPER))
 			bound = BOUND_LOWER;
-			//result.full = false;
 		}
 	}
 
@@ -724,15 +725,12 @@ result_t eval(gdata_t *gd, int depth,
 
 	//gd->score = result.score;	//might not even need
 
-	uint64_t tp[] = {0b101000001001010010101010010110000101000001011, 0b111000001101111110111111011111101111110111111};
+	/*uint64_t tp[] = {0b101000001001010010101010010110000101000001011, 0b111000001101111110111111011111101111110111111};
 	if(memcmp(tp, pos, 16)==0)
 	{
-		char buf[200];
-		snprintf(buf, 199, "score=%.1f", result.score);
-		catch_pos(pos, buf);
-		printf("reeeeeeeeeeeeeeeeee\n");
+		catch_pos(pos, "reeeeeeeeeee");
 		exit(0);
-	}
+	}*/
 
 	assert(result.best_move != -1);
 	return result;
@@ -852,6 +850,8 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 
 
 	bool is_max = (max_or_min(depth)==MAX_LAYER);
+	bool used_reductions = false;
+	bool all_full = true;
 
 	#ifdef USE_HISTORY_HEURISTIC
 	bool history_valid = (!result.has_tt && gd->quiet);
@@ -933,6 +933,7 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 				alpha, beta, child_pv);
 			if(reduction)
 			{
+				used_reductions = true;
 				//assertions here to investigate if reduced node
 				//can be stored as full, other properties
 				//assert(!(result.full && result.bound==BOUND_EXACT));
@@ -954,6 +955,9 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 				alpha, beta, child_pv);
 			#endif	//USE_LATE_MOVE_REDUCTIONS
 		//}
+
+		if(!result.full)
+			all_full = false;
 
 		//sl_free(child);
 
@@ -1130,6 +1134,15 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 	#ifdef USE_LATE_MOVE_REDUCTIONS
 	//if(lmr_enabled)
 	//	best_result.full = false;
+	/*
+	if the score is a draw or loss, there could be a winning
+	move that was reduced -- the result will incorrectly be
+	flagged as "full"
+	*/
+	if(((is_max && best_result.score<MATE_LIMIT)
+		|| (!is_max && best_result.score>-MATE_LIMIT))
+		&& !all_full && used_reductions)
+		best_result.full = false;
 	#endif
 
 	//return (result_t){.score=best, .full=best_full, .best_move=best_move};
@@ -1502,53 +1515,6 @@ bool move_is_forcing(void *pos, int move)
 	solver->make_move_temp(&after, pos, move, NULL);
 	int len = solver->only_moves(NULL, after);
 	return (len < _solver_possible_moves);
-}
-
-void catch_pos(void *pos, char *msg)
-{
-	window_unfocus();
-	term_move_cursor(0, 12);
-	solver->draw_full(pos, -1);
-	printf("%s%s", TERM_WHITE, TERM_BLACK_BG);
-	term_move_cursor(0, 28);
-	for(int i=0; i<16; i++)
-		printf("                                         ");
-	term_move_cursor(0, 28);
-	if(msg)
-		printf("\n%s", msg);
-	printf("\n(caught pos, press any key)");
-
-	//print tt info
-
-	//dump pos binary
-	uint64_t *pp = (uint64_t *)pos;
-	term_move_cursor(0, 35);
-	for(int i=0; i<solver->pos_size/8; i++)
-	{
-		printf("%s\n", sprintbig(*pp, "%b"));
-		pp++;
-	}
-
-	//trans_value_t ttval;
-	/*gdata_t *gd = malloc(gdata_size);
-	memcpy(gd->pos, pos, solver->pos_size);
-	gd->hash = solver->hash(gd->pos, 0);
-	trans_value_t ttval;
-	got = tt_get(&ttval, gd, 0);
-	if(got)
-	{
-		printf("--- tt ---\n");
-		printf("score:\t%.1f\n", ttval.)
-	}
-	else
-		printf("--- no tt ---\n");
-}
-	*/
-
-	getchar();
-	window_focus(analysis_hdl);
-
-	//launch_explorer(pos);
 }
 
 
