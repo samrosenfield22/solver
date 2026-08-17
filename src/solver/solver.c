@@ -933,7 +933,7 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 				alpha, beta, child_pv);
 			if(reduction)
 			{
-				used_reductions = true;
+
 				//assertions here to investigate if reduced node
 				//can be stored as full, other properties
 				//assert(!(result.full && result.bound==BOUND_EXACT));
@@ -948,6 +948,8 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 					result = eval((gdata_t *)&child, depth+1+reduction,
 						alpha, beta, child_pv);
 				}
+				else
+					used_reductions = true;
 			}
 
 			#else
@@ -1132,18 +1134,22 @@ result_t analyze_all_children(gdata_t *gd, trans_value_t *ttval,
 	assert(best_in_list);
 
 	#ifdef USE_LATE_MOVE_REDUCTIONS
-	//if(lmr_enabled)
+	//if(lmr_enabled && used_reductions)
 	//	best_result.full = false;
 	/*
 	if the score is a draw or loss, there could be a winning
 	move that was reduced -- the result will incorrectly be
 	flagged as "full"
 	*/
-	if(((is_max && best_result.score<MATE_LIMIT)
-		|| (!is_max && best_result.score>-MATE_LIMIT))
-		&& !all_full && used_reductions)
-		best_result.full = false;
+	//if(((is_max && best_result.score<MATE_LIMIT)
+	//	|| (!is_max && best_result.score>-MATE_LIMIT))
+	//	&& !all_full && used_reductions)
+	//	best_result.full = false;
+
 	#endif
+
+	if(best_result.score==0 && !all_full)
+		best_result.full = false;
 
 	//return (result_t){.score=best, .full=best_full, .best_move=best_move};
 	best_result.has_tt = false;

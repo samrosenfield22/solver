@@ -28,8 +28,9 @@ uint64_t win_map(uint64_t x, uint64_t filled);
 void c4_draw_full(void *pos, int last_move);
 uint64_t c4_hash(void *key, size_t size);
 int c4_moves_remaining(void *pos);
-int endgame_forced_win_simple(c4_pos_t *p);
-int endgame_forced_win_2col(c4_pos_t *p);
+int endgame_analyze_simple(c4_pos_t *p);
+int endgame_analyze_2col(c4_pos_t *p);
+int endgame_analyze_multi(c4_pos_t *p);
 void dead_tiles_fill_even(c4_pos_t *p);
 
 #define C4_BOARD_MASK	(0b0111111011111101111110111111011111101111110111111)
@@ -524,47 +525,14 @@ endstate_t c4_gameover(void *pos)
 			return END_DRAW;
 	}*/
 
-	if(use_endgame_analyzer && move_ct >= 30)
+	if(use_endgame_analyzer && move_ct >= 28)
 	//if(0)
 	{
-		//c4_pos_t p_alt_actual;
-		//memcpy(&p_alt_actual, p, sizeof(p_alt_actual));
-		//c4_pos_t *p_alt = &p_alt_actual;
-		c4_pos_t *p_alt = p;
-
-		//catch_pos(p_alt, "before");
-		dead_tiles_fill_even(p_alt);
-		//catch_pos(p_alt, "after");
-		if(bb64_is_full(p_alt->filled))
-		{
-			return END_DRAW;
-		}
-		//else
-		//	return END_NOT_OVER;	//just do dead tiles
+		return endgame_analyze_multi(p);
 
 
-		uint64_t opens = ~p_alt->filled & C4_TOP_MASK;
-		int open_ct = __builtin_popcountll(opens);
-		int endgame_status;
-		if(open_ct <= 2)
-		{
-			if(open_ct == 1)
-				endgame_status = endgame_forced_win_simple(p_alt);
-			else// if(open_ct == 2)
-			{
-				assert(open_ct == 2);
-				//endgame_status = END_NOT_OVER;
-				//end_2c_normal = true;
-				endgame_status = endgame_forced_win_2col(p_alt);
-				/*end_2c_normal = false;
-				int alt_endgame_status = endgame_forced_win_2col(p);
-				if(endgame_status != alt_endgame_status)
-					catch_pos(p, NULL);*/
-			}
-			assert(endgame_status != END_NOT_OVER);
-			return endgame_status;
-		}
 
+		catch_pos(p, NULL);
 
 		/*uint64_t remaining = C4_BOARD_MASK & ~p->filled;
 		uint64_t fill_all_x = p->x | remaining;
@@ -608,7 +576,7 @@ endstate_t c4_gameover(void *pos)
 
 //returns 1 for my forced win, -1 for opp forced win,
 //0 for draw
-int endgame_forced_win_notused(c4_pos_t *pp)
+int endgame_analyze_notused(c4_pos_t *pp)
 {
 	assert(0);
 	if(!pp->x_wmap && !pp->opp_wmap)
@@ -719,7 +687,7 @@ int endgame_forced_win_notused(c4_pos_t *pp)
 uint32_t endgame_1col = 0;
 uint32_t endgame_morecol = 0;
 
-int endgame_forced_win_simple(c4_pos_t *p)
+int endgame_analyze_simple(c4_pos_t *p)
 {
 	//only valid if there's 1 column left
 	assert(__builtin_popcountll(~p->filled & C4_TOP_MASK)==1);
@@ -797,7 +765,7 @@ int endgame_forced_win_simple(c4_pos_t *p)
 
 
 
-int endgame_forced_win_2col_rec(c4_pos_t *p, sorter_t *both_moves)
+int endgame_analyze_2col_rec(c4_pos_t *p, sorter_t *both_moves)
 {
 	/*
 
@@ -824,7 +792,7 @@ int endgame_forced_win_2col_rec(c4_pos_t *p, sorter_t *both_moves)
 	//column evaluator
 	uint64_t opens = ~p->filled & C4_TOP_MASK;
 	if(__builtin_popcountll(opens) == 1)
-		return endgame_forced_win_simple(p);
+		return endgame_analyze_simple(p);
 
 	//int c4_only_moves(sorter_t *sorter, void *pos)
 	sorter_t moves;
@@ -833,7 +801,7 @@ int endgame_forced_win_2col_rec(c4_pos_t *p, sorter_t *both_moves)
 	{
 		c4_make_move(p, moves.move, NULL);
 		get_win_maps(p);
-		return endgame_forced_win_2col_rec(p, both_moves);
+		return endgame_analyze_2col_rec(p, both_moves);
 	}
 	else if(!len)
 		//return (p->filled & WHOSEMOVE_BIT)? END_P2_WON : END_P1_WON;
@@ -873,7 +841,7 @@ int endgame_forced_win_2col_rec(c4_pos_t *p, sorter_t *both_moves)
 		c4_pos_t next;
 		memcpy(&next, p, sizeof(next));
 		c4_make_move(&next, both_moves[i].move, NULL);
-		int result = endgame_forced_win_2col_rec(&next, both_moves);
+		int result = endgame_analyze_2col_rec(&next, both_moves);
 		if(result == win)
 			return win;
 		if(result == END_DRAW)
@@ -882,56 +850,88 @@ int endgame_forced_win_2col_rec(c4_pos_t *p, sorter_t *both_moves)
 	return best;
 }
 
-int endgame_forced_win_2col(c4_pos_t *p)
+int endgame_analyze_2col(c4_pos_t *p)
 {
 	/*
 	* copy board
-	* return endgame_forced_win_2col_rec();
+	* return endgame_analyze_2col_rec();
 	*/
 
 	//copy board
-	c4_pos_t copy;
-	memcpy(&copy, p, sizeof(copy));
+	//c4_pos_t copy;
+	//memcpy(&copy, p, sizeof(copy));
 
 	sorter_t moves[2];
-	c4_make_movelist(moves, &copy);
+	c4_make_movelist(moves, p);
 
-	return endgame_forced_win_2col_rec(&copy, moves);
+	return endgame_analyze_2col_rec(p, moves);
 }
 
-int endgame_forced_win_multi_rec(c4_pos_t *p)
+int endgame_analyze_multi(c4_pos_t *p)
 {
-	/*
-	only_moves()
-	fill any even dead cols
-	if only 2 cols left, 2col
-	*/
+
+
+	/*bool modified = false;
+	sorter_t moves;
+	while(1)
+	{
+		int len = c4_only_moves(&moves, p);
+		if(len == 0)
+			return c4_whosemove(p)? END_P2_WON : END_P1_WON;
+		else if(len != 1)
+			break;
+		modified = true;
+		c4_make_move(p, moves.move, NULL);
+		get_win_maps(p);
+	}
+
+	if(modified)
+	{
+		//copy board
+		c4_pos_t copy_actual;
+		memcpy(&copy_actual, p, sizeof(copy_actual));
+		p = &copy_actual;
+	}
+
+	if(bb64_is_full(p->filled))
+		return END_DRAW;*/
+
 
 	dead_tiles_fill_even(p);
+
+
 	if(bb64_is_full(p->filled))
 		return END_DRAW;
 
-	//if 1 or 2 cols left, return endgame_forced_win_2col()/1col
 	uint64_t opens = ~p->filled & C4_TOP_MASK;
-	switch(__builtin_popcountll(opens))
+	int open_ct = __builtin_popcountll(opens);
+	switch(open_ct)
 	{
-		case 2:	return endgame_forced_win_2col(p);
-		case 1:	return endgame_forced_win_simple(p);
+		case 2: return endgame_analyze_2col(p);
+		case 1: return endgame_analyze_simple(p);
+		case 0:	assert(0);	return END_DRAW;
+		default:	return END_NOT_OVER;
+
 	}
+	/*int endgame_status;
+	if(open_ct <= 2)
+	{
+		if(open_ct == 1)
+			endgame_status = endgame_analyze_simple(copy);
+		else// if(open_ct == 2)
+		{
+			assert(open_ct == 2);
+			//endgame_status = END_NOT_OVER;
+			//end_2c_normal = true;
+			endgame_status = endgame_analyze_2col(copy);
 
+		}
+		assert(endgame_status != END_NOT_OVER);
+		return endgame_status;
+	}
+	else
+		return END_NOT_OVER;*/
 }
-
-/*int endgame_forced_win_multi(c4_pos_t *p)
-{
-	//copy board
-	c4_pos_t copy;
-	memcpy(&copy, p, sizeof(copy));
-
-	sorter_t moves[2];
-	c4_make_movelist(moves, &copy);
-
-	return endgame_forced_win_multi_rec(&copy, moves);
-}*/
 
 float c4_estimate(void *pos)
 {
@@ -1759,7 +1759,8 @@ int c4_only_moves(sorter_t *sorter, void *pos)
 		return 1;
 	}
 
-	//check if only 1 move is available (all other columns filled)
+	/*check if only 1 move is available (all other columns filled),
+	or if there are 2 moves and only 1 doesn't lose*/
 	int cols_open = __builtin_popcountll(mm);
 	if(cols_open == 1)
 	//if(!(mm & (mm-1)))
