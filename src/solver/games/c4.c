@@ -858,8 +858,9 @@ int endgame_analyze_2col(c4_pos_t *p)
 	*/
 
 	//copy board
-	//c4_pos_t copy;
-	//memcpy(&copy, p, sizeof(copy));
+	c4_pos_t copy;
+	memcpy(&copy, p, sizeof(copy));
+	p = &copy;
 
 	sorter_t moves[2];
 	c4_make_movelist(moves, p);
@@ -880,7 +881,7 @@ int endgame_analyze_multi(c4_pos_t *p)
 			return c4_whosemove(p)? END_P2_WON : END_P1_WON;
 		else if(len != 1)
 			break;
-		modified = true;
+		modified = !modified;
 		c4_make_move(p, moves.move, NULL);
 		get_win_maps(p);
 	}
