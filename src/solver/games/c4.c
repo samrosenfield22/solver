@@ -30,7 +30,7 @@ uint64_t c4_hash(void *key, size_t size);
 int c4_moves_remaining(void *pos);
 int endgame_analyze_simple(c4_pos_t *p);
 int endgame_analyze_2col(c4_pos_t *p);
-int endgame_analyze_multi(c4_pos_t *p);
+int endgame_analyze(c4_pos_t *p);
 void dead_tiles_fill_even(c4_pos_t *p);
 
 #define C4_BOARD_MASK	(0b0111111011111101111110111111011111101111110111111)
@@ -396,6 +396,7 @@ bool end_2c_normal;
 uint64_t endgame_dead_cols(c4_pos_t *p)
 {
 	uint64_t tops = ~p->filled & C4_TOP_MASK;
+
 	uint64_t isolated =
 		tops & ~(tops>>7) & ~(tops>>14) & ~(tops>>21)
 		& ~(tops<<7) & ~(tops<<14) & ~(tops<<21);
@@ -425,12 +426,16 @@ uint64_t dead_tiles(c4_pos_t *p)
 	if(!dead)
 		return 0;
 
-	uint64_t dead_bottoms = dead >> 5;
+	/*uint64_t dead_bottoms = dead >> 5;
 	uint64_t dead_lowests = (dead_bottoms + p->filled) & ~p->filled;
 	//uint64_t dead_bits = (dead - (dead_lowests>>1))<<1;
-	uint64_t dead_bits = (dead - dead_lowests) | dead;
+	uint64_t dead_bits = (dead - dead_lowests) | dead;*/
 
-	assert(!(dead_lowests & p->filled));
+	uint64_t dead_bits = (dead<<1) - (dead>>5);
+	dead_bits &= ~p->filled;
+	//assert(dead_b == dead_bits);
+
+	//assert(!(dead_lowests & p->filled));
 	//assert(((dead_lowests>>1) & p->filled) == (dead_lowests>>1));
 
 	assert(!(dead_bits & p->filled));
@@ -528,7 +533,7 @@ endstate_t c4_gameover(void *pos)
 	if(use_endgame_analyzer && move_ct >= 28)
 	//if(0)
 	{
-		return endgame_analyze_multi(p);
+		return endgame_analyze(p);
 
 
 
@@ -780,9 +785,8 @@ int endgame_analyze_2col_rec(c4_pos_t *p, sorter_t *both_moves)
 	const int win = (p->filled & WHOSEMOVE_BIT)? END_P1_WON : END_P2_WON;
 	const int loss = (p->filled & WHOSEMOVE_BIT)? END_P2_WON : END_P1_WON;
 
-	if(is_win(p->x ^ p->filled))
-		return loss;
-	//if(__builtin_popcountll(p->filled & ~WHOSEMOVE_BIT) == 42)
+	//if(is_win(p->x ^ p->filled))
+	//	return loss;
 	if(bb64_is_full(p->filled))
 		return END_DRAW;
 
@@ -795,17 +799,21 @@ int endgame_analyze_2col_rec(c4_pos_t *p, sorter_t *both_moves)
 		return endgame_analyze_simple(p);
 
 	//int c4_only_moves(sorter_t *sorter, void *pos)
+
 	sorter_t moves;
 	int len = c4_only_moves(&moves, p);
 	if(len == 1)
 	{
+		//get_win_maps(p);
+		if(move_bit(p, moves.move) & p->x_wmap)
+			return win;
 		c4_make_move(p, moves.move, NULL);
-		get_win_maps(p);
+
 		return endgame_analyze_2col_rec(p, both_moves);
 	}
 	else if(!len)
-		//return (p->filled & WHOSEMOVE_BIT)? END_P2_WON : END_P1_WON;
 		return loss;
+
 
 	//if(!end_2c_normal)
 	//{
@@ -833,10 +841,24 @@ int endgame_analyze_2col_rec(c4_pos_t *p, sorter_t *both_moves)
 	//int results[2];
 	//int best = (p->filled & WHOSEMOVE_BIT)? END_P2_WON : END_P1_WON;
 	int best = loss;
+	uint64_t mb = 0;
+	//uint64_t oppwmap_down = p->opp_wmap >> 1;
+	//p->filled ^= WHOSEMOVE_BIT;
 	for(int i=0; i<2; i++)
 	{
-		//if(move_bit(p, both_moves[i].move)<<1 & p->opp_wmap)
+		uint64_t this_mb = move_bit(p, both_moves[i].move);
+		//if(this_mb & oppwmap_down)
 		//	continue;
+
+		//unmove last move, make next one
+		/*//p->x &= ~mb;
+		p->filled &= ~mb;
+		mb = this_mb;
+		//p->x |= mb;
+		p->filled |= mb;
+		p->x_wmap = NO_WIN_MAP;
+		p->opp_wmap = NO_WIN_MAP;
+		get_win_maps(p);*/
 
 		c4_pos_t next;
 		memcpy(&next, p, sizeof(next));
@@ -868,7 +890,7 @@ int endgame_analyze_2col(c4_pos_t *p)
 	return endgame_analyze_2col_rec(p, moves);
 }
 
-int endgame_analyze_multi(c4_pos_t *p)
+int endgame_analyze(c4_pos_t *p)
 {
 
 
@@ -1511,6 +1533,23 @@ void c4_make_move(void *pos, int index, uint64_t *hash)
 	//uint64_t check_hash = c4_hash(pos, 0);
 	//assert(*hash == check_hash);
 	*/
+}
+
+void c4_unmove(void *pos, int last, int index, uint64_t *hash)
+{
+	assert(c4_ok(pos));
+	c4_pos_t *p = pos;
+
+	uint64_t b = move_bit(p, last);
+	p->filled = bb64_place(p->filled, b, hash,
+		c4_whosemove(p));
+
+	b = move_bit(p, index);
+	p->filled = bb64_place(p->filled, b, hash,
+		c4_whosemove(p));
+
+	p->x_wmap = NO_WIN_MAP;
+	p->opp_wmap = NO_WIN_MAP;
 }
 
 bool c4_move_loses(void *pos, int move)
